@@ -1,18 +1,20 @@
-
 .background {
     background-image: url('images/mystical.jpg');
-    background-size: 50%;
-    background-repeat: repeat; 
-    background-position: auto; 
+    background-size: cover; /* Changed to cover for better scaling */
+    background-repeat: no-repeat; 
+    background-position: center; 
 }
+
 .input-card {
     background-image: url('images/gold.jpg');
-    background-size: 100%;
+    background-size: cover; /* Changed to cover for better scaling */
 }
+
 .card {
-    font-size: x-large;
+    font-size: 2vw; /* Use viewport width for responsive font size */
     font-family: 'Times New Roman', Times, serif;
 }
+
 body {
     display: flex;
     justify-content: center;
@@ -22,12 +24,16 @@ body {
     font-family: Arial, sans-serif;
     margin: 0;
 }
+
 .card {
-    width: 400px; /* Increased width */
-    height: 600px; /* Increased height */
+    width: 80vw; /* Use viewport width for responsive width */
+    height: 60vh; /* Use viewport height for responsive height */
+    max-width: 400px; /* Set a max width for larger screens */
+    max-height: 600px; /* Set a max height for larger screens */
     perspective: 1000px;
     position: relative;
 }
+
 .card-inner {
     position: relative;
     width: 100%;
@@ -35,6 +41,7 @@ body {
     transform-style: preserve-3d;
     transition: transform 0.6s;
 }
+
 .card-front, .input-card {
     position: absolute;
     width: 100%;
@@ -44,27 +51,31 @@ body {
     border-radius: 10px;
     box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
 }
+
 .card-front {
     background-color: #ffd900;
     display: flex;
     justify-content: center;
     align-items: center;
-    font-size: 30px; /* Increased font size */
+    font-size: 3vw; /* Use viewport width for responsive font size */
     color: #333;
 }
+
 .card-back {
     position: absolute;
-    width: 110%;
-    height: 120%;
+    width: 100%; /* Adjusted to 100% for better scaling */
+    height: 100%; /* Adjusted to 100% for better scaling */
     backface-visibility: hidden;
     border: url(images/gold.jpg);
     border-radius: 10px;
     box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
 }
+
 .card-back {
     background-size: cover;
     transform: rotateY(180deg);
 }
+
 .input-card {
     display: flex;
     flex-direction: column;
@@ -72,12 +83,13 @@ body {
     align-items: center;
     background-color: #ffd900;
     border-radius: 10px;
-    padding: 40px; /* Increased padding */
+    padding: 5%; /* Use percentage for responsive padding */
     box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
 }
+
 textarea {
-    width: 100%;
-    height: 600px; /* Increased height */
+    width: 90%; /* Use percentage for responsive width */
+    height: 40vh; /* Use viewport height for responsive height */
     margin-bottom: 10px;
     padding: 10px;
     border-radius: 5px;
@@ -85,10 +97,11 @@ textarea {
     background-color: #eccb10;
     resize: none;
     box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.1);
-    font-size: 18px; /* Increased font size */
+    font-size: 2vw; /* Use viewport width for responsive font size */
 }
+
 button {
-    padding: 15px 20px; /* Increased padding */
+    padding: 2% 5%; /* Use percentage for responsive padding */
     border: none;
     border-radius: 10px;
     background-color: #000a68;
@@ -97,23 +110,22 @@ button {
     cursor: pointer;
     display: none; /* Hidden initially */
 }
+
 button.enabled {
     display: block; /* Show when enabled */
 }
+
 #askAnotherButton {
-    position: center;
-    margin-top: 900px;
-    margin-left: -300px;
     display: none; /* Hidden initially */
     font-family: 'Times New Roman', Times, serif;
 }
+
 #submitButton, #askAnotherButton {
-    font-size: 150%; /* Increase font size by 50% */
-    padding: 15px 30px; /* Adjust padding for better appearance */
+    font-size: 2vw; /* Use viewport width for responsive font size */
 }
 
 #questionInput {
-    font-size: 150%; /* Increase textarea font size by 50% */
+    font-size: 2vw; /* Use viewport width for responsive font size */
     padding: 10px; /* Adjust padding for better appearance */
 }
 
@@ -123,8 +135,18 @@ button.enabled {
     align-items: center; /* Center align the content */
 }
 
-#askAnotherButton {
-    margin-top: 900px;
-    margin-left: -350px;
-    display: none; /* Initially hide the button */
+/* Media Queries for additional responsiveness */
+@media (max-width: 600px) {
+    .card {
+        width: 90vw; /* Adjust width for smaller screens */
+        height: 70vh; /* Adjust height for smaller screens */
+    }
+
+    .card-front, .card-back {
+        font-size: 4vw; /* Adjust font size for smaller screens */
+    }
+
+    textarea {
+        height: 30vh; /* Adjust height for smaller screens */
+    }
 }
