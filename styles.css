@@ -1,0 +1,15 @@
+
+.background {
+    background-image: url('images/mystical.jpg');
+    background-size: 50%;
+    background-repeat: repeat; 
+    background-position: auto; 
+}
+.input-card {
+    background-image: url('images/gold.jpg');
+    background-size: 100%;
+}
+.card {
+    font-size: x-large;
+    font-family: 'Times New Roman', Times, serif;
+}
