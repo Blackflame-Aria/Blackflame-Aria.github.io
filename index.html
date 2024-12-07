@@ -5,99 +5,14 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link rel="stylesheet" href="styles.css">
     <title>Tarot Card App</title>
-    <style>
-        body {
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            height: 100vh;
-            background-color: #ffd900;
-            font-family: Arial, sans-serif;
-            margin: 0;
-        }
-        .card {
-            width: 400px; /* Increased width */
-            height: 600px; /* Increased height */
-            perspective: 1000px;
-            position: relative;
-        }
-        .card-inner {
-            position: relative;
-            width: 100%;
-            height: 100%;
-            transform-style: preserve-3d;
-            transition: transform 0.6s;
-        }
-        .card-front, .card-back, .input-card {
-            position: absolute;
-            width: 100%;
-            height: 100%;
-            backface-visibility: hidden;
-            border: url(images/gold.jpg);
-            border-radius: 10px;
-            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
-        }
-        .card-front {
-            background-color: #ffd900;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            font-size: 30px; /* Increased font size */
-            color: #333;
-        }
-        .card-back {
-            background-size: cover;
-            transform: rotateY(180deg);
-        }
-        .input-card {
-            display: flex;
-            flex-direction: column;
-            justify-content: center;
-            align-items: center;
-            background-color: #ffd900;
-            border-radius: 10px;
-            padding: 40px; /* Increased padding */
-            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
-        }
-        textarea {
-            width: 100%;
-            height: 600px; /* Increased height */
-            margin-bottom: 10px;
-            padding: 10px;
-            border-radius: 5px;
-            border: 1px solid #ffd900;
-            background-color: #eccb10;
-            resize: none;
-            box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.1);
-            font-size: 18px; /* Increased font size */
-        }
-        button {
-            padding: 15px 20px; /* Increased padding */
-            border: none;
-            border-radius: 10px;
-            background-color: #000a68;
-            font-family: 'Times New Roman', Times, serif;
-            color: rgb(255, 255, 255);
-            cursor: pointer;
-            display: none; /* Hidden initially */
-        }
-        button.enabled {
-            display: block; /* Show when enabled */
-        }
-        #askAnotherButton {
-            margin-top: 20px;
-            display: none; /* Hidden initially */
-            font-family: 'Times New Roman', Times, serif;
-            font: 20px;
-        }
-    </style>
+    
 </head>
 <body class="background">
 
 <div class="card" id="card">
     <div class="card-inner" id="cardInner">
         <div class="input-card" id="inputCard">
-            <textarea id="questionInput" placeholder="Ask a question..." oninput="checkInput()"></textarea>
+            <textarea style="font-family: 'Times New Roman', Times, serif;" id="questionInput" placeholder="Ask a question..." oninput="checkInput()"></textarea>
             <button id="submitButton" onclick="submitQuestion()"><strong>Flip Card</strong></button>
         </div>
         <div class="card-back" id="cardBack">
@@ -110,10 +25,85 @@
 
 <script>
     const cards = [
-        'path/to/tarot_card_1.jpg',
-        'path/to/tarot_card_2.jpg',
-        'path/to/tarot_card_3.jpg',
-        // Add paths for all your tarot card images
+
+        'cards/tarot-card1.jpg',
+        'cards/tarot-card2.jpg',
+        'cards/tarot-card3.jpg',
+        'cards/tarot-card4.jpg',
+        'cards/tarot-card5.jpg',
+        'cards/tarot-card6.jpg',
+        'cards/tarot-card7.jpg',
+        'cards/tarot-card8.jpg',
+        'cards/tarot-card9.jpg',
+        'cards/tarot-card10.jpg',
+        'cards/tarot-card11.jpg',
+        'cards/tarot-card12.jpg',
+        'cards/tarot-card13.jpg',
+        'cards/tarot-card14.jpg',
+        'cards/tarot-card15.jpg',
+        'cards/tarot-card16.jpg',
+        'cards/tarot-card17.jpg',
+        'cards/tarot-card18.jpg',
+        'cards/tarot-card19.jpg',
+        'cards/tarot-card20.jpg',
+        'cards/tarot-card21.jpg',
+        'cards/tarot-card22.jpg',
+        'cards/tarot-card23.jpg',
+        'cards/tarot-card24.jpg',
+        'cards/tarot-card25.jpg',
+        'cards/tarot-card26.jpg',
+        'cards/tarot-card27.jpg',
+        'cards/tarot-card28.jpg',
+        'cards/tarot-card29.jpg',
+        'cards/tarot-card30.jpg',
+        'cards/tarot-card31.jpg',
+        'cards/tarot-card32.jpg',
+        'cards/tarot-card33.jpg',
+        'cards/tarot-card34.jpg',
+        'cards/tarot-card35.jpg',
+        'cards/tarot-card36.jpg',
+        'cards/tarot-card37.jpg',
+        'cards/tarot-card38.jpg',
+        'cards/tarot-card39.jpg',
+        'cards/tarot-card40.jpg',
+        'cards/tarot-card41.jpg',
+        'cards/tarot-card42.jpg',
+        'cards/tarot-card43.jpg',
+        'cards/tarot-card44.jpg',
+        'cards/tarot-card45.jpg',
+        'cards/tarot-card46.jpg',
+        'cards/tarot-card47.jpg',
+        'cards/tarot-card48.jpg',
+        'cards/tarot-card49.jpg',
+        'cards/tarot-card50.jpg',
+        'cards/tarot-card51.jpg',
+        'cards/tarot-card52.jpg',
+        'cards/tarot-card53.jpg',
+        'cards/tarot-card54.jpg',
+        'cards/tarot-card55.jpg',
+        'cards/tarot-card56.jpg',
+        'cards/tarot-card57.jpg',
+        'cards/tarot-card58.jpg',
+        'cards/tarot-card59.jpg',
+        'cards/tarot-card60.jpg',
+        'cards/tarot-card61.jpg',
+        'cards/tarot-card62.jpg',
+        'cards/tarot-card63.jpg',
+        'cards/tarot-card64.jpg',
+        'cards/tarot-card65.jpg',
+        'cards/tarot-card66.jpg',
+        'cards/tarot-card67.jpg',
+        'cards/tarot-card68.jpg',
+        'cards/tarot-card69.jpg',
+        'cards/tarot-card70.jpg',
+        'cards/tarot-card71.jpg',
+        'cards/tarot-card72.jpg',
+        'cards/tarot-card73.jpg',
+        'cards/tarot-card74.jpg',
+        'cards/tarot-card75.jpg',
+        'cards/tarot-card76.jpg',
+        'cards/tarot-card77.jpg',
+        'cards/tarot-card78.jpg',
     ];
 
     const questionInput = document.getElementById('questionInput');
@@ -145,6 +135,13 @@
         askAnotherButton.style.display = 'none';
         cardInner.style.transform = 'rotateY(0deg)'; // Reset the card to the front
         submitButton.classList.remove('enabled'); // Disable the submit button
+           function resetQuestion() {
+        // Reset the input field and hide the "Ask Another Question" button
+        questionInput.value = '';
+        askAnotherButton.style.display = 'none';
+        cardInner.style.transform = 'rotateY(0deg)'; // Reset the card to the front
+        submitButton.classList.remove('enabled'); // Disable the submit button
+    }
     }
 </script>
 
