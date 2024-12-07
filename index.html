@@ -116,9 +116,10 @@
     const askAnotherButton = document.getElementById('askAnotherButton');
 
     function checkInput() {
-        // Enable the submit button if input length is 10 or more
-        submitButton.classList.toggle('enabled', questionInput.value.length >= 10);
-    }
+    // Enable the submit button if input length is 10 or more and contains a question mark
+    const hasQuestionMark = questionInput.value.includes('?');
+    submitButton.classList.toggle('enabled', questionInput.value.length >= 10 && hasQuestionMark);
+}
 
     function submitQuestion() {
         // Select a random card
