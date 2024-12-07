@@ -50,12 +50,12 @@
     width: 100%; /* Ensure the back is the same size as the front */
     height: 100%; /* Ensure the back is the same size as the front */
     backface-visibility: hidden;
-    background-position: fit;
-    background-size: 85%;
+    background-position: center;
+    background-size: 90%;
     background-repeat: no-repeat;
     border: url(images/gold.jpg);
     border-radius: 10px;
-    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0);
     transform: rotateY(180deg); /* Keep the back rotated */
 }
 
@@ -71,7 +71,7 @@
 textarea {
     width: 90%; /* Use percentage for responsive width */
     height: 90%; /* Set height to 50% of the card's height */
-    margin: 0 auto; /* Center the textarea */
+    margin: auto; /* Center the textarea */
     padding: 10px;
     border-radius: 5px;
     border: 1px solid #ffd900;
@@ -131,7 +131,7 @@ button.enabled {
     }
 
     textarea {
-        height: 30vh; /* Adjust height for smaller screens */
+        height: 60vh; /* Adjust height for smaller screens */
     }
 
     #askAnotherButton {
