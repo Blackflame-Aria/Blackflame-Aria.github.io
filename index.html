@@ -1,153 +1,162 @@
+<!-- Project Requirements:
+ 1. At least 2 pages.
+ 2. A bootstrap navbar, table, and form.
+ 3. Bootstrap grid used throughout to format elements
+ 4. Elements should stack vertically when the window is small-->
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <link rel="stylesheet" href="styles.css">
-    <meta property="og:title" content="Tarot Card App">
-    <meta property="og:url" content="https://blackflame-aria.github.io">
-    <meta property="og:image" content="https://i0.wp.com/wherecreativityworks.com/wp-content/uploads/2020/07/riderwaite.jpg?fit=1200%2C1028&ssl=1">
-    <title>Tarot Card App</title>
-    
-</head>
-<body class="background">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link rel="stylesheet" href="node_modules/bootstrap/dist/css/bootstrap.css">
+    <title>My Bootstrap Project</title>
+    <style>
+    body {
+        background-color: black;
+    }
+    .card {
+    background-color: rgb(20, 20, 20);
+    }
+    h1, h2, h3, p {
+        font-family: 'Times New Roman', Times, serif;
+        color: azure;
+    }
+    .card-title {
+        font-family: 'Times New Roman', Times, serif;
+        color: azure;
+    }
+    .btn-red {
+    background-color: #f33a3a; 
+    color: white;
+    }
 
-<div class="card" id="card">
-    <div class="card-inner" id="cardInner">
-        <div class="input-card" id="inputCard">
-            <textarea style="font-family: 'Times New Roman', Times, serif;" id="questionInput" placeholder="Ask a question..." oninput="checkInput()"></textarea>
-            <button id="submitButton" onclick="submitQuestion()"><strong>Flip Card</strong></button>
+    .btn-green {
+    background-color: #2ccfb4; 
+    color: rgb(0, 0, 0);
+    }
+
+    .btn-blue {
+    background-color: #007bff;
+    color: white;
+    }
+    .btn-brown {
+    background-color: rgb(88, 55, 23);
+    color: white;
+    }
+
+    .btn-yellow {
+    background-color: yellow;
+    color: rgb(0, 0, 0);
+    }
+
+    .btn-purple {
+    background-color: purple;
+    color: white;
+    }
+
+    </style>
+</head>
+<body>
+    <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
+        <div class="container">
+            <a class="navbar-brand" href="#">Bakugan Directory</a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav">
+                    <li class="nav-item">
+                        <a class="nav-link active" href="index.html">Home</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="form.html">Contact Us</a>
+                    </li>
+                </ul>
+            </div>
         </div>
-        <div class="card-back" id="cardBack">
-            <!-- Random card image will be displayed here -->
+    </nav>
+
+    <div class="container my-5">
+        <div class="row">
+            <div class="col-12 col-md-6">
+                <h1>Bakugan Attributes Overview</h1>
+                <p>Lorem ipsum dolor sit amet consectetur adipisicing elit. Accusantium temporibus dolorum perferendis facere nostrum fugiat rem? Eligendi earum repudiandae aliquid iure quisquam illum inventore. Maxime autem illo nulla quos iusto.</p>
+            </div>
+            <div class="col-12 col-md-6">
+                <img src="images/Attributes.png" class="img-fluid" alt="Attributes">
+            </div>
         </div>
     </div>
-</div>
 
-<button id="askAnotherButton" onclick="resetQuestion()">Ask Another Question</button>
+    <div class="container my-5">
+        <h2>The Elements</h2>
+        <div class="row">
+            <div class="col-12 col-md-4">
+                <div class="card">
+                    <img src="images/Pyrus.png" class="card-img-top" alt="Pyrus">
+                    <div class="card-body">
+                        <h5 class="card-title">Pyrus</h5>
+                        <p class="card-text">The Pyrus symbol is similar to the "fire" kanji (Hi - 火).</p>
+                        <a href="#" class="btn btn-red">Learn More</a>
+                    </div>
+                </div>
+            </div>
+            <div class="col-12 col-md-4">
+                <div class="card">
+                    <img src="images/Aquos.png" class="card-img-top" alt="Aquos">
+                    <div class="card-body">
+                        <h5 class="card-title">Aquos</h5>
+                        <p class="card-text">The Aquos symbol is similar to the "water" kanji (Mizu - 水).</p>
+                        <a href="#" class="btn btn-blue">Learn More</a>
+                    </div>
+                </div>
+            </div>
+            <div class="col-12 col-md-4">
+                <div class="card">
+                    <img src="images/Ventus.png" class="card-img-top" alt="Ventus">
+                    <div class="card-body">
+                        <h5 class="card-title">Ventus</h5>
+                        <p class="card-text">The Ventus symbol is similar to the "wind" kanji (Kaze - 風).</p>
+                        <a href="#" class="btn btn-green">Learn More</a>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="row">
+            <div class="col-12 col-md-4">
+                <div class="card">
+                    <img src="images/Subterra.png" class="card-img-top" alt="Subterra">
+                    <div class="card-body">
+                        <h5 class="card-title">Subterra</h5>
+                        <p class="card-text">The Subterra symbol is most similar to the "earth" kanji (Tsuchi - 土).</p>
+                        <a href="#" class="btn btn-brown">Learn More</a>
+                    </div>
+                </div>
+            </div>
+            <div class="col-12 col-md-4">
+                <div class="card">
+                    <img src="images/Haos.png" class="card-img-top" alt="Haos">
+                    <div class="card-body">
+                        <h5 class="card-title">Haos</h5>
+                        <p class="card-text">The Haos symbol is a star and also similar to the "light" kanji (Hikari - 光).</p>
+                        <a href="#" class="btn btn-yellow">Learn More</a>
+                    </div>
+                </div>
+            </div>
+            <div class="col-12 col-md-4">
+                <div class="card">
+                    <img src="images/Darkus.png" class="card-img-top" alt="Darkus">
+                    <div class="card-body">
+                        <h5 class="card-title">Darkus</h5>
+                        <p class="card-text">The Darkus symbol resembles fangs and is similar to the "darkness" kanji (Yami - 闇).</p>
+                        <a href="#" class="btn btn-purple">Learn More</a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
 
-<script>
-    const cards = [
-
-        'cards/tarot-card1.jpg',
-        'cards/tarot-card2.jpg',
-        'cards/tarot-card3.jpg',
-        'cards/tarot-card4.jpg',
-        'cards/tarot-card5.jpg',
-        'cards/tarot-card6.jpg',
-        'cards/tarot-card7.jpg',
-        'cards/tarot-card8.jpg',
-        'cards/tarot-card9.jpg',
-        'cards/tarot-card10.jpg',
-        'cards/tarot-card11.jpg',
-        'cards/tarot-card12.jpg',
-        'cards/tarot-card13.jpg',
-        'cards/tarot-card14.jpg',
-        'cards/tarot-card15.jpg',
-        'cards/tarot-card16.jpg',
-        'cards/tarot-card17.jpg',
-        'cards/tarot-card18.jpg',
-        'cards/tarot-card19.jpg',
-        'cards/tarot-card20.jpg',
-        'cards/tarot-card21.jpg',
-        'cards/tarot-card22.jpg',
-        'cards/tarot-card23.jpg',
-        'cards/tarot-card24.jpg',
-        'cards/tarot-card25.jpg',
-        'cards/tarot-card26.jpg',
-        'cards/tarot-card27.jpg',
-        'cards/tarot-card28.jpg',
-        'cards/tarot-card29.jpg',
-        'cards/tarot-card30.jpg',
-        'cards/tarot-card31.jpg',
-        'cards/tarot-card32.jpg',
-        'cards/tarot-card33.jpg',
-        'cards/tarot-card34.jpg',
-        'cards/tarot-card35.jpg',
-        'cards/tarot-card36.jpg',
-        'cards/tarot-card37.jpg',
-        'cards/tarot-card38.jpg',
-        'cards/tarot-card39.jpg',
-        'cards/tarot-card40.jpg',
-        'cards/tarot-card41.jpg',
-        'cards/tarot-card42.jpg',
-        'cards/tarot-card43.jpg',
-        'cards/tarot-card44.jpg',
-        'cards/tarot-card45.jpg',
-        'cards/tarot-card46.jpg',
-        'cards/tarot-card47.jpg',
-        'cards/tarot-card48.jpg',
-        'cards/tarot-card49.jpg',
-        'cards/tarot-card50.jpg',
-        'cards/tarot-card51.jpg',
-        'cards/tarot-card52.jpg',
-        'cards/tarot-card53.jpg',
-        'cards/tarot-card54.jpg',
-        'cards/tarot-card55.jpg',
-        'cards/tarot-card56.jpg',
-        'cards/tarot-card57.jpg',
-        'cards/tarot-card58.jpg',
-        'cards/tarot-card59.jpg',
-        'cards/tarot-card60.jpg',
-        'cards/tarot-card61.jpg',
-        'cards/tarot-card62.jpg',
-        'cards/tarot-card63.jpg',
-        'cards/tarot-card64.jpg',
-        'cards/tarot-card65.jpg',
-        'cards/tarot-card66.jpg',
-        'cards/tarot-card67.jpg',
-        'cards/tarot-card68.jpg',
-        'cards/tarot-card69.jpg',
-        'cards/tarot-card70.jpg',
-        'cards/tarot-card71.jpg',
-        'cards/tarot-card72.jpg',
-        'cards/tarot-card73.jpg',
-        'cards/tarot-card74.jpg',
-        'cards/tarot-card75.jpg',
-        'cards/tarot-card76.jpg',
-        'cards/tarot-card77.jpg',
-        'cards/tarot-card78.jpg',
-    ];
-
-    const questionInput = document.getElementById('questionInput');
-    const submitButton = document.getElementById('submitButton');
-    const cardInner = document.getElementById('cardInner');
-    const cardBack = document.getElementById('cardBack');
-    const askAnotherButton = document.getElementById('askAnotherButton');
-
-    function checkInput() {
-    // Enable the submit button if input length is 10 or more and contains a question mark
-    const hasQuestionMark = questionInput.value.includes('?');
-    submitButton.classList.toggle('enabled', questionInput.value.length >= 10 && hasQuestionMark);
-}
-
-    function submitQuestion() {
-        // Select a random card
-        const randomCardIndex = Math.floor(Math.random() * cards.length);
-        cardBack.style.backgroundImage = `url(${cards[randomCardIndex]})`;
-
-        // Trigger the card flip animation
-        cardInner.style.transform = 'rotateY(180deg)';
-
-        // Show the "Ask Another Question" button
-        askAnotherButton.style.display = 'block';
-    }
-
-    function resetQuestion() {
-        // Reset the input field and hide the "Ask Another Question" button
-        questionInput.value = '';
-        askAnotherButton.style.display = 'none';
-        cardInner.style.transform = 'rotateY(0deg)'; // Reset the card to the front
-        submitButton.classList.remove('enabled'); // Disable the submit button
-           function resetQuestion() {
-        // Reset the input field and hide the "Ask Another Question" button
-        questionInput.value = '';
-        askAnotherButton.style.display = 'none';
-        cardInner.style.transform = 'rotateY(0deg)'; // Reset the card to the front
-        submitButton.classList.remove('enabled'); // Disable the submit button
-    }
-    }
-</script>
-
+    <script src="node_modules/bootstrap/dist/js/bootstrap.min.js"></script>
 </body>
 </html>
