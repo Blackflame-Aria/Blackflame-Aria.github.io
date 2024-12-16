@@ -1,0 +1,31 @@
+import { KinesisTransformerOptions } from "./types";
+import KinesisTransformerElement from "./kinesisTransformerElement";
+declare class KinesisTransformer {
+    container: HTMLElement;
+    elements: KinesisTransformerElement[];
+    options: KinesisTransformerOptions;
+    isActive: boolean;
+    initialTransform: string;
+    interaction: "mouse" | "scroll";
+    observer: IntersectionObserver | null;
+    perspective: string;
+    isMouseInside: boolean;
+    preserve3d: boolean;
+    mutationObserver: MutationObserver;
+    scrollElement: HTMLElement | Window;
+    constructor(container: HTMLElement, options?: KinesisTransformerOptions);
+    updatePropertiesFromAttributes(): void;
+    handleAttributeChange(mutationsList: MutationRecord[]): void;
+    init(): void;
+    bindMoveEvents(): void;
+    onMouseEnter(): void;
+    onMouseMove(event: MouseEvent): void;
+    onMouseLeave(): void;
+    setupScrollInteraction(): void;
+    startScrollAnimation(): void;
+    resetScrollAnimation(): void;
+    onScrollBound: () => void;
+    onScroll(): void;
+    destroy(): void;
+}
+export default KinesisTransformer;
