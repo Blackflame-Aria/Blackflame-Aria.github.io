@@ -1,0 +1,38 @@
+import { KinesisAudioOptions } from "./types";
+import KinesisAudioElement from "./kinesisAudioElement";
+declare class KinesisAudio {
+    container: HTMLElement;
+    elements: KinesisAudioElement[];
+    options: Required<KinesisAudioOptions>;
+    isActive: boolean;
+    initialTransform: string;
+    perspective: number;
+    audioSrc: string;
+    playAudio: boolean;
+    audioContext: AudioContext | null;
+    analyser: AnalyserNode | null;
+    dataArray: Uint8Array | null;
+    source: MediaElementAudioSourceNode | null;
+    audioElement: HTMLAudioElement | null;
+    animationId: number | null;
+    observer: IntersectionObserver | null;
+    mutationObserver: MutationObserver | null;
+    isAnimating: boolean;
+    private smoothingFactor;
+    private smoothedData;
+    private throttledAnimate;
+    constructor(container: HTMLElement, options: KinesisAudioOptions);
+    init(): void;
+    setupAudioElement(src: string): void;
+    initializeAudioContext(): void;
+    initIntersectionObserver(): void;
+    initMutationObserver(): void;
+    play(): void;
+    resume(): void;
+    pause(): void;
+    stop(): void;
+    animate(): void;
+    resetTransforms(): void;
+    destroy(): void;
+}
+export default KinesisAudio;
