@@ -44,3 +44,11 @@ color: rgb(0, 0, 0);
 background-color: purple;
 color: white;
 }
+.table {
+border-color: black;
+font-family: 'Times New Roman', Times, serif;
+}
+.table-dark {
+background-color: rgb(50, 50, 50);
+border-color: black;
+}
