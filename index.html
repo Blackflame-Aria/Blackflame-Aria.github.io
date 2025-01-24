@@ -1,20 +1,18 @@
-
-<!-- Project Requirements:
- 1. At least 2 pages.
- 2. A bootstrap navbar, table, and form.
- 3. Bootstrap grid used throughout to format elements
- 4. Elements should stack vertically when the window is small-->
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta http-equiv="X-UA-Compatible" content="IE=edge" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <link rel="stylesheet" href="node_modules/bootstrap/dist/css/bootstrap.css">
+    
+    <!-- Bootstrap CSS via CDN -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.3/css/bootstrap.min.css" integrity="sha384-Q0nqzE9GgA+FKF6pK9zu/2f7hmgTNzlYiZbNddYedR6bb4wXeo5pyTAC/p5orhfZ" crossorigin="anonymous">
     <link rel="stylesheet" href="styles.css">
+    
     <title>My Bootstrap Project</title>
-   
 </head>
+
 <body>
     <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
         <div class="container">
@@ -38,11 +36,8 @@
     <div class="container my-5">
         <div class="row">
             <div class="col-12 col-md-6">
-                <h1 style="text-align: center;">Bakugan Story Overview</h1>
-                <p style="text-align: center;">The story of Bakugan revolves around a dimension called Vestroia. When an evil Bakugan named Naga was driven by a cruel ambition to try and take the Silent Core for himself, The balance of their universe is thrown off, which causes Vestroia to merge with the Earth and many other alien planets.<br>
-                When the dimensions merged, cards began to fall from the sky on Earth, and the Bakugan took the form of small spheres in the human world. A young Dan Kuso (a human on Earth) and his friend Shun Kazami invented a game called Bakugan before realizing that this was more than just a game.<br>
-                Together with their friends Runo, Marucho, Julie, and Alice, their skills became unmatched, and the Bakugan Battle Brawlers was formed. Consequently, its members were accidentally dragged into fighting for the fate of Vestroia.
-                The Battle Brawlers ultimately decided to bring back balance by meeting new friends and allies, learning more about the origin of the Bakugan, and facing Naga; who sought to complete the Perfect Core.</p>
+                <h1 class="text-center">Bakugan Story Overview</h1>
+                <p class="text-center">The story of Bakugan revolves around a dimension called Vestroia. When an evil Bakugan named Naga...</p>
             </div>
             <div class="col-12 col-md-6">
                 <img src="images/Attributes.png" class="img-fluid" alt="Attributes">
@@ -51,15 +46,16 @@
     </div>
 
     <div class="container my-5">
-    <h2 style="text-align: center;">The Elements</h2>
-       <div class="row">
+        <h2 class="text-center">The Elements</h2>
+        <div class="row">
+            <!-- Element cards -->
             <div class="col-12 col-md-4">
                 <div class="card">
                     <img src="images/Pyrus.png" class="card-img-top" alt="Pyrus">
                     <div class="card-body">
                         <h5 class="card-title">Pyrus</h5>
                         <p class="card-text">The Pyrus symbol is similar to the "fire" kanji (Hi - 火).</p>
-                        <a href="#" class="btn btn-red">Learn More</a>
+                        <a href="#" class="btn btn-danger">Learn More</a>
                     </div>
                 </div>
             </div>
@@ -69,7 +65,7 @@
                     <div class="card-body">
                         <h5 class="card-title">Aquos</h5>
                         <p class="card-text">The Aquos symbol is similar to the "water" kanji (Mizu - 水).</p>
-                        <a href="#" class="btn btn-blue">Learn More</a>
+                        <a href="#" class="btn btn-primary">Learn More</a>
                     </div>
                 </div>
             </div>
@@ -79,19 +75,20 @@
                     <div class="card-body">
                         <h5 class="card-title">Ventus</h5>
                         <p class="card-text">The Ventus symbol is similar to the "wind" kanji (Kaze - 風).</p>
-                        <a href="#" class="btn btn-green">Learn More</a>
+                        <a href="#" class="btn btn-success">Learn More</a>
                     </div>
                 </div>
             </div>
         </div>
         <div class="row">
+            <!-- Additional element cards -->
             <div class="col-12 col-md-4">
                 <div class="card">
                     <img src="images/Subterra.png" class="card-img-top" alt="Subterra">
                     <div class="card-body">
                         <h5 class="card-title">Subterra</h5>
                         <p class="card-text">The Subterra symbol is most similar to the "earth" kanji (Tsuchi - 土).</p>
-                        <a href="#" class="btn btn-brown">Learn More</a>
+                        <a href="#" class="btn btn-secondary">Learn More</a>
                     </div>
                 </div>
             </div>
@@ -101,7 +98,7 @@
                     <div class="card-body">
                         <h5 class="card-title">Haos</h5>
                         <p class="card-text">The Haos symbol is a star and also similar to the "light" kanji (Hikari - 光).</p>
-                        <a href="#" class="btn btn-yellow">Learn More</a>
+                        <a href="#" class="btn btn-warning">Learn More</a>
                     </div>
                 </div>
             </div>
@@ -111,16 +108,17 @@
                     <div class="card-body">
                         <h5 class="card-title">Darkus</h5>
                         <p class="card-text">The Darkus symbol resembles fangs and is similar to the "darkness" kanji (Yami - 闇).</p>
-                        <a href="#" class="btn btn-purple">Learn More</a>
+                        <a href="#" class="btn btn-dark">Learn More</a>
                     </div>
                 </div>
             </div>
         </div>
     </div>
+
     <div class="container my-5">
-        <h2 style="text-align: center;">The Battle Brawlers</h2>
+        <h2 class="text-center">The Battle Brawlers</h2>
         <div class="table-responsive">
-            <table class=" table">
+            <table class="table">
                 <thead>
                     <tr class="table-dark">
                         <th>Name</th>
@@ -130,37 +128,37 @@
                     </tr>
                 </thead>
                 <tbody>
-                    <tr class="table-dark">
+                    <tr>
                         <td>Dan Kuso</td>
                         <td>Dragonoid</td>
                         <td>Pyrus</td>
                         <td>Audacity</td>
                     </tr>
-                    <tr class="table-dark">
+                    <tr>
                         <td>Shun Kazami</td>
                         <td>Skyress</td>
                         <td>Ventus</td>
                         <td>Cunning</td>
                     </tr>
-                    <tr class="table-dark">
+                    <tr>
                         <td>Runo Misaki</td>
                         <td>Tigrerra</td>
                         <td>Haos</td>
                         <td>Sense of Justice</td>
                     </tr>
-                    <tr class="table-dark">
+                    <tr>
                         <td>Julie Makimoto</td>
                         <td>Gorem</td>
                         <td>Subterra</td>
                         <td>Tenacity</td>
                     </tr>
-                    <tr class="table-dark">
+                    <tr>
                         <td>Marucho Marukura</td>
                         <td>Preyas</td>
                         <td>Aquos</td>
                         <td>Intelligence</td>
                     </tr>
-                    <tr class="table-dark">
+                    <tr>
                         <td>Alice Gehabich</td>
                         <td>Hydranoid</td>
                         <td>Darkus</td>
@@ -170,7 +168,10 @@
             </table>
         </div>
     </div>
-    <script src="node_modules/bootstrap/dist/js/bootstrap.js"></script>
+
+    <!-- Bootstrap JS via CDN -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.3/js/bootstrap.bundle.min.js" integrity="sha384-OgVRvuATP9k+QEZwDDebnvZqeeD/YZHN4EME7U86Dcbm/6ktc3qPkFjnD3ybtKWd" crossorigin="anonymous"></script>
     <script src="scripts.js"></script>
 </body>
+
 </html>
