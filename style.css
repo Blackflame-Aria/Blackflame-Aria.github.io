@@ -1,0 +1,82 @@
+/* styles.css */
+body {
+    font-family: 'Smooch Sans', serif;
+    text-align: center;
+    background-color: #000000;
+}
+
+#score-board {
+    display: flex;
+    justify-content: space-around;
+    margin: 20px auto;
+    font-size: 20px;
+}
+
+#game-board {
+    display: grid;
+    grid-template-columns: repeat(4, 100px); /* Default to 4 columns */
+    gap: 10px;
+    margin: 0 auto; /* Center the game board */
+    max-width: 90%; /* Allow the game board to take up to 90% of the width */
+    justify-content: center; /* Center the grid items */
+}
+
+.card {
+    width: 100px;
+    height: 100px;
+    background-color: #007bff;
+    color: white;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    font-size: 24px;
+    cursor: pointer;
+    border-radius: 8px;
+    transition: background-color 0.15s;
+}
+
+.card.flipped {
+    background-color: #ffffff;
+    color: #333;
+}
+
+.card.matched {
+    background-color: #28a745;
+    color: white;
+    pointer-events: none;
+}
+
+.card::before {
+    content: ''; /* Initially empty */
+}
+
+.card.flipped::before {
+    content: attr(data-value); /* Show letter when flipped */
+    transform: scaleX(1); /* Normal letter */
+}
+
+button {
+    margin-top: 20px;
+    padding: 10px 20px;
+    font-size: 16px;
+    cursor: pointer;
+}
+
+/* Responsive styles */
+@media (min-width: 600px) {
+    #game-board {
+        grid-template-columns: repeat(5, 100px); /* 5 columns for wider screens */
+    }
+}
+
+@media (min-width: 900px) {
+    #game-board {
+        grid-template-columns: repeat(8, 100px); /* 6 columns for even wider screens */
+    }
+}
+
+@media (min-width: 1200px) {
+    #game-board {
+        grid-template-columns: repeat(10, 100px); /* 7 columns for large screens */
+    }
+}
