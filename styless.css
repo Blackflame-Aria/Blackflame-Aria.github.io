@@ -1,0 +1,94 @@
+body {
+    font-family: 'Poppins', sans-serif;
+    background-color: #ff93db;
+    color: #333;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 100vh;
+    margin: 0;
+}
+
+.game-container {
+    background: rgba(71, 2, 40, 0.2);
+    border-radius: 16px;
+    box-shadow: 0 4px 30px rgba(0, 0, 0, 0.1);
+    backdrop-filter: blur(5px);
+    -webkit-backdrop-filter: blur(5px);
+    border: 1px solid rgba(71, 2, 40, 0.3);
+    padding: 20px;
+    text-align: center;
+    width: 80%;
+    max-width: 800px;
+}
+
+h1 {
+    font-family: 'Luckiest Guy', cursive;
+    color: #000000;
+    font-size: 3rem;
+    margin-bottom: 20px;
+}
+
+.players {
+    display: flex;
+    justify-content: space-around;
+    margin: 20px 0;
+    box-shadow: 0 4px 30px rgba(0, 0, 0, 0.1);
+    backdrop-filter: blur(5px);
+    -webkit-backdrop-filter: blur(5px);
+    border: 1px solid rgba(71, 2, 40, 0.3);
+    border-radius: 5px;
+    margin: 20px 0;
+    padding: 20px;
+}
+
+.player h2 {
+    font-family: 'Luckiest Guy', cursive;
+    color: #000000;
+    font-size: 2rem;
+}
+
+.card-display {
+    font-size: 24px;
+    margin: 10px 0;
+    height: 50px;
+}
+
+.score {
+    font-weight: bold;
+    color: #000000;
+}
+
+.game-log {
+    background-color: #ff71ff;
+    box-shadow: 0 4px 30px rgba(0, 0, 0, 0.1);
+    backdrop-filter: blur(5px);
+    -webkit-backdrop-filter: blur(5px);
+    border: 1px solid rgba(71, 2, 40, 0.3);
+    padding: 10px;
+    border-radius: 5px;
+    margin-top: 20px;
+    text-align: left;
+    max-height: 150px;
+    overflow-y: auto;
+}
+
+.log-content {
+    font-size: 14px;
+    color: #000000;
+}
+
+#replay-button {
+    background-color: #000000;
+    color: rgb(245, 245, 245);
+    border: none;
+    padding: 10px 20px;
+    border-radius: 5px;
+    cursor: pointer;
+    margin-top: 20px;
+}
+
+#replay-button:disabled {
+    background-color: #383838;
+    cursor: not-allowed;
+}
