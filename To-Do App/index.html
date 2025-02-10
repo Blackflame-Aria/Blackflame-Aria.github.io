@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>To-Do App</title>
+    <link rel="stylesheet" href="node_modules/bootstrap/dist/css/bootstrap.css">
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body class="container">
+
+<div class="card">
+    <div class="card-header">
+        <h1>To-Do App</h1>
+    </div>
+    <div class="card-body">
+        <div class="row">
+            <div class="row-12">
+                <div class=""col-sm-3>
+                <div class="form-group">
+                <label for="new-task">Task</label>    
+                <input type="text" class="form-control" id="new-task" placeholder="New Task">   
+                </div>
+                </div>   
+            </div>
+            <div class="col-sm-6">
+                <div class="form-group">
+                <label for="new-start-date">Start Date</label>
+                <input type="date" class="form-control" id="new-start-date">
+                </div>            
+            </div>
+            <div class="col-sm-6">
+                <div class="form-group">
+                <label for="new-end-date">End Date</label>
+                <input type="date" class="form-control" id="new-end-date">
+                </div>
+            </div>
+            <div>
+                <br>
+                <button id="add" class="btn btn-primary form-control">Create</button>
+            </div>
+<div>
+<hr>
+</div>
+<table id="list" class="table table table-striped">
+    <tr>
+        <thead>
+            <th>Task</th>
+            <th>Start Date</th>
+            <th>End Date</th>
+            <th>Actions</th>
+        </thead>
+    </tr>
+    <tbody>
+  
+    </tbody>
+
+</table>
+</div>
+    <script src="todo.js"></script>
+    <script src="node_modules/jquery/dist/jquery.js"></script>
+    <script src="node_modules/bootstrap/dist/js/bootstrap.bundle.js"></script>
+</body>
+</html>

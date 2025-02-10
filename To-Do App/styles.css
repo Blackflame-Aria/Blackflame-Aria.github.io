@@ -1,0 +1,12 @@
+.card {
+    border-color: rebeccapurple;
+}
+hr {
+    color: rebeccapurple;
+    height: auto;
+}
+.card-header {
+    background-color: rebeccapurple;
+    color: white;
+    text-align: center;
+}
