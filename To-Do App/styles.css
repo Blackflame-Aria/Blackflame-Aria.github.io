@@ -10,3 +10,12 @@ hr {
     color: white;
     text-align: center;
 }
+.btn-rebeccapurple {
+    background-color: rebeccapurple;
+    color: white;
+    border: none;
+}
+
+.btn-rebeccapurple:hover {
+    background-color: darkslateblue;
+}

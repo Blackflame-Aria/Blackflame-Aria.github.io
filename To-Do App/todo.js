@@ -15,7 +15,7 @@ document.getElementById('add').addEventListener('click', () =>{
 
 function createDeleteButton(id){
     let btn = document.createElement('button');
-    btn.className = 'btn btn-primary';
+    btn.className = 'btn btn-rebeccapurple';
     btn.id= id;
     btn.innerHTML = 'Complete';
     btn.onclick = () => {
