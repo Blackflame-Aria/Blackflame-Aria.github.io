@@ -76,6 +76,10 @@ class Game {
         this.dealCards();
         this.gameLog = document.querySelector(".log-content");
         this.replayButton = document.getElementById("replay-button");
+        this.player1CardDisplay = document.querySelector("#player1 .card-display");
+        this.player2CardDisplay = document.querySelector("#player2 .card-display");
+        this.player1Score = document.querySelector("#player1 .score");
+        this.player2Score = document.querySelector("#player2 .score");
         this.replayButton.addEventListener("click", () => this.resetGame());
     }
 
@@ -90,11 +94,11 @@ class Game {
         const card1 = this.player1.playCard();
         const card2 = this.player2.playCard();
     
-        document.querySelector("#player1 .card-display").textContent = card1.toString();
-        document.querySelector("#player2 .card-display").textContent = card2.toString();
+        this.player1CardDisplay.textContent = card1.toString();
+        this.player2CardDisplay.textContent = card2.toString();
         
-        document.querySelector("#player1 .score").textContent = `Score: ${this.player1.score}`;
-        document.querySelector("#player2 .score").textContent = `Score: ${this.player2.score}`;
+        this.player1Score.textContent = `Score: ${this.player1.score}`;
+        this.player2Score.textContent = `Score: ${this.player2.score}`;
     
         let logEntry = document.createElement("div");
         logEntry.style.marginBottom = "10px"; 
