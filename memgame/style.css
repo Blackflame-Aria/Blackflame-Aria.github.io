@@ -24,7 +24,7 @@ body {
 .card {
     width: 100px;
     height: 100px;
-    background-color: #007bff;
+    background-color: #ffffff;
     color: white;
     display: flex;
     justify-content: center;
@@ -33,11 +33,13 @@ body {
     cursor: pointer;
     border-radius: 8px;
     transition: background-color 0.15s;
+    font-size: 0;
 }
 
 .card.flipped {
     background-color: #ffffff;
     color: #333;
+    font-size: 0;
 }
 
 .card.matched {
