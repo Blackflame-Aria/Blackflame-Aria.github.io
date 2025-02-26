@@ -1,54 +1,159 @@
+@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@400;600&family=Comic+Neue:wght@400;700&display=swap');
+
+/* General Styles */
 body {
     background-color: black;
+    font-family: 'Times New Roman', Times, serif;
+    color: azure;
 }
-.card {
-background-color: rgb(20, 20, 20);
-}
+
 h1, h2, h3, p {
     font-family: 'Times New Roman', Times, serif;
     color: azure;
 }
-.form-label{
-    font-family: 'Times New Roman', Times, serif;
-    color: azure;
+
+/* Navbar Styles */
+.navbar {
+    background-color: #ff85a2 !important;
+    font-size: 1.2rem;
 }
+
+.navbar-brand {
+    font-size: 1.5rem;
+    font-weight: bold;
+    color: white !important;
+}
+
+.nav-link {
+    color: white !important;
+    font-weight: 600;
+}
+
+.nav-link:hover {
+    color: #ffd1dc !important;
+}
+
+/* Hero Section Styles */
+.hero-section {
+    background-color: #1a1a1a;
+    padding: 4rem 0;
+}
+
+.hero-section h1 {
+    color: #ff85a2;
+    font-size: 3rem;
+    font-family: 'Comic Neue', cursive;
+}
+
+.hero-section p {
+    color: azure;
+    font-size: 1.25rem;
+}
+
+.explore-button {
+    background-color: #ff85a2;
+    color: white;
+    border-radius: 20px;
+    padding: 0.75rem 2rem;
+    font-size: 1.25rem;
+}
+
+.explore-button:hover {
+    background-color: #ff6b8b;
+}
+
+/* Card Styles */
+.card {
+    background-color: rgb(20, 20, 20);
+    border: none;
+    border-radius: 15px;
+    transition: transform 0.2s;
+}
+
+.card:hover {
+    transform: translateY(-5px);
+}
+
 .card-title {
     font-family: 'Times New Roman', Times, serif;
     color: azure;
-}
-.btn-red {
-background-color: #f33a3a; 
-color: white;
+    font-size: 1.5rem;
 }
 
-.btn-green {
-background-color: #2ccfb4; 
-color: rgb(0, 0, 0);
+.card-text {
+    color: azure;
+    font-size: 1rem;
+}
+
+/* Project Buttons (Homepage) */
+.project-button {
+    background-color: #ff85a2;
+    color: white;
+    border-radius: 20px;
+    padding: 0.5rem 1.5rem;
+    font-size: 1rem;
+}
+
+.project-button:hover {
+    background-color: #ff6b8b;
+}
+
+/* Bakugan Button Styles */
+.btn-red {
+    background-color: #f33a3a;
+    color: white;
 }
 
 .btn-blue {
-background-color: #007bff;
-color: white;
-}
-.btn-brown {
-background-color: rgb(88, 55, 23);
-color: white;
+    background-color: #007bff;
+    color: white;
 }
 
-.btn-yellow {
-background-color: yellow;
-color: rgb(0, 0, 0);
+.btn-green {
+    background-color: #2ccfb4;
+    color: black;
+}
+
+.btn-brown {
+    background-color: rgb(88, 55, 23);
+    color: white;
+}
+
+.btn-light {
+    background-color: white;
+    color: black;
 }
 
 .btn-purple {
-background-color: purple;
-color: white;
+    background-color: purple;
+    color: white;
 }
+
+/* Form Styles */
+.form-label {
+    font-family: 'Times New Roman', Times, serif;
+    color: azure;
+}
+
+/* Table Styles */
 .table {
-border-color: black;
-font-family: 'Times New Roman', Times, serif;
+    border-color: black;
+    font-family: 'Times New Roman', Times, serif;
 }
+
 .table-dark {
-background-color: rgb(50, 50, 50);
-border-color: black;
+    background-color: rgb(50, 50, 50);
+    border-color: black;
+}
+
+/* Footer Styles */
+footer {
+    background-color: #1a1a1a;
+    color: white;
+    padding: 1rem 0;
+    font-size: 1rem;
+}
+
+footer p {
+    margin: 0;
 }
