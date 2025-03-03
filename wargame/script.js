@@ -135,7 +135,7 @@ class Game {
             } else {
                 this.playRound();
             }
-        }, 2000); // this timer starts a round every 2 seconds
+        }, 1250); // this timer starts a round every 2 seconds
     }
 
     endGame() {
