@@ -49,3 +49,7 @@ const bakuganBattleBrawlers = [
     }
 ];
 console.log(bakuganBattleBrawlers)
+
+setTimeout(() => {
+    document.getElementById("projects-typewriter").style.visibility = "visible";
+}, 2000);

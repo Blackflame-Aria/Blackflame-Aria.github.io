@@ -33,6 +33,62 @@ h1, h2, h3, p {
     color: #ffd1dc !important;
 }
 
+.typewriter {
+    display: flex;
+    justify-content: center;
+}
+
+.typewriter2 {
+    display: flex;
+    justify-content: center;
+    visibility: hidden;
+}
+
+.typewriter h2 {
+    font-family: monospace;
+    font-size: 1.5rem;
+    margin-inline: auto;
+    overflow: hidden;
+    white-space: nowrap;
+    border-right: .15em solid white;
+    animation: typing-welcome 1.8s steps(27) forwards, blink 1s step-end infinite;
+}
+
+.typewriter2 h2 {
+    font-family: monospace;
+    font-size: 1.5rem;
+    margin-inline: auto;
+    overflow: hidden;
+    white-space: nowrap;
+    border-right: .15em solid white;
+    animation: typing-projects 1s steps(12) 2s forwards, blink 1s step-end infinite;
+}
+
+@keyframes typing-welcome {
+    from {
+        width: 0;
+    }
+    to {
+        width: 31ch;
+    }
+}
+
+@keyframes typing-projects {
+    from {
+        width: 0;
+    }
+    to {
+        width: 12ch;
+    }
+}
+
+@keyframes blink {
+    50% {
+        border-color: transparent;
+    }
+}
+
+
 /* Hero Section Styles */
 .hero-section {
     background-color: #1a1a1a;
