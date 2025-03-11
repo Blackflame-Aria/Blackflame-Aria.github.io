@@ -24,13 +24,17 @@ h1, h2, h3, p {
     color: white !important;
 }
 
+.navbar-brand:hover {
+    color: rgb(0, 0, 0) !important;
+}
+
 .nav-link {
     color: white !important;
     font-weight: 600;
 }
 
 .nav-link:hover {
-    color: #ffd1dc !important;
+    color: #000000 !important;
 }
 
 .typewriter {
@@ -91,7 +95,7 @@ h1, h2, h3, p {
 
 /* Hero Section Styles */
 .hero-section {
-    background-color: #1a1a1a;
+    background-color: #1b000f;
     padding: 4rem 0;
 }
 
@@ -116,11 +120,12 @@ h1, h2, h3, p {
 
 .explore-button:hover {
     background-color: #ff6b8b;
+    color: black;
 }
 
 /* Card Styles */
 .card {
-    background-color: rgb(20, 20, 20);
+    background-color: #ff85a2;
     border: none;
     border-radius: 15px;
     transition: transform 0.2s;
@@ -143,7 +148,7 @@ h1, h2, h3, p {
 
 /* Project Buttons (Homepage) */
 .project-button {
-    background-color: #ff85a2;
+    background-color: #1b000f;
     color: white;
     border-radius: 20px;
     padding: 0.5rem 1.5rem;
