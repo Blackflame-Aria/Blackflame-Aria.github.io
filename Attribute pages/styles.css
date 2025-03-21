@@ -1,0 +1,201 @@
+/* Import fonts for consistency with the main site */
+@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@400;600&family=Comic+Neue:wght@400;700&display=swap');
+
+/* General Styles for Attribute Pages */
+body {
+    margin: 0;
+    padding: 0;
+    font-family: 'Poppins', sans-serif;
+    color: white;
+}
+
+/* Container for Attribute Content */
+.attribute-container {
+    max-width: 800px;
+    margin: 50px auto;
+    padding: 30px;
+    border-radius: 15px;
+    box-shadow: 0 0 20px rgba(255, 255, 255, 0.2);
+    background: rgba(0, 0, 0, 0.7); /* Semi-transparent black for contrast */
+}
+
+/* Headings */
+h1 {
+    font-family: 'monospace' !important;
+    font-size: 3rem;
+    text-align: center;
+    margin-bottom: 20px;
+    text-shadow: 2px 2px 5px rgba(0, 0, 0, 0.5);
+}
+
+h2 {
+    font-family: 'monospace' !important;
+    font-size: 1.8rem;
+    margin-top: 30px;
+    margin-bottom: 15px;
+    border-bottom: 2px solid;
+}
+
+/* Paragraphs */
+p {
+    font-family: 'monospace' !important;
+    font-size: 1.1rem;
+    line-height: 1.6;
+    margin-bottom: 15px;
+}
+
+/* Lists */
+ul {
+    font-family: 'monospace' !important;
+    list-style-type: none;
+    padding: 0;
+}
+
+ul li {
+    font-size: 1.1rem;
+    margin-bottom: 10px;
+    padding-left: 20px;
+    position: relative;
+}
+
+ul li::before {
+    content: '🔥'; /* Default emoji, overridden per attribute */
+    position: absolute;
+    left: 0;
+}
+
+/* Back Button */
+.back-button {
+    font-family: 'monospace' !important;
+    display: inline-block;
+    margin-top: 30px;
+    padding: 10px 20px;
+    background-color: #333;
+    color: white;
+    text-decoration: none;
+    border-radius: 10px;
+    transition: background-color 0.3s;
+    font-family: 'Poppins', sans-serif;
+}
+
+.back-button:hover {
+    background-color: #555;
+}
+
+/* Attribute-Specific Styles */
+
+/* Pyrus */
+.pyrus-page {
+    background: linear-gradient(135deg, #ff3333, #ff6666);
+}
+
+.pyrus-page h1 {
+    color: #ff3333;
+}
+
+.pyrus-page h2 {
+    border-bottom-color: #ff6666;
+}
+
+.pyrus-page ul li::before {
+    content: '🔥';
+}
+
+/* Aquos */
+.aquos-page {
+    background: linear-gradient(135deg, #1e90ff, #00b7eb);
+}
+
+.aquos-page h1 {
+    color: #1e90ff;
+}
+
+.aquos-page h2 {
+    border-bottom-color: #00b7eb;
+}
+
+.aquos-page ul li::before {
+    content: '💧';
+}
+
+/* Ventus */
+.ventus-page {
+    background: linear-gradient(135deg, #32cd32, #98fb98);
+}
+
+.ventus-page h1 {
+    color: #32cd32;
+}
+
+.ventus-page h2 {
+    border-bottom-color: #98fb98;
+}
+
+.ventus-page ul li::before {
+    content: '🌪️';
+}
+
+/* Subterra */
+.subterra-page {
+    background: linear-gradient(135deg, #d2b48c, #ff8c00);
+}
+
+.subterra-page h1 {
+    color: #d2b48c;
+}
+
+.subterra-page h2 {
+    border-bottom-color: #ff8c00;
+}
+
+.subterra-page ul li::before {
+    content: '🪨';
+}
+
+/* Haos */
+.haos-page {
+    background: linear-gradient(135deg, #f0f0f0, #d3d3d3);
+    color: #333; /* Darker text for readability */
+}
+
+.haos-page .attribute-container {
+    background: rgba(255, 255, 255, 0.9); /* Light container for contrast */
+}
+
+.haos-page h1 {
+    color: #333;
+}
+
+.haos-page h2 {
+    border-bottom-color: #d3d3d3;
+    color: #333;
+}
+
+.haos-page p {
+    color: #333;
+}
+
+.haos-page ul li {
+    color: #333;
+}
+
+.haos-page ul li::before {
+    content: '✨';
+}
+
+/* Darkus */
+.darkus-page {
+    background: linear-gradient(135deg, #4b0082, #9400d3);
+}
+
+.darkus-page h1 {
+    color: #9400d3;
+}
+
+.darkus-page h2 {
+    border-bottom-color: #4b0082;
+}
+
+.darkus-page ul li::before {
+    content: '🌑';
+}
