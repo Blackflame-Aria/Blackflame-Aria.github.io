@@ -21,7 +21,8 @@ body.cursor-1 {
 }
 
 #restoreCursor {
-    margin-left: 10px;
+    justify-content: left;
+    margin-left: 1px;
     padding: 5px 10px;
     font-family: 'Poppins', sans-serif;
     font-size: 14px;
@@ -122,7 +123,6 @@ h1, h2, h3, p {
     }
 }
 
-
 /* Hero Section Styles */
 .hero-section {
     background-color: #1b000f;
@@ -156,6 +156,7 @@ h1, h2, h3, p {
 
 .explore-button:hover {
     background-color: #ff6b8b;
+    border-color: #000000;
     color: black;
 }
 
@@ -164,8 +165,45 @@ h1, h2, h3, p {
     font-family: monospace;
     background-color: #ff85a2;
     border: none;
-    border-radius: 15px;
+    border-radius: 5px;
     transition: transform 0.2s;
+    position: relative; 
+}
+
+.card:not(.bakugan-card)::after {
+    content: '';
+    position: absolute;
+    width: 105%;
+    height: 105%;
+    background-image: conic-gradient( #ff85a2, #ff6b8b);
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    border-radius: 5px;
+    z-index: -1;
+    filter: blur(10px); 
+    opacity: 0.8; 
+    animation: pulseGlow 3s ease-in-out infinite;
+}
+
+.bakugan-card {
+    background-color: #2a2a2a;
+    border-radius: 5px;
+}
+.bakugan-card::after {
+    content: '';
+    position: absolute;
+    width: 100%;
+    height: 100%;
+    background-image: conic-gradient( red, blue, green, brown, lightgray, purple);
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    border-radius: 5px;
+    z-index: -1;
+    filter: blur(10px); 
+    opacity: 0.8; 
+    animation: pulseGlow 3s ease-in-out infinite;
 }
 
 .card:hover {
@@ -179,8 +217,15 @@ h1, h2, h3, p {
 }
 
 .card-text {
+    font-family: monospace;
     color: azure;
-    font-size: 1rem;
+    font-size: .8rem;
+}
+
+@media (max-width: 767.98px) {
+    .bakugan-card {
+        margin-bottom: 1.5rem;
+    }
 }
 
 /* Project Buttons (Homepage) */
@@ -202,9 +247,17 @@ h1, h2, h3, p {
     color: white;
 }
 
+.btn-red:hover {
+    background-color: #cc2f2f;
+}
+
 .btn-blue {
     background-color: #007bff;
     color: white;
+}
+
+.btn-blue:hover {
+    background-color: #0056b3;
 }
 
 .btn-green {
@@ -212,9 +265,17 @@ h1, h2, h3, p {
     color: black;
 }
 
+.btn-green:hover {
+    background-color: #23a691;
+}
+
 .btn-brown {
     background-color: rgb(88, 55, 23);
     color: white;
+}
+
+.btn-brown:hover {
+    background-color: rgb(66, 41, 17);
 }
 
 .btn-light {
@@ -222,9 +283,17 @@ h1, h2, h3, p {
     color: black;
 }
 
+.btn-light:hover {
+    background-color: #cccccc;
+}
+
 .btn-purple {
     background-color: purple;
     color: white;
+}
+
+.btn-purple:hover {
+    background-color: #660066;
 }
 
 /* Form Styles */
@@ -254,4 +323,33 @@ footer {
 
 footer p {
     margin: 0;
+}
+
+/* Rotate Attributes Image */
+.rotate-attributes {
+    animation: rotate 10s linear infinite;
+}
+
+@keyframes rotate {
+    from {
+        transform: rotate(0deg);
+    }
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+@keyframes pulseGlow {
+    0% {
+        opacity: 0.8;
+        filter: blur(10px);
+    }
+    50% {
+        opacity: 1;
+        filter: blur(15px);
+    }
+    100% {
+        opacity: 0.8;
+        filter: blur(10px);
+    }
 }
