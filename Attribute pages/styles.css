@@ -4,6 +4,7 @@ body {
     padding: 0;
     font-family: 'monospace';
     background-image: conic-gradient(from 180deg at center, #ff3333, #1e90ff, #32cd32, #553000, #fff27c, #9400d3);
+    color:white
 }
 
 .attribute-sidebar {
