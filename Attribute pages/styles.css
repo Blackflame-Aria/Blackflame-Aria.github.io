@@ -1,52 +1,138 @@
-/* Import fonts for consistency with the main site */
-@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@400;600&family=Comic+Neue:wght@400;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@400;600&family=Comic+Neue:wght@400;700&family=Fugaz+One&family=Pacifico&family=Playfair+Display:ital@1&family=Fredericka+the+Great&family=Cinzel+Decorative&family=Pirata+One&display=swap');
 
-/* General Styles for Attribute Pages */
 body {
     margin: 0;
     padding: 0;
-    font-family: 'Poppins', sans-serif;
+    font-family: 'monospace';
     color: white;
 }
 
-/* Container for Attribute Content */
-.attribute-container {
-    max-width: 800px;
-    margin: 50px auto;
-    padding: 30px;
-    border-radius: 15px;
-    box-shadow: 0 0 20px rgba(255, 255, 255, 0.2);
-    background: rgba(0, 0, 0, 0.7); /* Semi-transparent black for contrast */
+/* Sidebar for Attribute Navigation */
+.attribute-sidebar {
+    position: fixed;
+    top: 30%;
+    left: 10px;
+    transform: translateY(-50%);
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    z-index: 1000;
 }
 
-/* Headings */
+/* Glass Circle Buttons */
+.attribute-button {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.2);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    border: 1px solid rgba(0, 0, 0, 0.2);
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+    transition: transform 0.3s, background 0.3s;
+}
+
+.attribute-button img {
+    width: 30px;
+    height: 30px;
+}
+
+.attribute-button:hover {
+    transform: scale(1.1);
+    background: rgba(255, 255, 255, 0.4);
+}
+
+/* Tint Colors for Each Attribute Button */
+.pyrus-button {
+    background: rgba(255, 51, 51, 0.3);
+}
+
+.pyrus-button:hover {
+    background: rgba(255, 51, 51, 0.5);
+}
+
+.aquos-button {
+    background: rgba(30, 144, 255, 0.3);
+}
+
+.aquos-button:hover {
+    background: rgba(30, 144, 255, 0.5);
+}
+
+.ventus-button {
+    background: rgba(33, 172, 33, 0.3);
+}
+
+.ventus-button:hover {
+    background: rgba(50, 205, 50, 0.5);
+}
+
+.subterra-button {
+    background: rgba(80, 47, 4, 0.3);
+}
+
+.subterra-button:hover {
+    background: rgba(210, 180, 140, 0.5);
+}
+
+.haos-button {
+    background: rgba(240, 240, 240, 0.3);
+}
+
+.haos-button:hover {
+    background: rgba(240, 240, 240, 0.5);
+}
+
+.darkus-button {
+    background: rgba(75, 0, 130, 0.3);
+}
+
+.darkus-button:hover {
+    background: rgba(75, 0, 130, 0.5);
+}
+
+/* Main Content Container */
+.attribute-container {
+    max-width: 1250px;
+    margin: 50px auto;
+    margin-left: 60px;
+    padding: 30px;
+    border-radius: 15px;
+    background: rgba(0, 0, 0, 0.3);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    border: 1px solid rgba(0, 0, 0, 0.2);
+    box-shadow: 0 4px 30px rgba(0, 0, 0, 0.1);
+}
+
 h1 {
-    font-family: 'monospace' !important;
     font-size: 3rem;
     text-align: center;
     margin-bottom: 20px;
     text-shadow: 2px 2px 5px rgba(0, 0, 0, 0.5);
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
 }
 
 h2 {
-    font-family: 'monospace' !important;
     font-size: 1.8rem;
     margin-top: 30px;
     margin-bottom: 15px;
     border-bottom: 2px solid;
 }
 
-/* Paragraphs */
 p {
-    font-family: 'monospace' !important;
     font-size: 1.1rem;
     line-height: 1.6;
     margin-bottom: 15px;
 }
 
-/* Lists */
 ul {
-    font-family: 'monospace' !important;
     list-style-type: none;
     padding: 0;
 }
@@ -54,19 +140,30 @@ ul {
 ul li {
     font-size: 1.1rem;
     margin-bottom: 10px;
-    padding-left: 20px;
+    padding-left: 40px;
     position: relative;
 }
 
 ul li::before {
-    content: '🔥'; /* Default emoji, overridden per attribute */
+    content: '';
     position: absolute;
     left: 0;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 30px;
+    height: 30px;
+    background-size: 20px 20px;
+    background-position: center;
+    background-repeat: no-repeat;
+    border-radius: 50%;
+    background-color: rgba(0, 0, 0, 0.2);
+    backdrop-filter: blur(5px);
+    -webkit-backdrop-filter: blur(5px);
+    border: 1px solid rgba(0, 0, 0, 0.3);
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
 }
 
-/* Back Button */
 .back-button {
-    font-family: 'monospace' !important;
     display: inline-block;
     margin-top: 30px;
     padding: 10px 20px;
@@ -82,15 +179,25 @@ ul li::before {
     background-color: #555;
 }
 
-/* Attribute-Specific Styles */
-
 /* Pyrus */
 .pyrus-page {
-    background: linear-gradient(135deg, #ff3333, #ff6666);
+    background-image: linear-gradient(150deg, maroon, red, darkorange, burlywood);
 }
 
 .pyrus-page h1 {
     color: #ff3333;
+    font-family: 'Fugaz One', sans-serif;
+}
+
+.pyrus-page h1::before,
+.pyrus-page h1::after {
+    content: '';
+    display: inline-block;
+    width: 50px;
+    height: 50px;
+    background: url('images/pyrus.png') no-repeat center;
+    background-size: contain;
+    margin: 0 20px;
 }
 
 .pyrus-page h2 {
@@ -98,16 +205,28 @@ ul li::before {
 }
 
 .pyrus-page ul li::before {
-    content: '🔥';
+    background-image: url('images/pyrus.png');
 }
 
 /* Aquos */
 .aquos-page {
-    background: linear-gradient(135deg, #1e90ff, #00b7eb);
+    background: linear-gradient(150deg, #01025a, blue, #00b7eb, rgb(128, 255, 244));
 }
 
 .aquos-page h1 {
     color: #1e90ff;
+    font-family: 'Pacifico', cursive;
+}
+
+.aquos-page h1::before,
+.aquos-page h1::after {
+    content: '';
+    display: inline-block;
+    width: 50px;
+    height: 50px;
+    background: url('images/aquos.png') no-repeat center;
+    background-size: contain;
+    margin: 0 20px;
 }
 
 .aquos-page h2 {
@@ -115,16 +234,29 @@ ul li::before {
 }
 
 .aquos-page ul li::before {
-    content: '💧';
+    background-image: url('images/aquos.png');
 }
 
 /* Ventus */
 .ventus-page {
-    background: linear-gradient(135deg, #32cd32, #98fb98);
+    background: linear-gradient(150deg, green, rgb(66, 182, 66), #98fb98);
 }
 
 .ventus-page h1 {
     color: #32cd32;
+    font-family: 'Playfair Display', serif;
+    font-style: italic;
+}
+
+.ventus-page h1::before,
+.ventus-page h1::after {
+    content: '';
+    display: inline-block;
+    width: 50px;
+    height: 50px;
+    background: url('images/ventus.png') no-repeat center;
+    background-size: contain;
+    margin: 0 20px;
 }
 
 .ventus-page h2 {
@@ -132,16 +264,28 @@ ul li::before {
 }
 
 .ventus-page ul li::before {
-    content: '🌪️';
+    background-image: url('images/ventus.png');
 }
 
 /* Subterra */
 .subterra-page {
-    background: linear-gradient(135deg, #d2b48c, #ff8c00);
+    background: linear-gradient(150deg, rgb(54, 22, 7), #53210a, #614018);
 }
 
 .subterra-page h1 {
     color: #d2b48c;
+    font-family: 'Fredericka the Great', cursive;
+}
+
+.subterra-page h1::before,
+.subterra-page h1::after {
+    content: '';
+    display: inline-block;
+    width: 50px;
+    height: 50px;
+    background: url('images/subterra.png') no-repeat center;
+    background-size: contain;
+    margin: 0 20px;
 }
 
 .subterra-page h2 {
@@ -149,21 +293,34 @@ ul li::before {
 }
 
 .subterra-page ul li::before {
-    content: '🪨';
+    background-image: url('images/subterra.png');
 }
 
 /* Haos */
 .haos-page {
-    background: linear-gradient(135deg, #f0f0f0, #d3d3d3);
-    color: #333; /* Darker text for readability */
+    background: linear-gradient(150deg, #fff27c, #ffffff);
+    color: #333;
 }
 
 .haos-page .attribute-container {
-    background: rgba(255, 255, 255, 0.9); /* Light container for contrast */
+    background: rgba(255, 255, 255, 0.3);
+    border: 1px solid rgba(0, 0, 0, 0.2);
 }
 
 .haos-page h1 {
     color: #333;
+    font-family: 'Cinzel Decorative', serif;
+}
+
+.haos-page h1::before,
+.haos-page h1::after {
+    content: '';
+    display: inline-block;
+    width: 50px;
+    height: 50px;
+    background: url('images/haos.png') no-repeat center;
+    background-size: contain;
+    margin: 0 20px;
 }
 
 .haos-page h2 {
@@ -180,16 +337,30 @@ ul li::before {
 }
 
 .haos-page ul li::before {
-    content: '✨';
+    background-image: url('images/haos.png');
+    background-color: rgba(255, 196, 0, 0.2);
+    border: 1px solid rgba(0, 0, 0, 0.3);
 }
 
 /* Darkus */
 .darkus-page {
-    background: linear-gradient(135deg, #4b0082, #9400d3);
+    background: linear-gradient(150deg, #1e0133, #9400d3, green, rgb(99, 172, 5), rgb(153, 153, 0));
 }
 
 .darkus-page h1 {
     color: #9400d3;
+    font-family: 'Pirata One', cursive;
+}
+
+.darkus-page h1::before,
+.darkus-page h1::after {
+    content: '';
+    display: inline-block;
+    width: 50px;
+    height: 50px;
+    background: url('images/darkus.png') no-repeat center;
+    background-size: contain;
+    margin: 0 20px;
 }
 
 .darkus-page h2 {
@@ -197,5 +368,5 @@ ul li::before {
 }
 
 .darkus-page ul li::before {
-    content: '🌑';
+    background-image: url('images/darkus.png');
 }
