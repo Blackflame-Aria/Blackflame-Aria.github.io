@@ -1,13 +1,11 @@
-@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@400;600&family=Comic+Neue:wght@400;700&family=Fugaz+One&family=Pacifico&family=Playfair+Display:ital@1&family=Fredericka+the+Great&family=Cinzel+Decorative&family=Pirata+One&display=swap');
-
+@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@400;600&family=Comic+Neue:wght@400;700&family=Righteous&family=Sail&family=Playfair+Display:ital@1&family=Fredericka+the+Great&family=Cinzel+Decorative&family=Pirata+One&display=swap');
 body {
     margin: 0;
     padding: 0;
     font-family: 'monospace';
-    color: white;
+    background-image: conic-gradient(from 180deg at center, #ff3333, #1e90ff, #32cd32, #553000, #fff27c, #9400d3);
 }
 
-/* Sidebar for Attribute Navigation */
 .attribute-sidebar {
     position: fixed;
     top: 30%;
@@ -19,7 +17,6 @@ body {
     z-index: 1000;
 }
 
-/* Glass Circle Buttons */
 .attribute-button {
     display: flex;
     align-items: center;
@@ -45,7 +42,6 @@ body {
     background: rgba(255, 255, 255, 0.4);
 }
 
-/* Tint Colors for Each Attribute Button */
 .pyrus-button {
     background: rgba(255, 51, 51, 0.3);
 }
@@ -94,7 +90,6 @@ body {
     background: rgba(75, 0, 130, 0.5);
 }
 
-/* Main Content Container */
 .attribute-container {
     max-width: 1250px;
     margin: 50px auto;
@@ -104,7 +99,6 @@ body {
     background: rgba(0, 0, 0, 0.3);
     backdrop-filter: blur(10px);
     -webkit-backdrop-filter: blur(10px);
-    border: 1px solid rgba(0, 0, 0, 0.2);
     box-shadow: 0 4px 30px rgba(0, 0, 0, 0.1);
 }
 
@@ -186,7 +180,9 @@ ul li::before {
 
 .pyrus-page h1 {
     color: #ff3333;
-    font-family: 'Fugaz One', sans-serif;
+    font-family: 'Righteous', sans-serif;
+    font-style: italic;
+    margin-top: 5px;
 }
 
 .pyrus-page h1::before,
@@ -215,7 +211,8 @@ ul li::before {
 
 .aquos-page h1 {
     color: #1e90ff;
-    font-family: 'Pacifico', cursive;
+    font-family: 'Sail', cursive;
+    margin-top: 5px;
 }
 
 .aquos-page h1::before,
@@ -246,6 +243,7 @@ ul li::before {
     color: #32cd32;
     font-family: 'Playfair Display', serif;
     font-style: italic;
+    margin-top: 5px;
 }
 
 .ventus-page h1::before,
@@ -275,6 +273,7 @@ ul li::before {
 .subterra-page h1 {
     color: #d2b48c;
     font-family: 'Fredericka the Great', cursive;
+    margin-top: 5px;
 }
 
 .subterra-page h1::before,
@@ -285,11 +284,13 @@ ul li::before {
     height: 50px;
     background: url('images/subterra.png') no-repeat center;
     background-size: contain;
-    margin: 0 20px;
+    margin: 0px 0px;
+    margin-right: 20px;
+    margin-left: 20px;
 }
 
 .subterra-page h2 {
-    border-bottom-color: #ff8c00;
+    border-bottom-color: burlywood;
 }
 
 .subterra-page ul li::before {
@@ -310,6 +311,8 @@ ul li::before {
 .haos-page h1 {
     color: #333;
     font-family: 'Cinzel Decorative', serif;
+    font-size: 2.5rem;
+    margin-top: 5px;
 }
 
 .haos-page h1::before,
@@ -350,6 +353,7 @@ ul li::before {
 .darkus-page h1 {
     color: #9400d3;
     font-family: 'Pirata One', cursive;
+    margin-top: 2px
 }
 
 .darkus-page h1::before,
