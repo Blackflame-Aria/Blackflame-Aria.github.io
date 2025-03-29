@@ -1,5 +1,5 @@
 import { initializeApp } from 'https://www.gstatic.com/firebasejs/9.22.0/firebase-app.js';
-import { getFirestore, collection, addDoc, onSnapshot, serverTimestamp, query, orderBy, doc, updateDoc, arrayUnion, deleteDoc } from 'https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore.js';
+import { getFirestore, collection, addDoc, onSnapshot, serverTimestamp, query, orderBy, doc, updateDoc, arrayUnion, deleteDoc, increment } from 'https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore.js';
 
 const firebaseConfig = {
     apiKey: "AIzaSyDvlWWO-y5JxQSJlOZ4M-7xGabuwoXhyVA",
@@ -18,11 +18,11 @@ let currentPage = 1;
 const postsPerPage = 5;
 let allPosts = [];
 let filteredPosts = [];
+let currentCategory = 'all';
+let currentSort = 'newest';
 
-// Submit a post
-async function submitPost(parentId = null) {
+async function submitPost(message, parentId = null) {
     const nicknameInput = document.getElementById('nickname').value.trim();
-    const message = document.getElementById('message').value.trim();
     const avatar = document.getElementById('avatar').value;
     const nickname = nicknameInput === '' ? 'Anonymous' : nicknameInput;
 
@@ -35,8 +35,10 @@ async function submitPost(parentId = null) {
             avatar: avatar,
             timestamp: serverTimestamp(),
             likes: 0,
+            dislikes: 0,
             replies: [],
-            postCount: parentId ? 0 : 1
+            postCount: parentId ? 0 : 1,
+            category: currentCategory === 'all' ? null : currentCategory
         };
 
         if (parentId) postData.parentId = parentId;
@@ -46,23 +48,22 @@ async function submitPost(parentId = null) {
         if (parentId) {
             const parentRef = doc(db, 'posts', parentId);
             await updateDoc(parentRef, { replies: arrayUnion(docRef.id) });
-            alert(`New reply to your post by ${nickname}!`);
         }
-
-        document.getElementById('message').value = '';
-        document.getElementById('avatar').value = 'pfp.png';
     } catch (error) {
         console.error('Error adding post: ', error);
     }
 }
 
-// Like a post
 async function likePost(postId) {
     const postRef = doc(db, 'posts', postId);
-    await updateDoc(postRef, { likes: firebase.firestore.FieldValue.increment(1) });
+    await updateDoc(postRef, { likes: increment(1) });
 }
 
-// Delete a post (admin only)
+async function dislikePost(postId) {
+    const postRef = doc(db, 'posts', postId);
+    await updateDoc(postRef, { dislikes: increment(1) });
+}
+
 async function deletePost(postId) {
     if (document.getElementById('nickname').value !== 'AdminUser') {
         alert('Only admins can delete posts!');
@@ -71,32 +72,113 @@ async function deletePost(postId) {
     await deleteDoc(doc(db, 'posts', postId));
 }
 
-// Show user profile
 function showProfile(nickname, avatar, postCount) {
     alert(`Profile\nNickname: ${nickname}\nAvatar: ${avatar}\nPosts: ${postCount}`);
 }
 
-// Load and display posts
+function toggleReplies(postId) {
+    const repliesDiv = document.getElementById(`replies-${postId}`);
+    const toggleButton = document.getElementById(`toggle-replies-${postId}`);
+    if (repliesDiv.style.display === 'none') {
+        repliesDiv.style.display = 'block';
+        toggleButton.innerHTML = 'Hide replies ▲';
+    } else {
+        repliesDiv.style.display = 'none';
+        toggleButton.innerHTML = 'Show replies ▼';
+    }
+}
+
+function filterPosts() {
+    // First filter by category
+    if (currentCategory === 'all') {
+        filteredPosts = [...allPosts];
+    } else {
+        filteredPosts = allPosts.filter(post => 
+            post.category === currentCategory || 
+            (post.parentId && allPosts.find(p => p.id === post.parentId)?.category === currentCategory)
+        );
+    }
+
+    // Then apply sorting
+    sortPosts(currentSort, false);
+}
+
+function sortPosts(sortType, updateDisplay = true) {
+    currentSort = sortType;
+    
+    // Update button states
+    document.querySelectorAll('.sort-options button').forEach(btn => {
+        btn.classList.remove('active');
+        if (btn.textContent.toLowerCase().includes(sortType) || 
+            (sortType === 'newest' && btn.textContent === 'Newest')) {
+            btn.classList.add('active');
+        }
+    });
+    
+    switch(sortType) {
+        case 'highest':
+            filteredPosts.sort((a, b) => {
+                const aScore = (a.likes || 0) - (a.dislikes || 0);
+                const bScore = (b.likes || 0) - (b.dislikes || 0);
+                return bScore - aScore;
+            });
+            break;
+            
+        case 'lowest':
+            filteredPosts.sort((a, b) => {
+                const aScore = (a.likes || 0) - (a.dislikes || 0);
+                const bScore = (b.likes || 0) - (b.dislikes || 0);
+                return aScore - bScore;
+            });
+            break;
+            
+        case 'replies':
+            filteredPosts.sort((a, b) => {
+                const aReplies = a.replies ? a.replies.length : 0;
+                const bReplies = b.replies ? b.replies.length : 0;
+                return bReplies - aReplies;
+            });
+            break;
+            
+        default: // 'newest'
+            filteredPosts.sort((a, b) => {
+                return b.timestamp?.toDate().getTime() - a.timestamp?.toDate().getTime();
+            });
+    }
+    
+    if (updateDisplay) {
+        currentPage = 1;
+        displayPosts();
+    }
+}
+
+function setupCategoryButtons() {
+    document.querySelectorAll('.category-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+            document.querySelectorAll('.category-btn').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+            currentCategory = btn.dataset.category;
+            document.getElementById('current-category-display').textContent = `/${currentCategory}/`;
+            filterPosts();
+            displayPosts();
+        });
+    });
+}
+
 const postsContainer = document.getElementById('posts');
 const q = query(collection(db, 'posts'), orderBy('timestamp', 'desc'));
-onSnapshot(collection(db, 'posts'), (snapshot) => {
-    const allPosts = [];
+onSnapshot(q, (snapshot) => {
+    allPosts = [];
     snapshot.forEach((doc) => {
-        const post = { ...doc.data(), id: doc.id };
-        post.likes = post.likes || 0; // Default to 0 if undefined
-        allPosts.push(post);
+        const post = doc.data();
+        post.likes = post.likes || 0;
+        post.dislikes = post.dislikes || 0;
+        post.replies = post.replies || [];
+        allPosts.push({ ...post, id: doc.id });
     });
-    filterAndDisplayPosts();
-});
-
-
-function filterAndDisplayPosts(searchTerm = '') {
-    filteredPosts = allPosts.filter(post => 
-        post.nickname.toLowerCase().includes(searchTerm.toLowerCase()) || 
-        post.message.toLowerCase().includes(searchTerm.toLowerCase())
-    );
+    filterPosts();
     displayPosts();
-}
+});
 
 function displayPosts() {
     postsContainer.innerHTML = '';
@@ -105,30 +187,49 @@ function displayPosts() {
     const paginatedPosts = filteredPosts.slice(start, end);
 
     const postsMap = {};
-    filteredPosts.forEach(post => postsMap[post.id] = post);
+    filteredPosts.forEach(post => {
+        post.replies = post.replies || [];
+        postsMap[post.id] = post;
+    });
 
     const buildPostHTML = (post, depth = 0) => {
         const indent = depth * 20;
         const isAdmin = document.getElementById('nickname').value === 'AdminUser';
         const avatarName = post.avatar.split('.')[0];
+        const netScore = (post.likes || 0) - (post.dislikes || 0);
+        const scoreSymbol = netScore > 0 ? '❤️' : (netScore < 0 ? '💩' : '♡');
+        const voteButtons = !post.parentId ? `
+            <button onclick="likePost('${post.id}')"><span class="heart">❤️</span></button>
+            <button onclick="dislikePost('${post.id}')"><span class="poop">💩</span></button>
+            <span class="net-score">${scoreSymbol} (${netScore})</span>
+        ` : '';
+        const repliesHtml = post.replies.length > 0 ? `
+            <button class="toggle-replies-btn" onclick="toggleReplies('${post.id}')">
+                <span id="toggle-replies-${post.id}">Show replies ▼</span>
+            </button>
+            <div id="replies-${post.id}" class="replies" style="display: none;">
+                ${post.replies.map(replyId => postsMap[replyId] ? buildPostHTML(postsMap[replyId], depth + 1) : '').join('')}
+            </div>
+        ` : '';
         return `
-            <div class="post ${avatarName}" style="margin-left: ${indent}px;">
+            <div id="post-${post.id}" class="post ${avatarName}" style="margin-left: ${indent}px;">
                 <img src="assets/${post.avatar}" alt="Avatar">
                 <div class="post-content ${avatarName}">
                     <div class="nickname" onclick="showProfile('${post.nickname}', '${post.avatar}', ${post.postCount || 0})">${post.nickname}</div>
+                    ${post.category ? `<div class="post-category">/${post.category}/</div>` : ''}
                     <div class="message">${post.message}</div>
                     <div class="timestamp">${post.timestamp ? new Date(post.timestamp.toDate()).toLocaleString() : 'Just now'}</div>
                     <div class="actions">
-                        <button onclick="likePost('${post.id}')">Like (${post.likes})</button>
-                        <button onclick="showReplyForm('${post.id}')">Reply</button>
+                        ${voteButtons}
+                        ${!post.parentId ? `<button onclick="showReplyForm('${post.id}')">Reply</button>` : ''}
                         ${isAdmin ? `<button onclick="deletePost('${post.id}')">Delete</button>` : ''}
                     </div>
                     <div id="reply-form-${post.id}" class="reply-form" style="display: none;">
                         <textarea placeholder="Write a reply..."></textarea>
                         <button onclick="submitReply('${post.id}')">Post Reply</button>
                     </div>
+                    ${repliesHtml}
                 </div>
-                ${post.replies.map(replyId => buildPostHTML(postsMap[replyId], depth + 1)).join('')}
             </div>
         `;
     };
@@ -161,20 +262,31 @@ function showReplyForm(postId) {
     document.getElementById(`reply-form-${postId}`).style.display = 'block';
 }
 
-async function submitReply(parentId) {
-    const replyText = document.querySelector(`#reply-form-${parentId} textarea`).value.trim();
-    if (replyText === '') return;
-    await submitPost(parentId);
-    document.querySelector(`#reply-form-${parentId} textarea`).value = '';
-    document.getElementById(`reply-form-${parentId}`).style.display = 'none';
-}
+// Initialize
+setupCategoryButtons();
+document.querySelector('.category-btn[data-category="all"]').classList.add('active');
 
-// Attach functions to window for global access
-window.submitPost = submitPost;
+window.submitPost = function() {
+    const message = document.getElementById('message').value.trim();
+    submitPost(message);
+    document.getElementById('message').value = '';
+};
+
+window.submitReply = async function(parentId) {
+    const replyTextarea = document.querySelector(`#reply-form-${parentId} textarea`);
+    const replyText = replyTextarea.value.trim();
+    if (replyText === '') return;
+    await submitPost(replyText, parentId);
+    replyTextarea.value = '';
+    document.getElementById(`reply-form-${parentId}`).style.display = 'none';
+};
+
 window.likePost = likePost;
+window.dislikePost = dislikePost;
 window.deletePost = deletePost;
 window.showProfile = showProfile;
 window.prevPage = prevPage;
 window.nextPage = nextPage;
 window.showReplyForm = showReplyForm;
-window.submitReply = submitReply;
+window.toggleReplies = toggleReplies;
+window.sortPosts = sortPosts;
