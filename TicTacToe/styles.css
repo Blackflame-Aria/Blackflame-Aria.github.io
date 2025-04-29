@@ -62,8 +62,8 @@ body {
 }
 
 .btn-primary {
-    background-color: #ff6f91;
-    border: none;
+    background-color: #ff6f91;;
+    border: 2px solid #fff;
     padding: 10px 20px;
     font-size: 1.2rem;
     border-radius: 15px;
@@ -71,8 +71,10 @@ body {
 }
 
 .btn-primary:hover {
-    background-color: #ffcccb;
+    background-color: #ffffff;
     transform: scale(1.05);
+    border-color: #ff6f91;
+    color: #ff6f91;
 }
 
 .modal-title {
@@ -82,4 +84,25 @@ body {
 .modal-body {
     color: #000000;
     font-size: 1.2rem;
+}
+
+a {
+    padding: 10px 20px;
+    color: #ff8181;
+   }
+a:hover {
+    color: #fff;
+   }
+   
+#return-button {
+  background-color: #ffffff;
+  border: 2px solid #ff8181;
+  margin-top: 20px;
+  padding: 10px 0px;
+  color: rgb(0, 0, 0);
+}
+
+#return-button:hover {
+  background-color: #ff6f91;;
+  border: 2px solid #fff;
 }

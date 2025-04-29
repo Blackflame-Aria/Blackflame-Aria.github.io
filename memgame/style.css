@@ -64,6 +64,23 @@ button {
     cursor: pointer;
 }
 
+a {
+ padding: 10px 20px;
+}
+
+#return-button {
+    margin-top: 20px;
+    padding: 10px 0px;
+    background-color: #ff92fa;
+    border-color: #ff92fa;
+    color: rgb(0, 0, 0);
+}
+#return-button:hover {
+    background-color: #ffd6fd;
+    color: rgb(0, 0, 0);
+    border-color: #ff92fa;
+}
+
 /* Responsive styles */
 @media (min-width: 600px) {
     #game-board {

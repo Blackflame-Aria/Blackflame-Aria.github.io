@@ -153,6 +153,25 @@ body {
     to { opacity: 0; }
 }
 
+a {
+    padding: 10px 20px;
+    color: #000;
+   }
+   
+   #return-button {
+    position: absolute;
+       margin-top: 20px;
+       padding: 10px 0px;
+       background-color: #ff92fa;
+       border: 3px dashed #ff6f61;
+       color: rgb(0, 0, 0);
+   }
+   #return-button:hover {
+       background-color: #ffd6fd;
+       color: rgb(0, 0, 0);
+       border-color: #ff92fa;
+   }
+
 #sort-notes {
     font-family: 'Caveat', cursive;
     font-size: 20px;

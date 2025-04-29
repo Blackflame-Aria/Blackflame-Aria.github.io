@@ -98,3 +98,7 @@ h1 {
     background-color: #383838;
     cursor: not-allowed;
 }
+
+a {
+    color: #fff
+}
