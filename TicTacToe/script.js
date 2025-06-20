@@ -47,6 +47,7 @@ $(document).ready(function () {
     function getBestMove() {
         let emptyCells = board.map((cell, idx) => cell === null ? idx : null).filter(idx => idx !== null);
 
+        // 1. Win if possible
         for (let idx of emptyCells) {
             board[idx] = 2;
             if (checkWin(2)) {
@@ -56,6 +57,7 @@ $(document).ready(function () {
             board[idx] = null;
         }
 
+        // 2. Block opponent's win
         for (let idx of emptyCells) {
             board[idx] = 1;
             if (checkWin(1)) {
@@ -65,10 +67,78 @@ $(document).ready(function () {
             board[idx] = null;
         }
 
+        // 3. Try to create a line of 3 for itself
+        for (let idx of emptyCells) {
+            board[idx] = 2;
+            if (countInLine(idx, 2, 3)) {
+                board[idx] = null;
+                return idx;
+            }
+            board[idx] = null;
+        }
+
+        // 4. Block opponent's line of 3
+        for (let idx of emptyCells) {
+            board[idx] = 1;
+            if (countInLine(idx, 1, 3)) {
+                board[idx] = null;
+                return idx;
+            }
+            board[idx] = null;
+        }
+
+        // 5. Take center if available
+        let center = 12;
+        if (board[center] === null) return center;
+
+        // 6. Take a random corner
+        let corners = [0, 4, 20, 24];
+        let availableCorners = corners.filter(idx => board[idx] === null);
+        if (availableCorners.length > 0) {
+            return availableCorners[Math.floor(Math.random() * availableCorners.length)];
+        }
+
+        // 7. Take a random side
+        let sides = [1, 3, 5, 9, 15, 19, 21, 23];
+        let availableSides = sides.filter(idx => board[idx] === null);
+        if (availableSides.length > 0) {
+            return availableSides[Math.floor(Math.random() * availableSides.length)];
+        }
+
+        // 8. Otherwise, pick random
         if (emptyCells.length > 0) {
             return emptyCells[Math.floor(Math.random() * emptyCells.length)];
         }
         return null;
+    }
+
+    function countInLine(idx, player, countNeeded) {
+        let size = 5;
+        let row = Math.floor(idx / size);
+        let col = idx % size;
+        let directions = [
+            { dr: 0, dc: 1 },
+            { dr: 1, dc: 0 },
+            { dr: 1, dc: 1 },
+            { dr: 1, dc: -1 }
+        ];
+        for (let dir of directions) {
+            let count = 1;
+            for (let step = 1; step < 4; step++) {
+                let r = row + dir.dr * step;
+                let c = col + dir.dc * step;
+                if (r < 0 || r >= size || c < 0 || c >= size) break;
+                if (board[r * size + c] === player) count++;
+            }
+            for (let step = 1; step < 4; step++) {
+                let r = row - dir.dr * step;
+                let c = col - dir.dc * step;
+                if (r < 0 || r >= size || c < 0 || c >= size) break;
+                if (board[r * size + c] === player) count++;
+            }
+            if (count >= countNeeded) return true;
+        }
+        return false;
     }
 
     $('#gameGrid').on('click', '.cell', function () {
