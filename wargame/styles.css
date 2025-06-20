@@ -40,6 +40,7 @@ h1 {
     border-radius: 5px;
     margin: 20px 0;
     padding: 20px;
+    background: rgba(255, 255, 255, 0.15);
 }
 
 .player h2 {
@@ -52,17 +53,28 @@ h1 {
     font-size: 24px;
     margin: 10px 0;
     height: 50px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(255, 255, 255, 0.35);
+    border-radius: 8px;
+    box-shadow: 0 2px 8px rgba(71, 2, 40, 0.08);
 }
 
 @media (max-width: 600px) {
     .card-display {
         font-size: 16px;
     }
+    .players {
+        flex-direction: column;
+        gap: 20px;
+    }
 }
 
 .score {
     font-weight: bold;
     color: #000000;
+    margin-top: 8px;
 }
 
 .game-log {
@@ -84,21 +96,51 @@ h1 {
     color: #000000;
 }
 
-#replay-button {
+#draw-button, #replay-button, #return-home {
     background-color: #000000;
     color: rgb(245, 245, 245);
     border: none;
-    padding: 10px 20px;
+    padding: 10px 24px;
     border-radius: 5px;
     cursor: pointer;
     margin-top: 20px;
+    margin-right: 10px;
+    font-size: 1rem;
+    font-family: 'Poppins', sans-serif;
+    transition: background 0.2s, color 0.2s;
+    box-shadow: 0 2px 8px rgba(71, 2, 40, 0.08);
 }
 
-#replay-button:disabled {
+#draw-button:disabled, #replay-button:disabled {
     background-color: #383838;
     cursor: not-allowed;
+    color: #bdbdbd;
+}
+
+#draw-button:hover:not(:disabled), #replay-button:hover:not(:disabled), #return-home:hover {
+    background-color: #ff71ff;
+    color: #000;
+}
+
+#return-home a {
+    color: #fff;
+    text-decoration: none;
+    display: block;
+    width: 100%;
+    height: 100%;
+}
+
+#return-home:hover a {
+    color: #000;
 }
 
 a {
-    color: #fff
+    color: #fff;
+    text-decoration: none;
+}
+
+.turn-glow {
+    box-shadow: 0 0 24px 6px #ff71ff, 0 0 8px 2px #fff;
+    transition: box-shadow 0.3s;
+    z-index: 1;
 }

@@ -76,11 +76,18 @@ class Game {
         this.dealCards();
         this.gameLog = document.querySelector(".log-content");
         this.replayButton = document.getElementById("replay-button");
+        this.drawButton = document.getElementById("draw-button");
         this.player1CardDisplay = document.querySelector("#player1 .card-display");
         this.player2CardDisplay = document.querySelector("#player2 .card-display");
         this.player1Score = document.querySelector("#player1 .score");
         this.player2Score = document.querySelector("#player2 .score");
+        this.player1Div = document.getElementById("player1");
+        this.player2Div = document.getElementById("player2");
         this.replayButton.addEventListener("click", () => this.resetGame());
+        this.drawButton.addEventListener("click", () => this.playRound());
+        this.replayButton.disabled = true;
+        this.drawButton.disabled = false;
+        this.setTurnGlow("player1");
     }
 
     dealCards() {
@@ -91,51 +98,75 @@ class Game {
     }
     // this section oversees each round with log entries
     playRound() {
-        const card1 = this.player1.playCard();
-        const card2 = this.player2.playCard();
-    
-        this.player1CardDisplay.textContent = card1.toString();
-        this.player2CardDisplay.textContent = card2.toString();
-        
-        this.player1Score.textContent = `Score: ${this.player1.score}`;
-        this.player2Score.textContent = `Score: ${this.player2.score}`;
-    
-        let logEntry = document.createElement("div");
-        logEntry.style.marginBottom = "10px"; 
-        logEntry.innerHTML = `${this.player1.name} plays: ${card1.toString()}<br>
-                              ${this.player2.name} plays: ${card2.toString()}<br>`;
-        
-        let roundResult;
-        if (card1.getValue() > card2.getValue()) {
-            this.player1.addPoint();
-            roundResult = `${this.player1.name} wins the battle!!`;
-        } else if (card1.getValue() < card2.getValue()) {
-            this.player2.addPoint();
-            roundResult = `${this.player2.name} wins the battle!!`;
-        } else {
-            roundResult = `Tie! No one wins!!`;
+        if (this.player1.hand.length === 0 || this.player2.hand.length === 0) {
+            this.endGame();
+            return;
         }
-    
-        logEntry.innerHTML += roundResult + `<br>Score: ${this.player1.score} to ${this.player2.score}`;
-        
-        this.gameLog.insertBefore(logEntry, this.gameLog.firstChild);
-        this.gameLog.scrollTop = 0;
-    
-        console.log(`${this.player1.name} plays: ${card1.toString()}`);
-        console.log(`${this.player2.name} plays: ${card2.toString()}`);
-        console.log(roundResult);
-        console.log(`Score: ${this.player1.score} to ${this.player2.score}`);
+
+        this.drawButton.disabled = true;
+        this.setTurnGlow("player1");
+
+        const card1 = this.player1.playCard();
+        this.player1CardDisplay.textContent = card1.toString();
+
+        this.setTurnGlow("player2");
+
+        setTimeout(() => {
+            const card2 = this.player2.playCard();
+            this.player2CardDisplay.textContent = card2.toString();
+
+            this.player1Score.textContent = `Score: ${this.player1.score}`;
+            this.player2Score.textContent = `Score: ${this.player2.score}`;
+
+            let logEntry = document.createElement("div");
+            logEntry.style.marginBottom = "10px"; 
+            logEntry.innerHTML = `${this.player1.name} plays: ${card1.toString()}<br>
+                                  ${this.player2.name} plays: ${card2.toString()}<br>`;
+
+            let roundResult;
+            if (card1.getValue() > card2.getValue()) {
+                this.player1.addPoint();
+                roundResult = `${this.player1.name} wins the battle!!`;
+            } else if (card1.getValue() < card2.getValue()) {
+                this.player2.addPoint();
+                roundResult = `${this.player2.name} wins the battle!!`;
+            } else {
+                roundResult = `Tie! No one wins!!`;
+            }
+
+            logEntry.innerHTML += roundResult + `<br>Score: ${this.player1.score} to ${this.player2.score}`;
+
+            this.gameLog.insertBefore(logEntry, this.gameLog.firstChild);
+            this.gameLog.scrollTop = 0;
+
+            console.log(`${this.player1.name} plays: ${card1.toString()}`);
+            console.log(`${this.player2.name} plays: ${card2.toString()}`);
+            console.log(roundResult);
+            console.log(`Score: ${this.player1.score} to ${this.player2.score}`);
+
+            if (this.player1.hand.length === 0 || this.player2.hand.length === 0) {
+                this.endGame();
+            } else {
+                this.setTurnGlow("player1");
+                this.drawButton.disabled = false;
+            }
+        }, 900);
+    }
+
+    setTurnGlow(player) {
+        if (player === "player1") {
+            this.player1Div.classList.add("turn-glow");
+            this.player2Div.classList.remove("turn-glow");
+        } else {
+            this.player2Div.classList.add("turn-glow");
+            this.player1Div.classList.remove("turn-glow");
+        }
     }
 
     playGame() {
-        const interval = setInterval(() => {
-            if (this.player1.hand.length === 0 || this.player2.hand.length === 0) {
-                clearInterval(interval);
-                this.endGame();
-            } else {
-                this.playRound();
-            }
-        }, 1250); // this timer starts a round every 2 seconds
+        this.replayButton.disabled = true;
+        this.drawButton.disabled = false;
+        this.setTurnGlow("player1");
     }
 
     endGame() {
@@ -154,6 +185,9 @@ class Game {
         this.gameLog.insertBefore(logEntry, this.gameLog.firstChild);
         
         this.replayButton.disabled = false;
+        this.drawButton.disabled = true;
+        this.player1Div.classList.remove("turn-glow");
+        this.player2Div.classList.remove("turn-glow");
     
         console.log(`Game Over!! ${result}`);
     }
@@ -165,7 +199,12 @@ class Game {
         this.dealCards();
         this.gameLog.innerHTML = ""; // Clear the log
         this.replayButton.disabled = true;
-        this.playGame();
+        this.drawButton.disabled = false;
+        this.player1CardDisplay.textContent = "";
+        this.player2CardDisplay.textContent = "";
+        this.player1Score.textContent = "Score: 0";
+        this.player2Score.textContent = "Score: 0";
+        this.setTurnGlow("player1");
     }
 }
 
