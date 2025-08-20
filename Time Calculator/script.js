@@ -25,8 +25,9 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         try {
-            // Split by + and process each time value
-            const timeValues = expression.split('+').map(part => part.trim());
+            // Split by operators and process each time value
+            const operators = expression.match(/[+-]/g) || [];
+            const timeValues = expression.split(/[+-]/).map(part => part.trim());
             
             if (timeValues.length === 0) {
                 showError('Invalid expression format');
@@ -42,17 +43,39 @@ document.addEventListener('DOMContentLoaded', () => {
             }
 
             // Calculate total time
-            let totalHours = 0;
-            let totalMinutes = 0;
-            let explanationText = [];
+            let [initialHours, initialMinutes] = parseTimeValue(timeValues[0]);
+            let totalHours = initialHours;
+            let totalMinutes = initialMinutes;
+            let explanationText = [`${initialHours}h ${initialMinutes}m`];
 
-            timeValues.forEach(timeValue => {
-                const [hours, minutes] = parseTimeValue(timeValue);
-                totalHours += hours;
-                totalMinutes += minutes;
+            for (let i = 0; i < operators.length; i++) {
+                const [hours, minutes] = parseTimeValue(timeValues[i + 1]);
+                const operator = operators[i];
+
+                if (operator === '+') {
+                    totalHours += hours;
+                    totalMinutes += minutes;
+                    explanationText.push('+');
+                } else if (operator === '-') {
+                    // Convert everything to minutes for easier subtraction
+                    let totalInMinutes = totalHours * 60 + totalMinutes;
+                    let subtractInMinutes = hours * 60 + minutes;
+                    
+                    if (totalInMinutes < subtractInMinutes) {
+                        showError('Cannot subtract more time than available');
+                        return;
+                    }
+                    
+                    totalInMinutes -= subtractInMinutes;
+                    
+                    // Convert back to hours and minutes
+                    totalHours = Math.floor(totalInMinutes / 60);
+                    totalMinutes = totalInMinutes % 60;
+                    explanationText.push('-');
+                }
                 
                 explanationText.push(`${hours}h ${minutes}m`);
-            });
+            }
 
             // Adjust for minutes overflow
             if (totalMinutes >= 60) {
@@ -69,7 +92,7 @@ document.addEventListener('DOMContentLoaded', () => {
             resultDisplay.style.color = '#0f0';
             
             // Show explanation
-            explanationDisplay.textContent = `${explanationText.join(' + ')} = ${totalHours}h ${totalMinutes}m`;
+            explanationDisplay.textContent = `${explanationText.join(' ')} = ${totalHours}h ${totalMinutes}m`;
         } catch (error) {
             showError('Error calculating time: ' + error.message);
         }
