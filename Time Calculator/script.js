@@ -83,7 +83,7 @@ document.addEventListener('DOMContentLoaded', () => {
             // Only hours provided
             return [parseInt(parts[0]), 0];
         } else if (parts.length === 2) {
-            const hours = parseInt(parts[0]);
+            let hours = parseInt(parts[0]);
             
             // Handle minutes part correctly
             let minutes;
@@ -93,6 +93,13 @@ document.addEventListener('DOMContentLoaded', () => {
             } else {
                 // Otherwise parse as is
                 minutes = parseInt(parts[1]);
+            }
+            
+            // Handle minutes over 59 by converting to additional hours
+            if (minutes > 59) {
+                const additionalHours = Math.floor(minutes / 60);
+                hours += additionalHours;
+                minutes = minutes % 60;
             }
             
             return [hours, minutes];
@@ -107,22 +114,6 @@ document.addEventListener('DOMContentLoaded', () => {
         if (!regex.test(timeValue)) {
             return false;
         }
-        
-        // Validate that minutes don't exceed 59
-        const parts = timeValue.split('.');
-        if (parts.length === 2) {
-            let minutes;
-            if (parts[1].length === 1) {
-                minutes = parseInt(parts[1]) * 10;
-            } else {
-                minutes = parseInt(parts[1]);
-            }
-            
-            if (minutes > 59) {
-                return false;
-            }
-        }
-        
         return true;
     }
 
