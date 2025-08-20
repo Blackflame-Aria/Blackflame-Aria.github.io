@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Time Calculator</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    
+    <div class="calculator-container">
+        <a href="../index.html" class="back-btn">←</a>
+        <h1>Time Calculator</h1>
+        <div class="calculator">
+            <div class="input-container">
+                <input type="text" id="time-input" placeholder="Example: 6.5 + 3.21" autofocus>
+                <button id="calculate-btn" aria-label="Calculate">=</button>
+            </div>
+            <div class="result-container">
+                <div id="result">Result will appear here</div>
+                <div id="explanation"></div>
+            </div>
+        </div>
+        <div class="instructions">
+            <h3>How to use:</h3>
+            <ul>
+                <li>Enter time values as hours.minutes</li>
+                <li>Example: 6.5 = 6 hours, 50 minutes</li>
+                <li>Add more than two (2.45 + 6.12 + 7.22)</li>
+                <li>Press Enter or '=' to calculate</li>
+            </ul>
+        </div>
+    </div>
+    <script src="script.js"></script>
+</body>
+</html>
