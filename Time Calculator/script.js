@@ -150,22 +150,22 @@ function initializeCalculator(inputId, buttonId, resultId, explanationId) {
             }
 
             let minutes = 0;
+            let finalHours = hoursNum;
             if (decimal) {
                 const percentage = parseFloat('0.' + decimal);
                 const exactMinutes = percentage * 60;
-                const exactSeconds = (exactMinutes % 1) * 60;
-
-                if (Math.abs(exactSeconds - 30) < 0.001) {
-                    minutes = Math.floor(exactMinutes) + 0.5;
-                } else {
-                    minutes = Math.round(exactMinutes);
+                minutes = Math.round(exactMinutes);
+                
+                if (minutes === 60) {
+                    finalHours++;
+                    minutes = 0;
                 }
             }
             const formattedResult = minutes % 1 === 0 ? 
                 `${hoursNum}.${minutes.toString().padStart(2, '0')}` :
                 `${hoursNum}.${Math.floor(minutes).toString().padStart(2, '0')}.5`;
 
-            resultDisplay.textContent = `${hoursNum}h ${minutes}m`;
+            resultDisplay.textContent = `${finalHours}h ${minutes}m`;
             resultDisplay.style.color = '#0f0';
 
         } catch (error) {
