@@ -201,17 +201,17 @@ h1:hover, #result:hover, .instructions h3:hover {
         margin-bottom: 1rem;
     }
     
-    #time-input {
+    #time-input, #time-input-2 {
         padding: 0.8rem;
         font-size: 1rem;
     }
     
-    #calculate-btn {
+    #calculate-btn, #calculate-btn-2 {
         width: 45px;
         font-size: 1.2rem;
     }
     
-    #result {
+    #result, #result-2 {
         font-size: 1.2rem;
     }
     
