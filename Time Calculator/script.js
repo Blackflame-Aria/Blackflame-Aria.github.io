@@ -89,7 +89,7 @@ function initializeCalculator(inputId, buttonId, resultId, explanationId) {
 
             const formattedResult = `${totalHours}.${totalMinutes.toString().padStart(2, '0')}`;
             
-            resultDisplay.textContent = formattedResult;
+            resultDisplay.textContent = `${totalHours}h ${totalMinutes}m`;
             resultDisplay.style.color = '#0f0';
             explanationDisplay.textContent = `${explanationText.join(' ')} = ${totalHours}h ${totalMinutes}m`;
         } catch (error) {
@@ -165,7 +165,7 @@ function initializeCalculator(inputId, buttonId, resultId, explanationId) {
                 `${hoursNum}.${minutes.toString().padStart(2, '0')}` :
                 `${hoursNum}.${Math.floor(minutes).toString().padStart(2, '0')}.5`;
 
-            resultDisplay.textContent = `${hoursNum}hr ${minutes}min`;
+            resultDisplay.textContent = `${hoursNum}h ${minutes}m`;
             resultDisplay.style.color = '#0f0';
 
         } catch (error) {
