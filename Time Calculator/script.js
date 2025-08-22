@@ -1,22 +1,32 @@
 document.addEventListener('DOMContentLoaded', () => {
-    const timeInput = document.getElementById('time-input');
-    const calculateBtn = document.getElementById('calculate-btn');
-    const resultDisplay = document.getElementById('result');
-    const explanationDisplay = document.getElementById('explanation');
+    initializeCalculator('time-input', 'calculate-btn', 'result', 'explanation');
+    initializeCalculator('time-input-2', 'calculate-btn-2', 'result-2', 'explanation-2');
+});
 
-    // Handle Enter key press
+function initializeCalculator(inputId, buttonId, resultId, explanationId) {
+    const isSecondCalculator = inputId === 'time-input-2';
+
+    const timeInput = document.getElementById(inputId);
+    const calculateBtn = document.getElementById(buttonId);
+    const resultDisplay = document.getElementById(resultId);
+    const explanationDisplay = document.getElementById(explanationId);
+
     timeInput.addEventListener('keypress', (e) => {
         if (e.key === 'Enter') {
             calculateTime();
         }
     });
     
-    // Handle button click
     calculateBtn.addEventListener('click', () => {
         calculateTime();
     });
 
     function calculateTime() {
+        if (isSecondCalculator) {
+            calculatePercentageTime();
+            return;
+        }
+
         const expression = timeInput.value.trim();
         
         if (!expression) {
@@ -25,7 +35,6 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         try {
-            // Split by operators and process each time value
             const operators = expression.match(/[+-]/g) || [];
             const timeValues = expression.split(/[+-]/).map(part => part.trim());
             
@@ -33,8 +42,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 showError('Invalid expression format');
                 return;
             }
-
-            // Validate each time value
             for (const timeValue of timeValues) {
                 if (!isValidTimeFormat(timeValue)) {
                     showError(`Invalid time format: ${timeValue}. Use format: hours.minutes (e.g., 6.5 for 6h 50m)`);
@@ -42,7 +49,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
             }
 
-            // Calculate total time
             let [initialHours, initialMinutes] = parseTimeValue(timeValues[0]);
             let totalHours = initialHours;
             let totalMinutes = initialMinutes;
@@ -57,7 +63,6 @@ document.addEventListener('DOMContentLoaded', () => {
                     totalMinutes += minutes;
                     explanationText.push('+');
                 } else if (operator === '-') {
-                    // Convert everything to minutes for easier subtraction
                     let totalInMinutes = totalHours * 60 + totalMinutes;
                     let subtractInMinutes = hours * 60 + minutes;
                     
@@ -68,7 +73,6 @@ document.addEventListener('DOMContentLoaded', () => {
                     
                     totalInMinutes -= subtractInMinutes;
                     
-                    // Convert back to hours and minutes
                     totalHours = Math.floor(totalInMinutes / 60);
                     totalMinutes = totalInMinutes % 60;
                     explanationText.push('-');
@@ -77,21 +81,16 @@ document.addEventListener('DOMContentLoaded', () => {
                 explanationText.push(`${hours}h ${minutes}m`);
             }
 
-            // Adjust for minutes overflow
             if (totalMinutes >= 60) {
                 const additionalHours = Math.floor(totalMinutes / 60);
                 totalHours += additionalHours;
                 totalMinutes %= 60;
             }
 
-            // Format the result
             const formattedResult = `${totalHours}.${totalMinutes.toString().padStart(2, '0')}`;
             
-            // Display the result
             resultDisplay.textContent = formattedResult;
             resultDisplay.style.color = '#0f0';
-            
-            // Show explanation
             explanationDisplay.textContent = `${explanationText.join(' ')} = ${totalHours}h ${totalMinutes}m`;
         } catch (error) {
             showError('Error calculating time: ' + error.message);
@@ -99,26 +98,20 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function parseTimeValue(timeValue) {
-        // Handle different formats (6.5, 6.50, etc.)
         const parts = timeValue.split('.');
         
         if (parts.length === 1) {
-            // Only hours provided
             return [parseInt(parts[0]), 0];
         } else if (parts.length === 2) {
             let hours = parseInt(parts[0]);
             
-            // Handle minutes part correctly
             let minutes;
             if (parts[1].length === 1) {
-                // If single digit, multiply by 10 (e.g., .5 means 50 minutes)
                 minutes = parseInt(parts[1]) * 10;
             } else {
-                // Otherwise parse as is
                 minutes = parseInt(parts[1]);
             }
             
-            // Handle minutes over 59 by converting to additional hours
             if (minutes > 59) {
                 const additionalHours = Math.floor(minutes / 60);
                 hours += additionalHours;
@@ -132,7 +125,6 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function isValidTimeFormat(timeValue) {
-        // Check if the time value matches the expected format
         const regex = /^\d+(\.\d{1,2})?$/;
         if (!regex.test(timeValue)) {
             return false;
@@ -140,9 +132,51 @@ document.addEventListener('DOMContentLoaded', () => {
         return true;
     }
 
+    function calculatePercentageTime() {
+        const value = timeInput.value.trim();
+        
+        if (!value) {
+            showError('Please enter a time value');
+            return;
+        }
+
+        try {
+            const [hours, decimal] = value.split('.');
+            const hoursNum = parseInt(hours);
+            
+            if (isNaN(hoursNum)) {
+                showError('Invalid hour format');
+                return;
+            }
+
+            let minutes = 0;
+            if (decimal) {
+                const percentage = parseFloat('0.' + decimal);
+                const exactMinutes = percentage * 60;
+                const exactSeconds = (exactMinutes % 1) * 60;
+
+                if (Math.abs(exactSeconds - 30) < 0.001) {
+                    minutes = Math.floor(exactMinutes) + 0.5;
+                } else {
+                    minutes = Math.round(exactMinutes);
+                }
+            }
+            const formattedResult = minutes % 1 === 0 ? 
+                `${hoursNum}.${minutes.toString().padStart(2, '0')}` :
+                `${hoursNum}.${Math.floor(minutes).toString().padStart(2, '0')}.5`;
+
+            resultDisplay.textContent = `${hoursNum}hr ${minutes}min`;
+            resultDisplay.style.color = '#0f0';
+
+        } catch (error) {
+            showError('Error calculating time: ' + error.message);
+        }
+    }
+
     function showError(message) {
-        resultDisplay.textContent = 'Error';
+        resultDisplay.textContent = message;
         resultDisplay.style.color = '#ff0000';
+        explanationDisplay.textContent = '';
         explanationDisplay.textContent = message;
     }
-});
+};

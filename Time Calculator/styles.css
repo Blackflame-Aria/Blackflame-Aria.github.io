@@ -31,11 +31,13 @@
 
 body {
     display: flex;
+    flex-direction: column;
     justify-content: center;
     align-items: center;
     min-height: 100vh;
     background-color: #000000;
-    padding: 0 10px;
+    padding: 20px 10px;
+    gap: 20px;
 }
 
 .calculator-container {
@@ -57,6 +59,9 @@ h1 {
     margin-left: 2rem;
     color: #0f0;
 }
+.title {
+    margin-top: auto;
+}
 
 .calculator {
     margin-bottom: 2rem;
@@ -67,7 +72,7 @@ h1 {
     margin-bottom: 1rem;
 }
 
-#time-input {
+#time-input, #time-input-2 {
     flex: 1;
     padding: 1rem;
     font-size: 1.5em;
@@ -80,12 +85,12 @@ h1 {
     transition: border-color 0.3s;
 }
 
-#time-input:focus {
+#time-input:focus, #time-input-2:focus {
     outline: none;
     border-image: linear-gradient(to right, #0f0, rgb(0, 46, 0)) 1;
 }
 
-#calculate-btn {
+#calculate-btn, #calculate-btn-2 {
     width: 70px;
     background-color:rgb(0, 0, 0);
     color: #0f0;
@@ -98,7 +103,7 @@ h1 {
     transition: background-color 0.3s;
 }
 
-#calculate-btn:hover {
+#calculate-btn:hover, #calculate-btn-2:hover {
     background-color: #0f0;
     color: #000;
     border-image: linear-gradient(to right, #0f0, rgb(0, 46, 0)) 1;
@@ -114,14 +119,14 @@ h1 {
     border-left: 4px solid #0f0;
 }
 
-#result {
+#result, #result-2 {
     font-size: 1.5rem;
     font-weight: bold;
     margin-bottom: 0.5rem;
     color: #0f0;
 }
 
-#explanation {
+#explanation, #explanation-2 {
     font-size: 0.9rem;
     color: #0f0;
 }
