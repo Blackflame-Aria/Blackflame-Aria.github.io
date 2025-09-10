@@ -1,20 +1,44 @@
 window.mediumHighScore = localStorage.getItem('snakeMediumHighScore') ? parseInt(localStorage.getItem('snakeMediumHighScore')) : 0;
 
+const tileCount = 15;
+
+function generateFoodLocal() {
+  let newFood;
+  do {
+    newFood = {
+      x: Math.floor(Math.random() * tileCount),
+      y: Math.floor(Math.random() * tileCount)
+    };
+  } while (false); 
+  return newFood;
+}
+
 window.initializeMediumMode = function() {
   gameSpeed = 9;
   
   walls = [];
   const wallCount = 5;
+  
   for (let i = 0; i < wallCount; i++) {
-    walls.push(generateWall());
+    let wall;
+    do {
+      wall = {
+        x: Math.floor(Math.random() * (tileCount - 4)) + 2,
+        y: Math.floor(Math.random() * (tileCount - 4)) + 2,
+        length: Math.floor(Math.random() * 3) + 3,
+        isVertical: Math.random() < 0.5
+      };
+    } while (false); 
+    walls.push(wall);
   }
   
   foods = [];
-  foods.push(generateFood());
+  foods.push(generateFoodLocal());
   
   specialFoodTimer = setInterval(() => {
     if (gameRunning && !isPaused) {
-      const specialFood = generateFood(true);
+      const specialFood = generateFoodLocal();
+      specialFood.isSpecial = true;
       foods.push(specialFood);
       
       setTimeout(() => {

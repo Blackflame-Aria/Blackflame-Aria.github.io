@@ -25,8 +25,22 @@ let snake = [{x: 10, y: 10, visualX: 10, visualY: 10}];
 let direction = {x: 0, y: 0};
 
 document.addEventListener('DOMContentLoaded', function() {
-  updateGameSpeed();
   const difficulty = document.getElementById('difficulty').value;
+  
+  if (difficulty === 'easy' && window.initializeEasyMode) {
+    window.initializeEasyMode();
+  } else if (difficulty === 'medium' && window.initializeMediumMode) {
+    window.initializeMediumMode();
+  } else if (difficulty === 'hard' && window.initializeHardMode) {
+    window.initializeHardMode();
+  } else if (difficulty === 'pvp' && window.initializePvpMode) {
+    window.initializePvpMode();
+  } else {
+    updateGameSpeed();
+  }
+  
+  highScore = getHighScore(difficulty);
+  document.getElementById('highScoreValue').textContent = highScore;
   const snakesEatenDisplay = document.querySelector('.snakes-eaten');
   if (snakesEatenDisplay) {
     snakesEatenDisplay.style.display = difficulty === 'pvp' ? 'block' : 'none';
@@ -38,11 +52,31 @@ let foods = [];
 let score = 0;
 let enemyDefeatPoints = 0; 
 function getHighScore(difficulty) {
-  return parseInt(localStorage.getItem(`snakeHighScore_${difficulty}`)) || 0;
+  if (difficulty === 'easy') {
+    return window.getEasyHighScore ? window.getEasyHighScore() : (parseInt(localStorage.getItem('snakeHighScore_easy')) || 0);
+  } else if (difficulty === 'medium') {
+    return window.getMediumHighScore ? window.getMediumHighScore() : (parseInt(localStorage.getItem('snakeHighScore_medium')) || 0);
+  } else if (difficulty === 'hard') {
+    return window.getHardHighScore ? window.getHardHighScore() : (parseInt(localStorage.getItem('snakeHighScore_hard')) || 0);
+  } else if (difficulty === 'pvp') {
+    return window.getPvpHighScore ? window.getPvpHighScore() : (parseInt(localStorage.getItem('snakeHighScore_pvp')) || 0);
+  } else {
+    return parseInt(localStorage.getItem(`snakeHighScore_${difficulty}`)) || 0;
+  }
 }
 
 function setHighScore(difficulty, score) {
-  localStorage.setItem(`snakeHighScore_${difficulty}`, score);
+  if (difficulty === 'easy' && window.updateEasyHighScore) {
+    window.updateEasyHighScore(score);
+  } else if (difficulty === 'medium' && window.updateMediumHighScore) {
+    window.updateMediumHighScore(score);
+  } else if (difficulty === 'hard' && window.updateHardHighScore) {
+    window.updateHardHighScore(score);
+  } else if (difficulty === 'pvp' && window.updatePvpHighScore) {
+    window.updatePvpHighScore(score);
+  } else {
+    localStorage.setItem(`snakeHighScore_${difficulty}`, score);
+  }
 }
 
 let highScore = getHighScore('easy');
@@ -365,7 +399,6 @@ function update() {
     for (let i = 1; i < snake.length; i++) {
       if (specialSnake[0].x === snake[i].x && specialSnake[0].y === snake[i].y) {
         const removedSegments = snake.splice(i);
-        // Apply damage for lost tail segments (0.05 per segment)
         if (removedSegments.length > 0) {
           playerHealth -= 0.05 * removedSegments.length;
           updateHealthBars();
@@ -883,7 +916,6 @@ function update() {
           
           const removedSegments = snake.splice(index);
           
-          // Apply damage for lost tail segments (0.05 per segment)
           if (removedSegments.length > 0) {
             playerHealth -= 0.05 * removedSegments.length;
             updateHealthBars();
@@ -1310,7 +1342,25 @@ function updateAiHealthBar() {
 
 document.getElementById('difficulty').addEventListener('change', () => {
   const difficulty = document.getElementById('difficulty').value;
-  updateGameSpeed();
+  
+  if (difficulty === 'easy' && window.initializeEasyMode) {
+    window.initializeEasyMode();
+  } else if (difficulty === 'medium' && window.initializeMediumMode) {
+    window.initializeMediumMode();
+  } else if (difficulty === 'hard' && window.initializeHardMode) {
+    window.initializeHardMode();
+  } else if (difficulty === 'pvp' && window.initializePvpMode) {
+    window.initializePvpMode();
+  } else {
+    updateGameSpeed();
+    
+    foods = [];
+    foods.push(generateFood());
+    
+    if (difficulty === 'easy' || difficulty === 'pvp') {
+      foods.push(generateFood());
+    }
+  }
   
   highScore = getHighScore(difficulty);
   document.getElementById('highScoreValue').textContent = highScore;
@@ -1318,13 +1368,6 @@ document.getElementById('difficulty').addEventListener('change', () => {
   const snakesEatenDisplay = document.querySelector('.snakes-eaten');
   if (snakesEatenDisplay) {
     snakesEatenDisplay.style.display = difficulty === 'pvp' ? 'block' : 'none';
-  }
-  
-  foods = [];
-  foods.push(generateFood());
-  
-  if (difficulty === 'easy' || difficulty === 'pvp') {
-    foods.push(generateFood());
   }
 });
 

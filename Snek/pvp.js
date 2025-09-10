@@ -1,4 +1,4 @@
-window.easyHighScore = localStorage.getItem('snakeEasyHighScore') ? parseInt(localStorage.getItem('snakeEasyHighScore')) : 0;
+window.pvpHighScore = localStorage.getItem('snakePvpHighScore') ? parseInt(localStorage.getItem('snakePvpHighScore')) : 0;
 
 const tileCount = 15;
 
@@ -9,15 +9,16 @@ function generateFoodLocal() {
       x: Math.floor(Math.random() * tileCount),
       y: Math.floor(Math.random() * tileCount)
     };
-  } while (false); 
+  } while (false);
   return newFood;
 }
 
-window.initializeEasyMode = function() {
-  gameSpeed = 7;
+window.initializePvpMode = function() {
+  gameSpeed = 10;
+  isPvpMode = true;
   
   walls = [];
-  const wallCount = 3;
+  const wallCount = 6;
   
   for (let i = 0; i < wallCount; i++) {
     let wall;
@@ -34,16 +35,22 @@ window.initializeEasyMode = function() {
   
   foods = [];
   foods.push(generateFoodLocal());
+  foods.push(generateFoodLocal());
+  
+  document.getElementById('health-bars-container').style.display = 'block';
+  
+  playerHealth = 3;
+  aiHealth = 3;
 }
 
-window.getEasyHighScore = function() {
-  return easyHighScore;
+window.getPvpHighScore = function() {
+  return pvpHighScore;
 }
 
-window.updateEasyHighScore = function(newScore) {
-  if (newScore > easyHighScore) {
-    easyHighScore = newScore;
-    localStorage.setItem('snakeEasyHighScore', easyHighScore);
+window.updatePvpHighScore = function(newScore) {
+  if (newScore > pvpHighScore) {
+    pvpHighScore = newScore;
+    localStorage.setItem('snakePvpHighScore', pvpHighScore);
     return true;
   }
   return false;
