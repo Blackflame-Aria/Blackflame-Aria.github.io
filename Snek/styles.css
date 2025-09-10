@@ -163,6 +163,8 @@ body {
 
 canvas {
   background-color: #000000;
+  background-image: url(images/Main.png);
+  background-size: cover;
   display: block;
   margin: 0 auto;
   max-width: 100%;
