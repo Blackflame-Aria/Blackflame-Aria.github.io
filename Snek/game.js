@@ -25,14 +25,27 @@ let snake = [{x: 10, y: 10, visualX: 10, visualY: 10}];
 let direction = {x: 0, y: 0};
 
 document.addEventListener('DOMContentLoaded', function() {
-  updateGameSpeed(); 
+  updateGameSpeed();
+  const difficulty = document.getElementById('difficulty').value;
+  const snakesEatenDisplay = document.querySelector('.snakes-eaten');
+  if (snakesEatenDisplay) {
+    snakesEatenDisplay.style.display = difficulty === 'pvp' ? 'block' : 'none';
+  }
 });
 let aiSnake = [];
 let aiDirection = {x: 0, y: 0};
 let foods = [];
 let score = 0;
 let enemyDefeatPoints = 0; 
-let highScore = localStorage.getItem('snakeHighScore') ? parseInt(localStorage.getItem('snakeHighScore')) : 0;
+function getHighScore(difficulty) {
+  return parseInt(localStorage.getItem(`snakeHighScore_${difficulty}`)) || 0;
+}
+
+function setHighScore(difficulty, score) {
+  localStorage.setItem(`snakeHighScore_${difficulty}`, score);
+}
+
+let highScore = getHighScore('easy');
 let snakesEaten = 0; 
 let baseGameSpeed = 125;
 let gameRunning = false;
@@ -201,13 +214,25 @@ function update() {
   if (specialSnakeActive && specialSnake.length > 0) {
     const specialHead = specialSnake[0];
     const playerHead = snake[0];
-    const dx = playerHead.x - specialHead.x;
-    const dy = playerHead.y - specialHead.y;
-    
-    if (Math.abs(dx) > Math.abs(dy)) {
-      specialSnakeDirection = {x: dx > 0 ? 1 : -1, y: 0};
+    const firstTailSegment = snake[1];
+    if (firstTailSegment) {
+      const dx = firstTailSegment.x - specialHead.x;
+      const dy = firstTailSegment.y - specialHead.y;
+      
+      if (Math.abs(dx) > Math.abs(dy)) {
+        specialSnakeDirection = {x: dx > 0 ? 1 : -1, y: 0};
+      } else {
+        specialSnakeDirection = {x: 0, y: dy > 0 ? 1 : -1};
+      }
     } else {
-      specialSnakeDirection = {x: 0, y: dy > 0 ? 1 : -1};
+      const dx = playerHead.x - specialHead.x;
+      const dy = playerHead.y - specialHead.y;
+      
+      if (Math.abs(dx) > Math.abs(dy)) {
+        specialSnakeDirection = {x: dx > 0 ? 1 : -1, y: 0};
+      } else {
+        specialSnakeDirection = {x: 0, y: dy > 0 ? 1 : -1};
+      }
     }
     
     const newSpecialHead = {
@@ -234,7 +259,7 @@ function update() {
       const hitPlayerSnake = snake.some((segment, index) => {
         if (newSpecialHead.x === segment.x && newSpecialHead.y === segment.y) {
           if (index === 0) {
-            playerHealth--;
+            playerHealth -= 0.10;
             updateHealthBars();
             
             if (playerHealth <= 0) {
@@ -1103,9 +1128,10 @@ function gameOver() {
   updateScoreDisplay();
   document.getElementById('scoreValue').textContent = `${score} (💀)`;
   
-  if (score > highScore) {
+  const currentDifficulty = document.getElementById('difficulty').value;
+if (score > getHighScore(currentDifficulty)) {
     highScore = score;
-    localStorage.setItem('snakeHighScore', highScore);
+    setHighScore(currentDifficulty, score);
     document.getElementById('highScoreValue').textContent = highScore;
   }
   
@@ -1169,9 +1195,10 @@ function updateScoreDisplay() {
 function updateScoreDisplays() {
   document.getElementById('scoreValue').textContent = score;
   document.getElementById('highScoreValue').textContent = highScore;
-  document.getElementById('snakesEatenValue').textContent = snakesEaten;
   
-  localStorage.setItem('snakeHighScore', highScore);
+  if (isPvpMode) {
+    document.getElementById('snakesEatenValue').textContent = snakesEaten;
+  }
 }
 
 function updateAiHealthBar() {
@@ -1179,15 +1206,21 @@ function updateAiHealthBar() {
 }
 
 document.getElementById('difficulty').addEventListener('change', () => {
+  const difficulty = document.getElementById('difficulty').value;
   updateGameSpeed();
   
-  // Regenerate food when switching difficulty modes
+  highScore = getHighScore(difficulty);
+  document.getElementById('highScoreValue').textContent = highScore;
+  
+  const snakesEatenDisplay = document.querySelector('.snakes-eaten');
+  if (snakesEatenDisplay) {
+    snakesEatenDisplay.style.display = difficulty === 'pvp' ? 'block' : 'none';
+  }
+  
   foods = [];
   foods.push(generateFood());
   
-  // Add additional food based on difficulty
-  const difficulty = document.getElementById('difficulty').value;
-  if (difficulty === 'easy' || isPvpMode) {
+  if (difficulty === 'easy' || difficulty === 'pvp') {
     foods.push(generateFood());
   }
 });
