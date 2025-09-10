@@ -1,17 +1,47 @@
 const canvas = document.getElementById('gameCanvas');
 const ctx = canvas.getContext('2d');
 
-const gridSize = 22;
+function setCanvasSize() {
+  const isMobile = window.innerWidth < 768;
+  const baseSize = isMobile ? Math.min(window.innerWidth * 0.9, 400) : Math.min(window.innerWidth * 0.6, 500);
+  
+  canvas.width = baseSize;
+  canvas.height = baseSize;
+}
+
+setCanvasSize();
+window.addEventListener('resize', setCanvasSize);
+
+let gridSize;
 const tileCount = 15;
+
+function updateGridSize() {
+  gridSize = canvas.width / tileCount;
+}
+
+updateGridSize();
+window.addEventListener('resize', updateGridSize);
 let snake = [{x: 10, y: 10, visualX: 10, visualY: 10}];
 let direction = {x: 0, y: 0};
+
+document.addEventListener('DOMContentLoaded', function() {
+  updateGameSpeed(); 
+});
+let aiSnake = [];
+let aiDirection = {x: 0, y: 0};
 let foods = [];
 let score = 0;
+let enemyDefeatPoints = 0; 
+let highScore = localStorage.getItem('snakeHighScore') ? parseInt(localStorage.getItem('snakeHighScore')) : 0;
+let snakesEaten = 0; 
 let baseGameSpeed = 125;
 let gameRunning = false;
 let imagesLoaded = false;
 let gameStarted = false;
 let walls = [];
+let isPvpMode = false;
+let aiHealth = 3;
+let playerHealth = 3; 
 
 function generateFood() {
   let newFood;
@@ -22,6 +52,7 @@ function generateFood() {
     };
   } while (
     snake.some(segment => segment.x === newFood.x && segment.y === newFood.y) ||
+    aiSnake.some(segment => segment.x === newFood.x && segment.y === newFood.y) ||
     walls.some(wall => {
       if (wall.isVertical) {
         return newFood.x === wall.x && newFood.y >= wall.y && newFood.y < wall.y + wall.length;
@@ -94,13 +125,171 @@ function isWallOverlapping(newWall) {
   });
 }
 
+function calculateAiMove() {
+  if (!isPvpMode || aiSnake.length === 0) return;
+  
+  const aiHead = aiSnake[0];
+  let closestFood = null;
+  let minDistance = Infinity;
+  
+  for (const food of foods) {
+    const distance = Math.abs(food.x - aiHead.x) + Math.abs(food.y - aiHead.y);
+    if (distance < minDistance) {
+      minDistance = distance;
+      closestFood = food;
+    }
+  }
+  
+  if (closestFood) {
+    const dx = closestFood.x - aiHead.x;
+    const dy = closestFood.y - aiHead.y;
+    
+    if (Math.abs(dx) > Math.abs(dy)) {
+      aiDirection = {x: dx > 0 ? 1 : -1, y: 0};
+    } else {
+      aiDirection = {x: 0, y: dy > 0 ? 1 : -1};
+    }
+    
+    const nextX = aiHead.x + aiDirection.x;
+    const nextY = aiHead.y + aiDirection.y;
+    
+    if (nextX < 0 || nextX >= tileCount || nextY < 0 || nextY >= tileCount ||
+        aiSnake.some(segment => segment.x === nextX && segment.y === nextY) ||
+        walls.some(wall => {
+          if (wall.isVertical) {
+            return nextX === wall.x && nextY >= wall.y && nextY < wall.y + wall.length;
+          } else {
+            return nextY === wall.y && nextX >= wall.x && nextX < wall.x + wall.length;
+          }
+        })) {
+      const possibleDirections = [
+        {x: 1, y: 0}, {x: -1, y: 0}, {x: 0, y: 1}, {x: 0, y: -1}
+      ].filter(dir => {
+        const newX = aiHead.x + dir.x;
+        const newY = aiHead.y + dir.y;
+        return !(newX < 0 || newX >= tileCount || newY < 0 || newY >= tileCount ||
+                aiSnake.some(segment => segment.x === newX && segment.y === newY) ||
+                walls.some(wall => {
+                  if (wall.isVertical) {
+                    return newX === wall.x && newY >= wall.y && newY < wall.y + wall.length;
+                  } else {
+                    return newY === wall.y && newX >= wall.x && newX < wall.x + wall.length;
+                  }
+                }));
+      });
+      
+      if (possibleDirections.length > 0) {
+        aiDirection = possibleDirections[Math.floor(Math.random() * possibleDirections.length)];
+      } else {
+        aiDirection = {x: 0, y: 0};
+      }
+    }
+  }
+}
+
+function turnLeft(currentDirection) {
+  if (currentDirection.x === 1) return {x: 0, y: -1};
+  if (currentDirection.x === -1) return {x: 0, y: 1};
+  if (currentDirection.y === 1) return {x: 1, y: 0};
+  if (currentDirection.y === -1) return {x: -1, y: 0};
+  return currentDirection;
+}
+
 function update() {
   if (!gameStarted) return;
   
+  if (specialSnakeActive && specialSnake.length > 0) {
+    const specialHead = specialSnake[0];
+    const playerHead = snake[0];
+    const dx = playerHead.x - specialHead.x;
+    const dy = playerHead.y - specialHead.y;
+    
+    if (Math.abs(dx) > Math.abs(dy)) {
+      specialSnakeDirection = {x: dx > 0 ? 1 : -1, y: 0};
+    } else {
+      specialSnakeDirection = {x: 0, y: dy > 0 ? 1 : -1};
+    }
+    
+    const newSpecialHead = {
+      x: specialHead.x + specialSnakeDirection.x,
+      y: specialHead.y + specialSnakeDirection.y,
+      visualX: specialHead.x + specialSnakeDirection.x,
+      visualY: specialHead.y + specialSnakeDirection.y
+    };
+    
+    const hitWall = newSpecialHead.x < 0 || newSpecialHead.x >= tileCount || 
+                    newSpecialHead.y < 0 || newSpecialHead.y >= tileCount ||
+                    specialSnake.some(segment => segment.x === newSpecialHead.x && segment.y === newSpecialHead.y) ||
+                    walls.some(wall => {
+                      if (wall.isVertical) {
+                        return newSpecialHead.x === wall.x && newSpecialHead.y >= wall.y && newSpecialHead.y < wall.y + wall.length;
+                      } else {
+                        return newSpecialHead.y === wall.y && newSpecialHead.x >= wall.x && newSpecialHead.x < wall.x + wall.length;
+                      }
+                    });
+    
+    if (!hitWall) {
+      specialSnake.unshift(newSpecialHead);
+      
+      const hitPlayerSnake = snake.some((segment, index) => {
+        if (newSpecialHead.x === segment.x && newSpecialHead.y === segment.y) {
+          if (index === 0) {
+            playerHealth--;
+            updateHealthBars();
+            
+            if (playerHealth <= 0) {
+              gameOver();
+              return true;
+            }
+            
+            return true;
+          }
+          
+          const removedSegments = snake.splice(index);
+          return true;
+        }
+        return false;
+      });
+      
+      if (!hitPlayerSnake && specialSnake.length > 5) {
+        specialSnake.pop();
+      }
+    }
+  }
+  
+  if (specialSnakeActive && specialSnake.length > 1) {
+    for (let i = 0; i < snake.length; i++) {
+      for (let j = 1; j < specialSnake.length; j++) { 
+        if (snake[i].x === specialSnake[j].x && snake[i].y === specialSnake[j].y) {
+          specialSnake.splice(j);
+            enemyDefeatPoints += 20;
+            updateScoreDisplay();
+            return;
+        }
+      }
+    }
+  }
+  
+  if (specialSnakeActive && specialSnake.length > 0 && snake.length > 1) {
+    for (let i = 1; i < snake.length; i++) {
+      if (specialSnake[0].x === snake[i].x && specialSnake[0].y === snake[i].y) {
+        snake.splice(i);
+        updateScoreDisplay();
+        return;
+      }
+    }
+  }
+  
   const head = {x: snake[0].x + direction.x, y: snake[0].y + direction.y};
 
+  const firstTailSegment = snake[1];
+  if (firstTailSegment && head.x === firstTailSegment.x && head.y === firstTailSegment.y) {
+    head.x = snake[0].x + direction.x;
+    head.y = snake[0].y + direction.y;
+  }
+
   if (head.x < 0 || head.x >= tileCount || head.y < 0 || head.y >= tileCount ||
-      snake.some(segment => segment.x === head.x && segment.y === head.y) ||
+      snake.slice(2).some(segment => segment.x === head.x && segment.y === head.y) ||
       walls.some(wall => {
         if (wall.isVertical) {
           return head.x === wall.x && head.y >= wall.y && head.y < wall.y + wall.length;
@@ -111,7 +300,506 @@ function update() {
     gameOver();
     return;
   }
-
+  
+  if (specialSnakeActive && specialSnake.length > 0) {
+    const hitSpecialSnake = specialSnake.some((segment, index) => {
+      if (head.x === segment.x && head.y === segment.y) {
+        if (index === 0) {
+          specialSnakeHealth--;
+          
+          if (specialSnakeHealth <= 0) {
+            specialSnake = [];
+            specialSnakeActive = false;
+            enemyDefeatPoints += 500;
+            updateScoreDisplay(); 
+            return true;
+          }
+          
+          direction = {x: -direction.x, y: -direction.y};
+          return true;
+        }
+        
+        specialSnake.splice(index);
+        enemyDefeatPoints += 20;
+        updateScoreDisplay();
+        return true;
+      }
+      return false;
+    });
+    
+    if (!hitSpecialSnake && specialSnake.length > 1) {
+      for (let i = 0; i < snake.length; i++) {
+        for (let j = 1; j < specialSnake.length; j++) { 
+          if (snake[i].x === specialSnake[j].x && snake[i].y === specialSnake[j].y) {
+            specialSnake.splice(j);
+            enemyDefeatPoints += 20;
+            updateScoreDisplay(); 
+            return;
+          }
+        }
+      }
+    }
+    
+    if (specialSnake.length > 0 && snake.length > 1) {
+      for (let i = 1; i < snake.length; i++) { 
+        if (specialSnake[0].x === snake[i].x && specialSnake[0].y === snake[i].y) {
+          snake.splice(i);
+          updateScoreDisplay();
+          return;
+        }
+      }
+    }
+  }
+  
+  if (isPvpMode && aiSnake.length > 0) {
+    for (let i = 0; i < snake.length; i++) {
+      for (let j = 1; j < aiSnake.length; j++) { 
+        if (snake[i].x === aiSnake[j].x && snake[i].y === aiSnake[j].y) {
+          aiSnake.splice(j);
+          score += 20;
+          return;
+        }
+      }
+    }
+    
+    if (aiSnake.length > 0 && snake.length > 1) {
+      for (let i = 1; i < snake.length; i++) { 
+        if (aiSnake[0].x === snake[i].x && aiSnake[0].y === snake[i].y) {
+          snake.splice(i);
+          updateScoreDisplay();
+          return;
+        }
+      }
+    }
+    
+    if (head.x === aiSnake[0].x && head.y === aiSnake[0].y) {
+      const isHeadOn = (
+        (direction.x !== 0 && direction.x === -aiDirection.x && direction.y === 0 && aiDirection.y === 0) || 
+        (direction.y !== 0 && direction.y === -aiDirection.y && direction.x === 0 && aiDirection.x === 0)
+      );
+      
+      if (isHeadOn) {
+        playerHealth--;
+        aiHealth--;
+        updateHealthBars();
+        
+        if (playerHealth <= 0) {
+            gameOver();
+            return;
+          }
+          if (aiHealth <= 0) {
+            aiSnake = [{
+              x: -1,
+              y: -1,
+              visualX: -1,
+              visualY: -1
+            }];
+            
+            aiDirection = {x: 0, y: 0};
+            
+            if (playerHealth < 3) {
+              playerHealth += 1;
+              updateHealthBars();
+            }
+            
+            const respawnTimer = document.getElementById('respawn-timer');
+            respawnTimer.classList.add('active');
+            console.log('Starting respawn timer countdown');
+            let timeLeft = 20;
+            
+            const updateTimer = () => {
+              const minutes = Math.floor(timeLeft / 60);
+              const seconds = timeLeft % 60;
+              const formattedTime = `${minutes}:${seconds.toString().padStart(2, '0')}`;
+              document.getElementById('timer-value').textContent = formattedTime;
+            };
+            
+            clearRespawnTimer();
+            
+            respawnTimerInterval = setInterval(() => {
+              timeLeft--;
+              updateTimer();
+              
+              if (timeLeft <= 0) {
+                clearRespawnTimer();
+                aiHealth = 3;
+                updateHealthBars();
+                
+                const aiX = 0;
+                const aiY = Math.floor(tileCount / 2);
+                
+                aiSnake = [{
+                  x: aiX,
+                  y: aiY,
+                  visualX: aiX,
+                  visualY: aiY
+                }];
+                
+                aiDirection = {x: 1, y: 0};
+                
+              }
+            }, 1000);
+            return;
+          }
+        
+        direction = turnLeft(direction);
+        aiDirection = turnLeft(aiDirection);
+        return;
+      } else {
+        aiHealth -= 1;
+        updateAiHealthBar();
+        
+        snake.push({
+          x: snake[snake.length - 1].x,
+          y: snake[snake.length - 1].y,
+          visualX: snake[snake.length - 1].x,
+          visualY: snake[snake.length - 1].y
+        });
+        
+          if (aiHealth <= 0) {
+            aiSnake = [{
+              x: -1,
+              y: -1,
+              visualX: -1,
+              visualY: -1
+            }];
+            
+            aiDirection = {x: 0, y: 0};
+            
+            if (playerHealth < 3) {
+              playerHealth += 1;
+              updateHealthBars();
+            }
+            
+            snakesEaten++;
+            
+            if (score > highScore) {
+              highScore = score;
+            }
+            
+            updateScoreDisplays();
+            
+            const respawnTimer = document.getElementById('respawn-timer');
+            respawnTimer.style.display = 'inline-block'; 
+            console.log('Showing respawn timer');
+            let timeLeft = 20;
+          
+          const updateTimer = () => {
+            const minutes = Math.floor(timeLeft / 60);
+            const seconds = timeLeft % 60;
+            const formattedTime = `${minutes}:${seconds.toString().padStart(2, '0')}`;
+            document.getElementById('timer-value').textContent = formattedTime;
+          };
+          
+          updateTimer();
+          
+          clearRespawnTimer();
+          
+          respawnTimerInterval = setInterval(() => {
+            if (gameRunning) {
+              timeLeft--;
+              updateTimer();
+            }
+            
+            if (timeLeft <= 0) {
+              clearRespawnTimer();
+              
+              aiHealth = 3;
+              updateAiHealthBar();
+              
+              const aiX = 0;
+              const aiY = Math.floor(tileCount / 2);
+              
+              aiSnake = [{
+                x: aiX,
+                y: aiY,
+                visualX: aiX,
+                visualY: aiY
+              }];
+              
+              aiDirection = {x: 1, y: 0};
+              
+            }
+          }, 1000);
+        }
+      }
+    }
+    
+    for (let i = 1; i < aiSnake.length; i++) {
+      if (head.x === aiSnake[i].x && head.y === aiSnake[i].y) {
+        if (i === 1) {
+          aiHealth -= 1;
+          updateHealthBars();
+          
+          snake.push({
+            x: snake[snake.length - 1].x,
+            y: snake[snake.length - 1].y,
+            visualX: snake[snake.length - 1].x,
+            visualY: snake[snake.length - 1].y
+          });
+          updateScoreDisplay();
+        } else {
+          aiSnake.splice(i);
+        }
+        
+        if (aiHealth <= 0) {
+          enemyDefeatPoints += 100;
+          updateScoreDisplay(); 
+          
+            aiSnake = [{
+              x: -1,
+              y: -1,
+              visualX: -1,
+              visualY: -1
+            }];
+            
+            aiDirection = {x: 0, y: 0};
+            
+            if (playerHealth < 3) {
+              playerHealth += 1;
+              updateHealthBars();
+            }
+            
+            snakesEaten++;
+            
+            if (score > highScore) {
+              highScore = score;
+            }
+            
+            updateScoreDisplays();
+            
+            const respawnTimer = document.getElementById('respawn-timer');
+            respawnTimer.style.display = 'inline-block'; 
+            console.log('Showing respawn timer');
+            let timeLeft = 20;
+          
+          const updateTimer = () => {
+            const minutes = Math.floor(timeLeft / 60);
+            const seconds = timeLeft % 60;
+            const formattedTime = `${minutes}:${seconds.toString().padStart(2, '0')}`;
+            document.getElementById('timer-value').textContent = formattedTime;
+          };
+          
+          updateTimer();
+          
+          clearRespawnTimer();
+          
+          respawnTimerInterval = setInterval(() => {
+            timeLeft--;
+            updateTimer();
+            
+            if (timeLeft <= 0) {
+              clearRespawnTimer();
+              
+              aiHealth = 3;
+              updateHealthBars();
+              
+              const aiX = 0;
+              const aiY = Math.floor(tileCount / 2);
+              
+              aiSnake = [{
+                x: aiX,
+                y: aiY,
+                visualX: aiX,
+                visualY: aiY
+              }];
+              
+              aiDirection = {x: 1, y: 0};
+              
+            }
+          }, 1000);
+          return;
+        }
+        continue;
+      }
+      if (head.x === aiSnake[i].x && head.y === aiSnake[i].y) {
+        const removedSegments = aiSnake.splice(i);
+        
+        snake.push({
+          x: snake[snake.length - 1].x,
+          y: snake[snake.length - 1].y,
+          visualX: snake[snake.length - 1].x,
+          visualY: snake[snake.length - 1].y
+        });
+        enemyDefeatPoints += 100;
+        updateScoreDisplay();
+        break;
+      }
+    }
+    
+    calculateAiMove();
+    const aiHead = {x: aiSnake[0].x + aiDirection.x, y: aiSnake[0].y + aiDirection.y};
+    
+    const aiHitWall = aiHead.x < 0 || aiHead.x >= tileCount || aiHead.y < 0 || aiHead.y >= tileCount ||
+                     aiSnake.some(segment => segment.x === aiHead.x && segment.y === aiHead.y) ||
+                     walls.some(wall => {
+                       if (wall.isVertical) {
+                         return aiHead.x === wall.x && aiHead.y >= wall.y && aiHead.y < wall.y + wall.length;
+                       } else {
+                         return aiHead.y === wall.y && aiHead.x >= wall.x && aiHead.x < wall.x + wall.length;
+                       }
+                     });
+    
+    if (!aiHitWall) {
+      const hitPlayerSnake = snake.some((segment, index) => {
+        if (aiHead.x === segment.x && aiHead.y === segment.y) {
+          if (index === 0) {
+            const isHeadOn = (
+              (aiDirection.x !== 0 && aiDirection.x === -direction.x && aiDirection.y === 0 && direction.y === 0) || 
+              (aiDirection.y !== 0 && aiDirection.y === -direction.y && aiDirection.x === 0 && direction.x === 0)
+            );
+            
+            if (isHeadOn) {
+              playerHealth--;
+              aiHealth--;
+              updateHealthBars();
+              
+              if (playerHealth <= 0) {
+                gameOver();
+                return;
+              }
+              
+              if (aiHealth <= 0) {
+                aiSnake = [{
+                  x: -1,
+                  y: -1,
+                  visualX: -1,
+                  visualY: -1
+                }];
+                
+                aiDirection = {x: 0, y: 0};
+                
+                if (playerHealth < 3) {
+                  playerHealth += 1;
+                  updateHealthBars();
+                }
+                
+                snakesEaten++;
+                
+                if (score > highScore) {
+                  highScore = score;
+                }
+                
+                updateScoreDisplays();
+                
+                const respawnTimer = document.getElementById('respawn-timer');
+                respawnTimer.style.display = 'inline-block';
+                console.log('Showing respawn timer');
+                let timeLeft = 20;
+                
+                const updateTimer = () => {
+                  const minutes = Math.floor(timeLeft / 60);
+                  const seconds = timeLeft % 60;
+                  const formattedTime = `${minutes}:${seconds.toString().padStart(2, '0')}`;
+                  document.getElementById('timer-value').textContent = formattedTime;
+                };
+                
+                updateTimer();
+                
+                clearRespawnTimer();
+                
+                respawnTimerInterval = setInterval(() => {
+                  timeLeft--;
+                  updateTimer();
+                  
+                  if (timeLeft <= 0) {
+                    clearRespawnTimer();
+                    
+                    aiHealth = 3;
+                    updateHealthBars();
+                    
+                    const aiX = 0;
+                    const aiY = Math.floor(tileCount / 2);
+                    
+                    aiSnake = [{
+                      x: aiX,
+                      y: aiY,
+                      visualX: aiX,
+                      visualY: aiY
+                    }];
+                    
+                    aiDirection = {x: 1, y: 0};
+                    
+                  }
+                }, 1000);
+                return;
+              }
+              
+              direction = turnLeft(direction);
+              aiDirection = turnLeft(aiDirection);
+            } else {
+              playerHealth -= 1;
+              updateHealthBars();
+              
+              if (playerHealth <= 0) {
+                gameOver();
+                return;
+              }
+              
+              if (snake.length > 1) {
+                snake.pop();
+              }
+              aiSnake.push({
+                x: aiSnake[aiSnake.length - 1].x,
+                y: aiSnake[aiSnake.length - 1].y,
+                visualX: aiSnake[aiSnake.length - 1].x,
+                visualY: aiSnake[aiSnake.length - 1].y
+              });
+            }
+            return true;
+          }
+          
+          if (index === 1) {
+            playerHealth -= 1;
+            updateHealthBars();
+            
+            if (playerHealth <= 0) {
+              gameOver();
+              return;
+            }
+            
+            if (snake.length > 1) {
+              snake.pop();
+            }
+            aiSnake.push({
+              x: aiSnake[aiSnake.length - 1].x,
+              y: aiSnake[aiSnake.length - 1].y,
+              visualX: aiSnake[aiSnake.length - 1].x,
+              visualY: aiSnake[aiSnake.length - 1].y
+            });
+            return true;
+          }
+          
+          const removedSegments = snake.splice(index);
+          
+          aiSnake.push({
+            x: aiSnake[aiSnake.length - 1].x,
+            y: aiSnake[aiSnake.length - 1].y,
+            visualX: aiSnake[aiSnake.length - 1].x,
+            visualY: aiSnake[aiSnake.length - 1].y
+          });
+          document.getElementById('scoreValue').textContent = score;
+          return true;
+        }
+        return false;
+      });
+      
+      if (!hitPlayerSnake) {
+        aiHead.visualX = aiHead.x;
+        aiHead.visualY = aiHead.y;
+        aiSnake.unshift(aiHead);
+        
+        const aiFoodIndex = foods.findIndex(food => aiHead.x === food.x && aiHead.y === food.y);
+        if (aiFoodIndex !== -1) {
+          foods.splice(aiFoodIndex, 1);
+          foods.push(generateFood());
+        } else {
+          aiSnake.pop();
+        }
+      }
+    }
+  }
+  
   head.visualX = head.x;
   head.visualY = head.y;
   snake.unshift(head);
@@ -125,19 +813,44 @@ function update() {
       segment.visualY += (segment.y - segment.visualY) * movementSpeed;
     }
   });
+  
+  if (isPvpMode && aiSnake.length > 0) {
+    aiSnake.forEach(segment => {
+      if (segment.visualX !== segment.x) {
+        segment.visualX += (segment.x - segment.visualX) * movementSpeed;
+      }
+      if (segment.visualY !== segment.y) {
+        segment.visualY += (segment.y - segment.visualY) * movementSpeed;
+      }
+    });
+  }
+  
+  if (specialSnakeActive && specialSnake.length > 0) {
+    specialSnake.forEach(segment => {
+      if (segment.visualX !== segment.x) {
+        segment.visualX += (segment.x - segment.visualX) * movementSpeed;
+      }
+      if (segment.visualY !== segment.y) {
+        segment.visualY += (segment.y - segment.visualY) * movementSpeed;
+      }
+    });
+  }
 
   const foodIndex = foods.findIndex(food => head.x === food.x && head.y === food.y);
   if (foodIndex !== -1) {
-    score++;
-    document.getElementById('scoreValue').textContent = score;
     foods.splice(foodIndex, 1);
     foods.push(generateFood());
-    if (document.getElementById('difficulty').value === 'easy' && foods.length < 2) {
+    if ((document.getElementById('difficulty').value === 'easy' || 
+         document.getElementById('difficulty').value === 'pvp') && 
+        foods.length < 2) {
       foods.push(generateFood());
     }
   } else {
     snake.pop();
   }
+  
+  updateScoreDisplay(); 
+  document.getElementById('scoreValue').textContent = score;
 }
 
 const headImage = new Image();
@@ -155,6 +868,8 @@ Promise.all([
 ]).then(() => {
   imagesLoaded = true;
   startButton.disabled = false;
+  startButton.textContent = 'Start Game';
+  document.getElementById('highScoreValue').textContent = highScore;
 });
 
 headImage.src = 'images/drago.png';
@@ -218,32 +933,215 @@ function draw() {
     
     ctx.restore();
   });
+  
+  if (isPvpMode && aiSnake.length > 0) {
+    aiSnake.forEach((segment, index) => {
+      const ctx_save = ctx.save();
+      
+      ctx.filter = 'hue-rotate(180deg)';
+      
+      if (index === 0) {
+        let rotation = Math.PI * 1.5;
+        if (aiDirection.x === 1) rotation = Math.PI * 1.5;
+        else if (aiDirection.x === -1) rotation = Math.PI * 0.5;
+        else if (aiDirection.y === -1) rotation = Math.PI;
+        else if (aiDirection.y === 1) rotation = 0;
+        
+        ctx.translate(segment.visualX * gridSize + gridSize/2, segment.visualY * gridSize + gridSize/2);
+        ctx.rotate(rotation);
+        ctx.drawImage(headImage, -gridSize/2, -gridSize/2, gridSize, gridSize);
+      } else {
+        const prevSegment = aiSnake[index - 1];
+        const dx = segment.x - prevSegment.x;
+        const dy = segment.y - prevSegment.y;
+        let rotation = 0;
+        
+        if (dx === 1) rotation = Math.PI/2;
+        else if (dx === -1) rotation = -Math.PI/2;
+        else if (dy === -1) rotation = 0;
+        else if (dy === 1) rotation = Math.PI;
+        
+        ctx.translate(segment.visualX * gridSize + gridSize/2, segment.visualY * gridSize + gridSize/2);
+        ctx.rotate(rotation);
+        ctx.drawImage(tailImage, -gridSize/2, -gridSize/2, gridSize, gridSize);
+      }
+      
+      ctx.filter = 'none';
+      ctx.restore();
+    });
+  }
+
+  if (specialSnakeActive && specialSnake.length > 0) {
+    specialSnake.forEach((segment, index) => {
+      const ctx_save = ctx.save();
+      
+      ctx.filter = 'hue-rotate(100deg)';
+      
+      if (index === 0) {
+        let rotation = Math.PI * 1.5;
+        if (specialSnakeDirection.x === 1) rotation = Math.PI * 1.5;
+        else if (specialSnakeDirection.x === -1) rotation = Math.PI * 0.5;
+        else if (specialSnakeDirection.y === -1) rotation = Math.PI;
+        else if (specialSnakeDirection.y === 1) rotation = 0;
+        
+        ctx.translate(segment.visualX * gridSize + gridSize/2, segment.visualY * gridSize + gridSize/2);
+        ctx.rotate(rotation);
+        ctx.drawImage(headImage, -gridSize/2, -gridSize/2, gridSize, gridSize);
+      } else {
+        const prevSegment = specialSnake[index - 1];
+        const dx = segment.x - prevSegment.x;
+        const dy = segment.y - prevSegment.y;
+        let rotation = 0;
+        
+        if (dx === 1) rotation = Math.PI/2;
+        else if (dx === -1) rotation = -Math.PI/2;
+        else if (dy === -1) rotation = 0;
+        else if (dy === 1) rotation = Math.PI;
+        
+        ctx.translate(segment.visualX * gridSize + gridSize/2, segment.visualY * gridSize + gridSize/2);
+        ctx.rotate(rotation);
+        ctx.drawImage(tailImage, -gridSize/2, -gridSize/2, gridSize, gridSize);
+      }
+      
+      ctx.filter = 'none';
+      ctx.restore();
+    });
+  }
 
   foods.forEach(food => {
     ctx.drawImage(foodImage, food.x * gridSize, food.y * gridSize, gridSize, gridSize);
   });
 }
 
+let respawnTimerInterval = null;
+let timerPaused = false;
+let savedTimeLeft = 0;
+let timerWasVisible = false;
+
+let specialSnakeTimerInterval = null;
+let specialSnakeTimerPaused = false;
+let specialSnakeSavedTimeLeft = 60; 
+let specialSnakeActive = false;
+let specialSnake = [];
+let specialSnakeDirection = {x: 0, y: 0};
+let specialSnakeHealth = 3;
+
+function clearRespawnTimer() {
+  if (respawnTimerInterval) {
+    clearInterval(respawnTimerInterval);
+    respawnTimerInterval = null;
+  }
+  const respawnTimer = document.getElementById('respawn-timer');
+  if (respawnTimer) {
+    respawnTimer.classList.remove('active');
+    document.getElementById('timer-value').textContent = '0:20';
+    console.log('Resetting respawn timer');
+  }
+  timerPaused = false;
+  savedTimeLeft = 0;
+  timerWasVisible = false;
+}
+
+function clearSpecialSnakeTimer() {
+  if (specialSnakeTimerInterval) {
+    clearInterval(specialSnakeTimerInterval);
+    specialSnakeTimerInterval = null;
+  }
+  specialSnakeTimerPaused = false;
+  specialSnakeSavedTimeLeft = 60; 
+  specialSnakeActive = false;
+  specialSnake = [];
+}
+
+function startSpecialSnakeTimer() {
+  clearSpecialSnakeTimer();
+  
+  let timeLeft = 60; 
+  
+  specialSnakeTimerInterval = setInterval(() => {
+    if (!gameRunning) return; 
+    
+    timeLeft--;
+    
+    if (timeLeft <= 0) {
+      clearSpecialSnakeTimer();
+      spawnSpecialEnemySnake();
+    }
+  }, 1000);
+}
+
+function spawnSpecialEnemySnake() {
+  specialSnakeActive = true;
+  specialSnakeHealth = 3;
+  
+  const specialX = tileCount - 1;
+  const specialY = 0; 
+  
+  const isOccupied = 
+    walls.some(wall => {
+      if (wall.isVertical) {
+        return specialX === wall.x && specialY >= wall.y && specialY < wall.y + wall.length;
+      } else {
+        return specialY === wall.y && specialX >= wall.x && specialX < wall.x + wall.length;
+      }
+    }) ||
+    foods.some(food => food.x === specialX && food.y === specialY) ||
+    (aiSnake.length > 0 && aiSnake.some(segment => 
+      segment.x === specialX && segment.y === specialY
+    ));
+  
+  const finalX = isOccupied ? tileCount - 2 : tileCount - 1;
+  
+  specialSnake = [{x: finalX, y: specialY, visualX: finalX, visualY: specialY}];
+  specialSnakeDirection = {x: 0, y: 0};
+}
+
 function gameOver() {
   gameRunning = false;
-  startButton.disabled = false;
-  pauseButton.disabled = true;
+  startButton.textContent = 'Start Game';
+  
+  updateScoreDisplay();
   document.getElementById('scoreValue').textContent = `${score} (💀)`;
+  
+  if (score > highScore) {
+    highScore = score;
+    localStorage.setItem('snakeHighScore', highScore);
+    document.getElementById('highScoreValue').textContent = highScore;
+  }
+  
+  clearRespawnTimer();
+  clearSpecialSnakeTimer();
 }
 
 const startButton = document.getElementById('startButton');
-const pauseButton = document.getElementById('pauseButton');
 
 let gameSpeed = baseGameSpeed;
 
 function updateGameSpeed() {
   const difficulty = document.getElementById('difficulty').value;
+  isPvpMode = difficulty === 'pvp';
+  
+  const healthBarsContainer = document.getElementById('health-bars-container');
+  const respawnTimer = document.getElementById('respawn-timer');
+  
+  if (isPvpMode) {
+    healthBarsContainer.style.display = 'flex';
+    respawnTimer.style.display = 'inline-block';
+    updateHealthBars();
+  } else {
+    healthBarsContainer.style.display = 'none';
+    respawnTimer.style.display = 'none';
+  }
+  
   switch (difficulty) {
     case 'easy':
-      gameSpeed = baseGameSpeed * 1.3;
+      gameSpeed = baseGameSpeed * 1.4;
       break;
     case 'hard':
       gameSpeed = baseGameSpeed * 0.95;
+      break;
+    case 'pvp':
+      gameSpeed = baseGameSpeed * 1.4; 
       break;
     default:
       gameSpeed = baseGameSpeed * 1.05;
@@ -251,40 +1149,199 @@ function updateGameSpeed() {
   generateWalls();
 }
 
+function updateHealthBars() {
+  const aiHealthBar = document.getElementById('ai-health-bar');
+  const playerHealthBar = document.getElementById('player-health-bar');
+  const aiHealthPercentage = (aiHealth / 3) * 100;
+  const playerHealthPercentage = (playerHealth / 3) * 100;
+  aiHealthBar.style.width = `${aiHealthPercentage}%`;
+  playerHealthBar.style.width = `${playerHealthPercentage}%`;
+}
+
+function updateScoreDisplay() {
+  const tailPoints = snake.length * 10;
+  
+  score = tailPoints + enemyDefeatPoints;
+  
+  document.getElementById('scoreValue').textContent = score;
+}
+
+function updateScoreDisplays() {
+  document.getElementById('scoreValue').textContent = score;
+  document.getElementById('highScoreValue').textContent = highScore;
+  document.getElementById('snakesEatenValue').textContent = snakesEaten;
+  
+  localStorage.setItem('snakeHighScore', highScore);
+}
+
+function updateAiHealthBar() {
+  updateHealthBars();
+}
+
 document.getElementById('difficulty').addEventListener('change', () => {
   updateGameSpeed();
+  
+  // Regenerate food when switching difficulty modes
+  foods = [];
+  foods.push(generateFood());
+  
+  // Add additional food based on difficulty
+  const difficulty = document.getElementById('difficulty').value;
+  if (difficulty === 'easy' || isPvpMode) {
+    foods.push(generateFood());
+  }
 });
 
 startButton.addEventListener('click', () => {
+  if (gameRunning) {
+    gameRunning = false;
+    startButton.textContent = 'Resume';
+    
+    if (respawnTimerInterval) {
+      clearInterval(respawnTimerInterval);
+      respawnTimerInterval = null;
+      timerPaused = true;
+      
+      const respawnTimer = document.getElementById('respawn-timer');
+      timerWasVisible = respawnTimer && respawnTimer.classList.contains('active');
+      
+      const timerValue = document.getElementById('timer-value').textContent;
+      const parts = timerValue.split(':');
+      savedTimeLeft = parseInt(parts[0]) * 60 + parseInt(parts[1]);
+      console.log('Timer paused with ' + savedTimeLeft + ' seconds left');
+    }
+    
+    if (specialSnakeTimerInterval) {
+      clearInterval(specialSnakeTimerInterval);
+      specialSnakeTimerInterval = null;
+      specialSnakeTimerPaused = true;
+    }
+    return;
+  }
+  
+  if (startButton.textContent === 'Resume') {
+    gameRunning = true;
+    startButton.textContent = 'Pause';
+    
+      if (timerPaused && timerWasVisible && savedTimeLeft > 0) {
+        const respawnTimer = document.getElementById('respawn-timer');
+        respawnTimer.classList.add('active');
+        console.log('Restoring timer with ' + savedTimeLeft + ' seconds left');
+      
+      let timeLeft = savedTimeLeft;
+      
+      const updateTimer = () => {
+        const minutes = Math.floor(timeLeft / 60);
+        const seconds = timeLeft % 60;
+        const formattedTime = `${minutes}:${seconds.toString().padStart(2, '0')}`;
+        document.getElementById('timer-value').textContent = formattedTime;
+      };
+      
+      updateTimer();
+      
+      respawnTimerInterval = setInterval(() => {
+        if (!gameRunning) return; 
+        
+        timeLeft--;
+        updateTimer();
+        
+        if (timeLeft <= 0) {
+          clearRespawnTimer();
+          
+          aiHealth = 3;
+          updateHealthBars();
+          
+          const aiX = 0;
+          const aiY = Math.floor(tileCount / 2);
+          
+          aiSnake = [{
+            x: aiX,
+            y: aiY,
+            visualX: aiX,
+            visualY: aiY
+          }];
+          
+          aiDirection = {x: 1, y: 0};
+          
+        }
+      }, 1000);
+    }
+    
+    if (specialSnakeTimerPaused) {
+      let timeLeft = specialSnakeSavedTimeLeft;
+      
+      specialSnakeTimerInterval = setInterval(() => {
+        if (!gameRunning) return; 
+        
+        timeLeft--;
+        specialSnakeSavedTimeLeft = timeLeft;
+        
+        if (timeLeft <= 0) {
+          clearSpecialSnakeTimer();
+          spawnSpecialEnemySnake();
+        }
+      }, 1000);
+      
+      specialSnakeTimerPaused = false;
+    }
+    
+    gameLoop();
+    return;
+  }
+  
   if (!imagesLoaded) return;
-  snake = [{x: 10, y: 10}];
+  snake = [{x: 10, y: 10, visualX: 10, visualY: 10}];
   direction = {x: 0, y: 0};
-  score = 0;
+  updateScoreDisplay();  
+  snakesEaten = 0; 
   gameStarted = false;
+  aiHealth = 3; 
+  playerHealth = 3; 
   updateGameSpeed();
   generateWalls();
   foods = [];
   foods.push(generateFood());
-  if (document.getElementById('difficulty').value === 'easy') {
+  clearRespawnTimer();
+  
+  startSpecialSnakeTimer();
+  
+  if (isPvpMode) {
+    let aiX, aiY;
+    do {
+      aiX = Math.floor(Math.random() * tileCount);
+      aiY = Math.floor(Math.random() * tileCount);
+    } while (
+      snake.some(segment => 
+        Math.abs(segment.x - aiX) < 3 && Math.abs(segment.y - aiY) < 3
+      ) ||
+      walls.some(wall => {
+        if (wall.isVertical) {
+          return aiX === wall.x && aiY >= wall.y && aiY < wall.y + wall.length;
+        } else {
+          return aiY === wall.y && aiX >= wall.x && aiX < wall.x + wall.length;
+        }
+      }) ||
+      foods.some(food => food.x === aiX && food.y === aiY)
+    );
+    
+    aiSnake = [{x: aiX, y: aiY, visualX: aiX, visualY: aiY}];
+    aiDirection = {x: 0, y: 0};
     foods.push(generateFood());
+    updateAiHealthBar(); 
+  } else {
+    aiSnake = [];
+    if (document.getElementById('difficulty').value === 'easy') {
+      foods.push(generateFood());
+    }
   }
+  
   document.getElementById('scoreValue').textContent = score;
   gameRunning = true;
-  startButton.disabled = true;
-  pauseButton.disabled = false;
+  startButton.textContent = 'Pause';
   gameLoop();
 });
 
-pauseButton.addEventListener('click', () => {
-  gameRunning = !gameRunning;
-  pauseButton.textContent = gameRunning ? 'Pause' : 'Resume';
-  if (gameRunning) {
-    gameLoop();
-  }
-});
-
 startButton.disabled = true;
-pauseButton.disabled = true;
 
 let touchStartX = 0;
 let touchStartY = 0;
@@ -296,7 +1353,9 @@ document.addEventListener('touchstart', e => {
 });
 
 document.addEventListener('touchmove', e => {
-  e.preventDefault();
+  if (e.target.closest('#gameCanvas') || e.target.closest('.d-pad')) {
+    e.preventDefault();
+  }
 }, { passive: false });
 
 document.addEventListener('touchend', e => {
@@ -334,6 +1393,42 @@ document.addEventListener('touchend', e => {
 
 const dPadButtons = document.querySelectorAll('.d-pad button');
 dPadButtons.forEach(button => {
+  button.addEventListener('touchstart', function(e) {
+    e.preventDefault();
+    if (!gameRunning) return;
+    
+    let newDirection = {...direction};
+    switch (button.className) {
+      case 'up':
+        if (direction.y === 0) newDirection = {x: 0, y: -1};
+        break;
+      case 'down':
+        if (direction.y === 0) newDirection = {x: 0, y: 1};
+        break;
+      case 'left':
+        if (direction.x === 0) newDirection = {x: -1, y: 0};
+        break;
+      case 'right':
+        if (direction.x === 0) newDirection = {x: 1, y: 0};
+        break;
+    }
+    
+    if (!gameStarted && (newDirection.x !== 0 || newDirection.y !== 0)) {
+      gameStarted = true;
+    }
+    direction = newDirection;
+    button.classList.add('active');
+  });
+  
+  button.addEventListener('touchend', function(e) {
+    e.preventDefault();
+    button.classList.remove('active');
+  });
+  
+  button.addEventListener('touchmove', function(e) {
+    e.preventDefault();
+  });
+  
   button.addEventListener('click', () => {
     if (!gameRunning) return;
     
@@ -361,6 +1456,16 @@ dPadButtons.forEach(button => {
 });
 
 document.addEventListener('keydown', (e) => {
+  if (e.key === ' ' || e.code === 'Space') {
+    startButton.click();
+    e.preventDefault(); 
+    return;
+  }
+  
+  if (e.key === 'ArrowUp' || e.key === 'ArrowDown' || e.key === 'ArrowLeft' || e.key === 'ArrowRight') {
+    e.preventDefault();
+  }
+  
   if (!gameRunning) return;
   
   let newDirection = {...direction};
