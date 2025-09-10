@@ -259,8 +259,49 @@ function update() {
                           return newSpecialHead.y === wall.y && newSpecialHead.x >= wall.x && newSpecialHead.x < wall.x + wall.length;
                         }
                       });
+      
+      const hitSnakeSegment = snake.some(segment => newSpecialHead.x === segment.x && newSpecialHead.y === segment.y) ||
+                            (isPvpMode && aiSnake && aiSnake.length > 0 && aiSnake.some(segment => newSpecialHead.x === segment.x && newSpecialHead.y === segment.y));
+      
+      if (hitSnakeSegment) {
+        specialSnakeDirection = turnLeft(specialSnakeDirection);
+        newSpecialHead.x = specialHead.x + specialSnakeDirection.x;
+        newSpecialHead.y = specialHead.y + specialSnakeDirection.y;
+        newSpecialHead.visualX = newSpecialHead.x;
+        newSpecialHead.visualY = newSpecialHead.y;
+        
+        const hitWallAfterTurn = newSpecialHead.x < 0 || newSpecialHead.x >= tileCount || 
+                               newSpecialHead.y < 0 || newSpecialHead.y >= tileCount ||
+                               specialSnake.some(segment => segment.x === newSpecialHead.x && segment.y === newSpecialHead.y) ||
+                               walls.some(wall => {
+                                 if (wall.isVertical) {
+                                   return newSpecialHead.x === wall.x && newSpecialHead.y >= wall.y && newSpecialHead.y < wall.y + wall.length;
+                                 } else {
+                                   return newSpecialHead.y === wall.y && newSpecialHead.x >= wall.x && newSpecialHead.x < wall.x + wall.length;
+                                 }
+                               });
+        
+        if (hitWallAfterTurn) {
+          specialSnakeDirection = turnLeft(specialSnakeDirection);
+          newSpecialHead.x = specialHead.x + specialSnakeDirection.x;
+          newSpecialHead.y = specialHead.y + specialSnakeDirection.y;
+          newSpecialHead.visualX = newSpecialHead.x;
+          newSpecialHead.visualY = newSpecialHead.y;
+        }
+      }
     
-      if (!hitWall) {
+      const finalHitWall = newSpecialHead.x < 0 || newSpecialHead.x >= tileCount || 
+                         newSpecialHead.y < 0 || newSpecialHead.y >= tileCount ||
+                         specialSnake.some(segment => segment.x === newSpecialHead.x && segment.y === newSpecialHead.y) ||
+                         walls.some(wall => {
+                           if (wall.isVertical) {
+                             return newSpecialHead.x === wall.x && newSpecialHead.y >= wall.y && newSpecialHead.y < wall.y + wall.length;
+                           } else {
+                             return newSpecialHead.y === wall.y && newSpecialHead.x >= wall.x && newSpecialHead.x < wall.x + wall.length;
+                           }
+                         });
+                         
+      if (!finalHitWall) {
         specialSnake.unshift(newSpecialHead);
         
         const hitPlayerSnake = snake.some((segment, index) => {
@@ -278,6 +319,15 @@ function update() {
             }
             
             const removedSegments = snake.splice(index);
+            if (removedSegments.length > 0) {
+              playerHealth -= 0.05 * removedSegments.length;
+              updateHealthBars();
+              
+              if (playerHealth <= 0) {
+                gameOver();
+                return true;
+              }
+            }
             return true;
           }
           return false;
@@ -314,7 +364,17 @@ function update() {
   if (specialSnakeActive && specialSnake.length > 0 && snake.length > 1) {
     for (let i = 1; i < snake.length; i++) {
       if (specialSnake[0].x === snake[i].x && specialSnake[0].y === snake[i].y) {
-        snake.splice(i);
+        const removedSegments = snake.splice(i);
+        // Apply damage for lost tail segments (0.05 per segment)
+        if (removedSegments.length > 0) {
+          playerHealth -= 0.05 * removedSegments.length;
+          updateHealthBars();
+          
+          if (playerHealth <= 0) {
+            gameOver();
+            return;
+          }
+        }
         updateScoreDisplay();
         return;
       }
@@ -823,6 +883,17 @@ function update() {
           
           const removedSegments = snake.splice(index);
           
+          // Apply damage for lost tail segments (0.05 per segment)
+          if (removedSegments.length > 0) {
+            playerHealth -= 0.05 * removedSegments.length;
+            updateHealthBars();
+            
+            if (playerHealth <= 0) {
+              gameOver();
+              return true;
+            }
+          }
+          
           aiSnake.push({
             x: aiSnake[aiSnake.length - 1].x,
             y: aiSnake[aiSnake.length - 1].y,
@@ -891,6 +962,12 @@ function update() {
   if (foodIndex !== -1) {
     foods.splice(foodIndex, 1);
     foods.push(generateFood());
+    
+    if (playerHealth < 3) {
+      playerHealth = Math.min(3, playerHealth + 0.25);
+      updateHealthBars();
+    }
+    
     if ((document.getElementById('difficulty').value === 'easy' || 
          document.getElementById('difficulty').value === 'pvp') && 
         foods.length < 2) {
