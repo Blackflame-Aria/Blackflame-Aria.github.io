@@ -208,76 +208,84 @@ function turnLeft(currentDirection) {
   return currentDirection;
 }
 
+let specialSnakeMovementCounter = 0;
+
 function update() {
   if (!gameStarted) return;
   
+  specialSnakeMovementCounter = (specialSnakeMovementCounter + 1) % 4;
+  
   if (specialSnakeActive && specialSnake.length > 0) {
-    const specialHead = specialSnake[0];
-    const playerHead = snake[0];
-    const firstTailSegment = snake[1];
-    if (firstTailSegment) {
-      const dx = firstTailSegment.x - specialHead.x;
-      const dy = firstTailSegment.y - specialHead.y;
-      
-      if (Math.abs(dx) > Math.abs(dy)) {
-        specialSnakeDirection = {x: dx > 0 ? 1 : -1, y: 0};
-      } else {
-        specialSnakeDirection = {x: 0, y: dy > 0 ? 1 : -1};
-      }
+
+    if (specialSnakeMovementCounter === 0) {
     } else {
-      const dx = playerHead.x - specialHead.x;
-      const dy = playerHead.y - specialHead.y;
-      
-      if (Math.abs(dx) > Math.abs(dy)) {
-        specialSnakeDirection = {x: dx > 0 ? 1 : -1, y: 0};
+      const specialHead = specialSnake[0];
+      const playerHead = snake[0];
+      const firstTailSegment = snake[1];
+      if (firstTailSegment) {
+        const dx = firstTailSegment.x - specialHead.x;
+        const dy = firstTailSegment.y - specialHead.y;
+        
+        if (Math.abs(dx) > Math.abs(dy)) {
+          specialSnakeDirection = {x: dx > 0 ? 1 : -1, y: 0};
+        } else {
+          specialSnakeDirection = {x: 0, y: dy > 0 ? 1 : -1};
+        }
       } else {
-        specialSnakeDirection = {x: 0, y: dy > 0 ? 1 : -1};
+        const dx = playerHead.x - specialHead.x;
+        const dy = playerHead.y - specialHead.y;
+        
+        if (Math.abs(dx) > Math.abs(dy)) {
+          specialSnakeDirection = {x: dx > 0 ? 1 : -1, y: 0};
+        } else {
+          specialSnakeDirection = {x: 0, y: dy > 0 ? 1 : -1};
+        }
       }
-    }
-    
-    const newSpecialHead = {
-      x: specialHead.x + specialSnakeDirection.x,
-      y: specialHead.y + specialSnakeDirection.y,
-      visualX: specialHead.x + specialSnakeDirection.x,
-      visualY: specialHead.y + specialSnakeDirection.y
-    };
-    
-    const hitWall = newSpecialHead.x < 0 || newSpecialHead.x >= tileCount || 
-                    newSpecialHead.y < 0 || newSpecialHead.y >= tileCount ||
-                    specialSnake.some(segment => segment.x === newSpecialHead.x && segment.y === newSpecialHead.y) ||
-                    walls.some(wall => {
-                      if (wall.isVertical) {
-                        return newSpecialHead.x === wall.x && newSpecialHead.y >= wall.y && newSpecialHead.y < wall.y + wall.length;
-                      } else {
-                        return newSpecialHead.y === wall.y && newSpecialHead.x >= wall.x && newSpecialHead.x < wall.x + wall.length;
-                      }
-                    });
-    
-    if (!hitWall) {
-      specialSnake.unshift(newSpecialHead);
       
-      const hitPlayerSnake = snake.some((segment, index) => {
-        if (newSpecialHead.x === segment.x && newSpecialHead.y === segment.y) {
-          if (index === 0) {
-            playerHealth -= 0.10;
-            updateHealthBars();
-            
-            if (playerHealth <= 0) {
-              gameOver();
+      const newSpecialHead = {
+        x: specialHead.x + specialSnakeDirection.x,
+        y: specialHead.y + specialSnakeDirection.y,
+        visualX: specialHead.x + specialSnakeDirection.x,
+        visualY: specialHead.y + specialSnakeDirection.y
+      };
+      
+      const hitWall = newSpecialHead.x < 0 || newSpecialHead.x >= tileCount || 
+                      newSpecialHead.y < 0 || newSpecialHead.y >= tileCount ||
+                      specialSnake.some(segment => segment.x === newSpecialHead.x && segment.y === newSpecialHead.y) ||
+                      walls.some(wall => {
+                        if (wall.isVertical) {
+                          return newSpecialHead.x === wall.x && newSpecialHead.y >= wall.y && newSpecialHead.y < wall.y + wall.length;
+                        } else {
+                          return newSpecialHead.y === wall.y && newSpecialHead.x >= wall.x && newSpecialHead.x < wall.x + wall.length;
+                        }
+                      });
+    
+      if (!hitWall) {
+        specialSnake.unshift(newSpecialHead);
+        
+        const hitPlayerSnake = snake.some((segment, index) => {
+          if (newSpecialHead.x === segment.x && newSpecialHead.y === segment.y) {
+            if (index === 0) {
+              playerHealth -= 0.12;
+              updateHealthBars();
+              
+              if (playerHealth <= 0) {
+                gameOver();
+                return true;
+              }
+              
               return true;
             }
             
+            const removedSegments = snake.splice(index);
             return true;
           }
-          
-          const removedSegments = snake.splice(index);
-          return true;
+          return false;
+        });
+        
+        if (!hitPlayerSnake && specialSnake.length > 5) {
+          specialSnake.pop();
         }
-        return false;
-      });
-      
-      if (!hitPlayerSnake && specialSnake.length > 5) {
-        specialSnake.pop();
       }
     }
   }
@@ -287,9 +295,17 @@ function update() {
       for (let j = 1; j < specialSnake.length; j++) { 
         if (snake[i].x === specialSnake[j].x && snake[i].y === specialSnake[j].y) {
           specialSnake.splice(j);
-            enemyDefeatPoints += 20;
-            updateScoreDisplay();
-            return;
+          specialSnakeHealth -= 0.75;
+          if (specialSnakeHealth <= 0) {
+            specialSnake = [];
+            specialSnakeActive = false;
+            enemyDefeatPoints += 500;
+            playerHealth = 3;
+            updateHealthBars();
+          }
+          enemyDefeatPoints += 20;
+          updateScoreDisplay();
+          return;
         }
       }
     }
@@ -359,6 +375,14 @@ function update() {
         for (let j = 1; j < specialSnake.length; j++) { 
           if (snake[i].x === specialSnake[j].x && snake[i].y === specialSnake[j].y) {
             specialSnake.splice(j);
+            specialSnakeHealth -= 0.75;
+            if (specialSnakeHealth <= 0) {
+              specialSnake = [];
+              specialSnakeActive = false;
+              enemyDefeatPoints += 500;
+              playerHealth = 3;
+              updateHealthBars();
+            }
             enemyDefeatPoints += 20;
             updateScoreDisplay(); 
             return;
@@ -1131,7 +1155,7 @@ function gameOver() {
   document.getElementById('scoreValue').textContent = `${score} (💀)`;
   
   const currentDifficulty = document.getElementById('difficulty').value;
-if (score > getHighScore(currentDifficulty)) {
+  if (score > getHighScore(currentDifficulty)) {
     highScore = score;
     setHighScore(currentDifficulty, score);
     document.getElementById('highScoreValue').textContent = highScore;
@@ -1327,6 +1351,8 @@ startButton.addEventListener('click', () => {
   if (!imagesLoaded) return;
   snake = [{x: 10, y: 10, visualX: 10, visualY: 10}];
   direction = {x: 0, y: 0};
+  score = 0;
+  enemyDefeatPoints = 0;
   updateScoreDisplay();  
   snakesEaten = 0; 
   gameStarted = false;

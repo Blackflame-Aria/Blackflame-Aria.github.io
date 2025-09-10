@@ -142,9 +142,9 @@
   width: 120px;
   margin: 2px;
   font-weight: bold;
-  background: linear-gradient(to bottom, #4a4a4a, #2a2a2a);
-  color: white;
-  border: 1px solid rgba(255, 255, 255, 0.2);
+  background: linear-gradient(to bottom, rgb(26, 54, 26), #000000);
+  color: #0f0;
+  border: 1px solid #0f0;
   border-radius: 6px;
   padding: 5px 10px;
   font-size: 1.2em;
@@ -155,7 +155,7 @@
 }
 
 .menu-buttons button:hover {
-  background: linear-gradient(to bottom, #5a5a5a, #3a3a3a);
+  background: linear-gradient(to bottom, #0f0, #000000);
   transform: translateY(-2px);
   box-shadow: 0 6px 12px rgba(0, 0, 0, 0.4);
   border: 1px solid rgba(255, 255, 255, 0.3);

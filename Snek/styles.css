@@ -214,8 +214,8 @@ a:hover {
   margin-bottom: 5px;
   padding: 1px 15px;
   background-color: #000000;
-  border: 2px solid #4d3975;
-  color: rgb(255, 255, 255);
+  border: 2px solid #0f0;
+  color: #0f0;
   border-radius: 8px;
   transition: all 0.3s ease;
   min-height: 20px;
@@ -224,15 +224,15 @@ a:hover {
 }
 
 #return-button:hover {
-  background-color: #ffffff;
-  color: rgb(255, 255, 255);
-  border-color: #ffffff;
+  background-color: rgb(119, 255, 119);
+  color: #0f0;
+  border-color: rgb(188, 255, 188);
   transform: translateY(-2px);
   box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
 }
 
 button:hover {
-  background-color: #ffffff;
+  background-color: #0f0;
   color: #ffffff;
   transform: translateY(-2px);
   box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
@@ -256,7 +256,7 @@ button:hover {
 }
 
 .snakes-eaten {
-  color: #ff6b6b; 
+  color: #0f0; 
   background-color: rgba(0, 0, 0, 0.3);
   padding: 5px 10px;
   border-radius: 10px;
@@ -268,13 +268,13 @@ button:hover {
   margin: 0 0 5px 0;
   font-size: 1.4rem;
   font-weight: bold;
-  color: #ffffff;
+  color: #0f0;
   display: flex;
   align-items: center;
   justify-content: center;
   flex-wrap: wrap;
-  text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.7);
-  background-color: rgba(0, 0, 0, 0.3);
+  text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.9);
+  background-color: rgba(0, 0, 0, 0.6);
   padding: 5px 8px;
   border-radius: 8px;
   box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3);
@@ -285,9 +285,9 @@ button:hover {
 
 .difficulty-selector select {
   font-family: monospace;
-  background-color: #000000;
-  color: white;
-  border: 1px solid rgba(255, 255, 255, 0.2);
+  background: linear-gradient(to bottom, rgb(26, 54, 26), #000000);
+  color: #0f0;
+  border: 1px solid #0f0;
   padding: 8px 15px;
   border-radius: 8px;
   cursor: pointer;
@@ -299,8 +299,8 @@ button:hover {
 }
 
 .difficulty-selector select:hover {
-  background-color: #ffffff;
-  color: #000000;
+  background-color: #141414;
+  color: #0f0;
   transform: translateY(-2px);
   box-shadow: 0 6px 12px rgba(0, 0, 0, 0.4);
 }
