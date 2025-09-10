@@ -130,6 +130,9 @@ body {
   .health-label {
     font-size: 1em;
   }
+  .difficulty-selector {
+    font-size: 1.2em;
+  }
 }
 
 
@@ -342,7 +345,7 @@ button:hover {
   }
   
   .difficulty-selector {
-    font-size: .8rem;
+    font-size: 1.2em;
   }
   
   .difficulty-selector select {
@@ -426,6 +429,7 @@ button:hover {
   
   .difficulty-selector {
     flex-direction: column;
+    font-size: 1.2em;
   }
   
   .difficulty-selector select {
