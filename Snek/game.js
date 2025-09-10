@@ -336,6 +336,8 @@ function update() {
             specialSnake = [];
             specialSnakeActive = false;
             enemyDefeatPoints += 500;
+            playerHealth = 3;
+            updateHealthBars();
             updateScoreDisplay(); 
             return true;
           }
