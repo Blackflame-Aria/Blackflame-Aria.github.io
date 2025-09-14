@@ -13,10 +13,12 @@ setCanvasSize();
 window.addEventListener('resize', setCanvasSize);
 
 let gridSize;
+let imageSize;
 const tileCount = 15;
 
 function updateGridSize() {
   gridSize = canvas.width / tileCount;
+  imageSize = Math.max(gridSize, 20);
 }
 
 updateGridSize();
@@ -1044,11 +1046,17 @@ function draw() {
   walls.forEach(wall => {
     if (wall.isVertical) {
       for (let i = 0; i < wall.length; i++) {
-        ctx.drawImage(wallImage, wall.x * gridSize, (wall.y + i) * gridSize, gridSize, gridSize);
+        // Center the image in the grid cell
+        const x = wall.x * gridSize + (gridSize - imageSize) / 2;
+        const y = (wall.y + i) * gridSize + (gridSize - imageSize) / 2;
+        ctx.drawImage(wallImage, x, y, imageSize, imageSize);
       }
     } else {
       for (let i = 0; i < wall.length; i++) {
-        ctx.drawImage(wallImage, (wall.x + i) * gridSize, wall.y * gridSize, gridSize, gridSize);
+        // Center the image in the grid cell
+        const x = (wall.x + i) * gridSize + (gridSize - imageSize) / 2;
+        const y = wall.y * gridSize + (gridSize - imageSize) / 2;
+        ctx.drawImage(wallImage, x, y, imageSize, imageSize);
       }
     }
   });
@@ -1058,7 +1066,7 @@ function draw() {
     ctx.save();
     ctx.translate(head.x * gridSize + gridSize/2, head.y * gridSize + gridSize/2);
     ctx.rotate(Math.PI * 1.5);
-    ctx.drawImage(headImage, -gridSize/2, -gridSize/2, gridSize, gridSize);
+    ctx.drawImage(headImage, -imageSize/2, -imageSize/2, imageSize, imageSize);
     ctx.restore();
   }
 
@@ -1074,7 +1082,7 @@ function draw() {
       
       ctx.translate(segment.visualX * gridSize + gridSize/2, segment.visualY * gridSize + gridSize/2);
       ctx.rotate(rotation);
-      ctx.drawImage(headImage, -gridSize/2, -gridSize/2, gridSize, gridSize);
+      ctx.drawImage(headImage, -imageSize/2, -imageSize/2, imageSize, imageSize);
     } else {
       const prevSegment = snake[index - 1];
       const dx = segment.x - prevSegment.x;
@@ -1088,7 +1096,7 @@ function draw() {
       
       ctx.translate(segment.visualX * gridSize + gridSize/2, segment.visualY * gridSize + gridSize/2);
       ctx.rotate(rotation);
-      ctx.drawImage(tailImage, -gridSize/2, -gridSize/2, gridSize, gridSize);
+      ctx.drawImage(tailImage, -imageSize/2, -imageSize/2, imageSize, imageSize);
     }
     
     ctx.restore();
@@ -1109,7 +1117,7 @@ function draw() {
         
         ctx.translate(segment.visualX * gridSize + gridSize/2, segment.visualY * gridSize + gridSize/2);
         ctx.rotate(rotation);
-        ctx.drawImage(headImage, -gridSize/2, -gridSize/2, gridSize, gridSize);
+        ctx.drawImage(headImage, -imageSize/2, -imageSize/2, imageSize, imageSize);
       } else {
         const prevSegment = aiSnake[index - 1];
         const dx = segment.x - prevSegment.x;
@@ -1123,7 +1131,7 @@ function draw() {
         
         ctx.translate(segment.visualX * gridSize + gridSize/2, segment.visualY * gridSize + gridSize/2);
         ctx.rotate(rotation);
-        ctx.drawImage(tailImage, -gridSize/2, -gridSize/2, gridSize, gridSize);
+        ctx.drawImage(tailImage, -imageSize/2, -imageSize/2, imageSize, imageSize);
       }
       
       ctx.filter = 'none';
@@ -1146,7 +1154,7 @@ function draw() {
         
         ctx.translate(segment.visualX * gridSize + gridSize/2, segment.visualY * gridSize + gridSize/2);
         ctx.rotate(rotation);
-        ctx.drawImage(headImage, -gridSize/2, -gridSize/2, gridSize, gridSize);
+        ctx.drawImage(headImage, -imageSize/2, -imageSize/2, imageSize, imageSize);
       } else {
         const prevSegment = specialSnake[index - 1];
         const dx = segment.x - prevSegment.x;
@@ -1160,7 +1168,7 @@ function draw() {
         
         ctx.translate(segment.visualX * gridSize + gridSize/2, segment.visualY * gridSize + gridSize/2);
         ctx.rotate(rotation);
-        ctx.drawImage(tailImage, -gridSize/2, -gridSize/2, gridSize, gridSize);
+        ctx.drawImage(tailImage, -imageSize/2, -imageSize/2, imageSize, imageSize);
       }
       
       ctx.filter = 'none';
@@ -1169,7 +1177,10 @@ function draw() {
   }
 
   foods.forEach(food => {
-    ctx.drawImage(foodImage, food.x * gridSize, food.y * gridSize, gridSize, gridSize);
+    // Center the food image in the grid cell
+    const x = food.x * gridSize + (gridSize - imageSize) / 2;
+    const y = food.y * gridSize + (gridSize - imageSize) / 2;
+    ctx.drawImage(foodImage, x, y, imageSize, imageSize);
   });
 }
 
