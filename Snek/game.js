@@ -18,7 +18,7 @@ const tileCount = 15;
 
 function updateGridSize() {
   gridSize = canvas.width / tileCount;
-  imageSize = Math.max(gridSize * 1.5, 20);
+  imageSize = Math.max(gridSize * 1.25, 20);
 }
 
 updateGridSize();
