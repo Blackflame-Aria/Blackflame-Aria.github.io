@@ -299,7 +299,7 @@ document.addEventListener('DOMContentLoaded', () => {
             actionButtons.forEach(btn => btn.disabled = true);
             
             const log = document.getElementById('log');
-            log.innerText += '🔪 MURDER MODE ACTIVATED! 🔪\n';
+            log.innerText += 'EGGLING MURDERED\n';
             log.scrollTop = log.scrollHeight;
             
             setTimeout(() => {
