@@ -100,7 +100,7 @@ h1 {
     border: 1px solid var(--matrix-green);
     background-color: var(--matrix-light);
     border-radius: 4px;
-    text-align: left;
+    text-align: center;
     overflow-wrap: break-word;
     margin: 20px 0;
     font-family: 'Courier New', monospace;
@@ -195,6 +195,32 @@ h1 {
     font-family: 'Courier New', monospace;
 }
 
+.instructions-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 10px;
+}
+
+.instructions-header h3 {
+    margin: 0;
+}
+
+.toggle-btn {
+    background: none;
+    border: 1px solid var(--matrix-green);
+    color: var(--matrix-green);
+    font-size: 1rem;
+    cursor: pointer;
+    padding: 0 5px;
+    border-radius: 3px;
+}
+
+.toggle-btn:hover {
+    background-color: var(--matrix-green);
+    color: var(--matrix-dark);
+}
+
 .action-buttons {
     display: flex;
     flex-wrap: wrap;
@@ -262,13 +288,17 @@ button:disabled {
 }
 
 .action-btn.murder-btn {
-    background-color: rgb(29, 0, 0);
-    color: rgb(255, 0, 0);
+    background-color: rgb(29, 29, 29);
+    color: white;
     font-weight: bold;
-    border: 1px solid #f00;
-    text-shadow: 0 0 5px #f00;
+    border: 1px solid white;
+    text-shadow: 0 0 5px white;
     margin-top: 10px;
     width: 100%;
+}
+
+.action-btn.murder-btn:hover {
+    box-shadow: 0 0 10px white;
 }
 
 @keyframes pulse {
