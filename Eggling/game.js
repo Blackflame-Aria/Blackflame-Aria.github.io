@@ -34,6 +34,17 @@ const deaths = [
     "ran away from home", "joined a gang", "turned to drugs (oregano)", "joined the circus", "got mistaken for food", "tempted the fates", "met an untimely end", "gave their life for Sweden"
 ];
 
+const egglingSprites = {
+    egg: "<img src='Sprites/Egg.gif' class='sprite-img'>",
+    baby: "<img src='Sprites/Baby.gif' class='sprite-img'>",
+    child: "<img src='Sprites/Child.gif' class='sprite-img'>",
+    teen: "<img src='Sprites/Teen.gif' class='sprite-img'>",
+    adult: "🐔",
+    sick: "🤒",
+    dead: "💀",
+    graduate: "🌟"
+};
+
 const boredomIcons = ["💤", "💭", "❓"];
 const foodIcons = ["🍼", "🍔", "🍟", "🍰", "🍜"];
 const playIcons = ["🎮", "🪀", "🏸", "🧸", "🪁"];
@@ -48,6 +59,7 @@ class Eggling {
     constructor(name) {
         this.name = name;
         this.age = 0;
+        this.spriteState = "egg";
         this.boredom = 2;
         this.foodLevel = 2;
         this.poopLevel = 1;
@@ -68,7 +80,7 @@ class Eggling {
                 this.appendToLog(`${foodEmoji} ${this.name} is full!`);
             } else {
                 this.foodLevel = Math.min(5, this.foodLevel + .8);
-                this.appendToLog(`${foodEmoji} Feeding ${this.name}... Hunger decreased!`);
+                this.appendToLog(`${foodEmoji} Feeding ${this.name}...`);
             }
             this.updateMeters();
             this.saveToLocalStorage();;
@@ -87,7 +99,7 @@ class Eggling {
                 const newBoredomPercent = Math.max(0, boredomPercent - 10.5);
                 this.boredom = Math.max(0, maxBoredom * (newBoredomPercent / 100));
                 
-                this.appendToLog(`${playEmoji} Playing with ${this.name}... Boredom decreased!`);
+                this.appendToLog(`${playEmoji} Playing with ${this.name}...`);
             }
             this.updateMeters();
             this.saveToLocalStorage();
@@ -115,7 +127,7 @@ class Eggling {
                 const newBoredomPercent = Math.max(0, boredomPercent - 3.5);
                 this.boredom = Math.max(0, maxBoredom * (newBoredomPercent / 100));
                 
-                this.appendToLog(`Talking to ${this.name}... Social increased, boredom decreased!`);
+                this.appendToLog(`Talking to ${this.name}...`);
             }
             this.updateMeters();
             this.saveToLocalStorage();
@@ -131,7 +143,7 @@ class Eggling {
                 this.appendToLog(`🧹 ${this.name} is sparkling, blinding!`);
             } else {
                 this.poopLevel = Math.max(0, this.poopLevel - 1);
-                this.appendToLog(`🧹 Cleaning up after ${this.name}... Cleanliness improved!`);
+                this.appendToLog(`🧹 Cleaning up after ${this.name}...`);
             }
             this.updateMeters();
             this.saveToLocalStorage();
@@ -235,6 +247,7 @@ class Eggling {
         }
         
         this.updateMeters();
+        this.updateSprite();
         
         const hungerBar = document.getElementById('hunger-bar');
         const boredomBar = document.getElementById('boredom-bar');
@@ -260,6 +273,41 @@ class Eggling {
         }
         
         document.getElementById('status').innerText = `${this.name} | Age: ${this.age} | Feeling: ${icon}${this.status()}`;
+    }
+    
+    updateSprite() {
+        const spriteElement = document.getElementById('eggling-sprite');
+        
+        if (!this.isAlive()) {
+            this.spriteState = "dead";
+        } else if (this.graduated) {
+            this.spriteState = "graduate";
+        } else if (this.sickness() > 15) {
+            this.spriteState = "sick";
+        } else if (this.age >= 16) {
+            this.spriteState = "adult";
+        } else if (this.age >= 12) {
+            this.spriteState = "teen";
+        } else if (this.age >= 7) {
+            this.spriteState = "child";
+        } else if (this.age >= 1) {
+            this.spriteState = "baby";
+        }
+        
+        // Update the sprite display
+        spriteElement.innerHTML = `<div class="sprite-content">${egglingSprites[this.spriteState]}</div>`;
+        
+        // Add animation class based on state
+        spriteElement.className = 'eggling-sprite';
+        if (this.spriteState === "dead") {
+            spriteElement.classList.add('dead');
+        } else if (this.spriteState === "sick") {
+            spriteElement.classList.add('sick');
+        } else if (this.spriteState === "graduate") {
+            spriteElement.classList.add('graduate');
+        } else {
+            spriteElement.classList.add('alive');
+        }
     }
     
     graduate() {
