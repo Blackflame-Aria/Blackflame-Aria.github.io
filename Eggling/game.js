@@ -64,7 +64,7 @@ class Eggling {
         this.boredom = 2;
         this.foodLevel = 2;
         this.poopLevel = 1;
-        this.socialLevel = 6.5;
+        this.socialLevel = 9.5;
     }
 
     randomInRange(limit) {
