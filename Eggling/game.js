@@ -42,7 +42,8 @@ const egglingSprites = {
     adult: "<img src='Sprites/Adult.gif' class='sprite-img'>",
     sick: "<img src='Sprites/Sick.gif' class='sprite-img'>",
     dead: "<img src='Sprites/Dead.gif' class='sprite-img'>",
-    graduate: "<img src='Sprites/Graduate.gif' class='sprite-img'>"
+    graduate: "<img src='Sprites/Graduate.gif' class='sprite-img'>",
+    secret: "<img src='Sprites/Secret.gif' class='sprite-img'>"
 };
 
 const boredomIcons = ["💤", "💭", "❓"];
@@ -307,11 +308,13 @@ class Eggling {
             this.spriteState = "graduate";
         } else if (this.sickness() > 15) {
             this.spriteState = "sick";
-        } else if (this.age >= 16) {
+        } else if (this.age >= 40) {
+            this.spriteState = "secret";
+        } else if (this.age >= 15) {
             this.spriteState = "adult";
-        } else if (this.age >= 12) {
+        } else if (this.age >= 10) {
             this.spriteState = "teen";
-        } else if (this.age >= 7) {
+        } else if (this.age >= 5) {
             this.spriteState = "child";
         } else if (this.age >= 1) {
             this.spriteState = "baby";
