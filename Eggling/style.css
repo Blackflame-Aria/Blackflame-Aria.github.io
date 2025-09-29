@@ -66,26 +66,22 @@ body {
 }
 
 .sprite-img {
-    width: 90%;
-    height: 90%;
+    width: 80%;
+    height: 80%;
     object-fit: contain;
 }
 
 .eggling-sprite.alive .sprite-content {
-    animation: bounce 2s infinite;
+    animation: bounce 2.25s infinite;
 }
 
-.eggling-sprite.sick .sprite-content {
-    animation: wobble 1.5s infinite;
-}
 
 .eggling-sprite.dead .sprite-content {
     animation: none;
-    transform: rotate(90deg);
 }
 
 .eggling-sprite.graduate .sprite-content {
-    animation: float 3s infinite;
+    animation: bounce 1.5s infinite;
 }
 
 @keyframes bounce {
@@ -102,6 +98,8 @@ body {
 @keyframes float {
     0%, 100% { transform: translateY(0) rotate(5deg); }
     50% { transform: translateY(-10px) rotate(-5deg); }
+    0%, 100% { transform: translateY(0) rotate(5deg); }
+    50% { transform: translateY(10px) rotate(5deg); }
 }
 
 h1 {

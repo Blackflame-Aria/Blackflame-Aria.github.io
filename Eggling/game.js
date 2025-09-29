@@ -23,7 +23,7 @@ const nouns = [
 const awards = [
     "RECEIVED A SCHOLORSHIP TO OXFORD", "JOINED THE FIRE DEPARTMENT", "CAN'T AFFORD TO MOVE OUT", "MOVED TO LUXEMBOURG", "GOT SNATCHED BY A HAWK", "BECAME A POLITICIAN",
     "WON A NOBEL PEACE PRIZE", "MOVED INTO THE SEWERS", "HAS TO RETAKE HIGH SCHOOL",
-    "LEARNED TO FLY", "GOT STUCK IN THE SHELL", "BECAME A FASHION MODEL",
+    "LEARNED TO FLY", "BECAME A FASHION MODEL",
     "MOVED OUT AND STARTED A CULT", "JOINED A REVOLUTION", "FOUNDED A BIRD SANCTUARY",
     "MOVED OUT AND SPIRALED INTO DEPRESSION", "GOT DIAGNOSED FOR AUTISM",
     "FELL INTO TOXIC WASTE", "DROPPED OUT OF COMMUNITY COLLEGE", "BECAME A SUCCESSFUL ARTIST"
@@ -39,10 +39,10 @@ const egglingSprites = {
     baby: "<img src='Sprites/Baby.gif' class='sprite-img'>",
     child: "<img src='Sprites/Child.gif' class='sprite-img'>",
     teen: "<img src='Sprites/Teen.gif' class='sprite-img'>",
-    adult: "🐔",
-    sick: "🤒",
-    dead: "💀",
-    graduate: "🌟"
+    adult: "<img src='Sprites/Adult.gif' class='sprite-img'>",
+    sick: "<img src='Sprites/Sick.gif' class='sprite-img'>",
+    dead: "<img src='Sprites/Dead.gif' class='sprite-img'>",
+    graduate: "<img src='Sprites/Graduate.gif' class='sprite-img'>"
 };
 
 const boredomIcons = ["💤", "💭", "❓"];
@@ -119,15 +119,13 @@ class Eggling {
                 const message = `🗣️ ${this.name} says: ${verb} the ${noun}`;
                 this.appendToLog(message);
                 
-                const newSocialPercent = Math.min(100, socialPercent + 10);
+                const newSocialPercent = Math.min(100, socialPercent + 15.5);
                 this.socialLevel = Math.min(maxSocial, maxSocial * (newSocialPercent / 100));
                 
                 const maxBoredom = 10;
                 const boredomPercent = Math.max(0, Math.min(100, (this.boredom / maxBoredom) * 100));
-                const newBoredomPercent = Math.max(0, boredomPercent - 3.5);
+                const newBoredomPercent = Math.max(0, boredomPercent - 4.5);
                 this.boredom = Math.max(0, maxBoredom * (newBoredomPercent / 100));
-                
-                this.appendToLog(`Talking to ${this.name}...`);
             }
             this.updateMeters();
             this.saveToLocalStorage();
@@ -142,7 +140,7 @@ class Eggling {
             if (cleanPercent >= 100) {
                 this.appendToLog(`🧹 ${this.name} is sparkling, blinding!`);
             } else {
-                this.poopLevel = Math.max(0, this.poopLevel - 1);
+                this.poopLevel = Math.max(0, this.poopLevel - 1.5);
                 this.appendToLog(`🧹 Cleaning up after ${this.name}...`);
             }
             this.updateMeters();
@@ -176,7 +174,7 @@ class Eggling {
         
         this.poopLevel = Math.min(10, this.poopLevel + 0.75);
         
-        this.socialLevel = Math.max(0, this.socialLevel - 1.55);
+        this.socialLevel = Math.max(0, this.socialLevel - 1.15);
         
         const maxSocial = 10;
         const newSocialPercent = Math.max(0, Math.min(100, (this.socialLevel / maxSocial) * 100));
@@ -186,7 +184,7 @@ class Eggling {
         
         this.boredom = Math.min(10, this.boredom + 1.3);
         
-        if (this.age >= 15 && this.age <= 20 && Math.random() < 0.1) {
+        if (this.age >= 15 && this.age <= 20 && Math.random() < 0.2) {
             this.randomDeath();
         } else {
             this.checkStatus();
@@ -215,7 +213,32 @@ class Eggling {
     }
 
     sickness() {
-        return this.poopLevel + this.boredom + Math.max(0, this.age - 20) + Math.abs(this.foodLevel - 2);
+        const maxFood = 5;
+        const maxBoredom = 10;
+        const maxPoop = 10;
+        const maxSocial = 10;
+
+        const hungerPercent = Math.max(0, Math.min(100, (1 - this.foodLevel / maxFood) * 100));
+        const boredomPercent = Math.max(0, Math.min(100, (this.boredom / maxBoredom) * 100));
+        const cleanPercent = Math.max(0, Math.min(100, 100 - (this.poopLevel / maxPoop) * 100));
+        const socialPercent = Math.max(0, Math.min(100, (this.socialLevel / maxSocial) * 100));
+
+        let redMeters = 0;
+        let yellowMeters = 0;
+
+        if (hungerPercent >= 70) redMeters++;
+        else if (hungerPercent >= 21) yellowMeters++;
+
+        if (boredomPercent >= 70) redMeters++;
+        else if (boredomPercent >= 21) yellowMeters++;
+
+        if (cleanPercent <= 20) redMeters++;
+        else if (cleanPercent <= 69) yellowMeters++;
+
+        if (socialPercent <= 20) redMeters++;
+        else if (socialPercent <= 69) yellowMeters++;
+
+        return (redMeters >= 1 || yellowMeters >= 3) ? 16 : 0;
     }
     
     randomDeath() {
@@ -294,10 +317,8 @@ class Eggling {
             this.spriteState = "baby";
         }
         
-        // Update the sprite display
         spriteElement.innerHTML = `<div class="sprite-content">${egglingSprites[this.spriteState]}</div>`;
         
-        // Add animation class based on state
         spriteElement.className = 'eggling-sprite';
         if (this.spriteState === "dead") {
             spriteElement.classList.add('dead');
@@ -343,7 +364,14 @@ class Eggling {
         
         this.saveToLocalStorage();
         
+        // Remove existing restart button if it exists
+        const existingButton = document.querySelector('#graduate-restart-btn');
+        if (existingButton) {
+            existingButton.remove();
+        }
+
         const restartButton = document.createElement('button');
+        restartButton.id = 'graduate-restart-btn';
         restartButton.innerText = 'Restart with a new Eggling';
         restartButton.style.backgroundColor = 'black';
         restartButton.style.color = 'white';
@@ -448,7 +476,8 @@ class Eggling {
             boredom: this.boredom,
             foodLevel: this.foodLevel,
             poopLevel: this.poopLevel,
-            socialLevel: this.socialLevel
+            socialLevel: this.socialLevel,
+            graduated: this.graduated
         };
         
         localStorage.setItem('egglingData', JSON.stringify(egglingData));
@@ -466,6 +495,11 @@ class Eggling {
             eggling.foodLevel = data.foodLevel;
             eggling.poopLevel = data.poopLevel;
             eggling.socialLevel = data.socialLevel || 6.5;
+            eggling.graduated = data.graduated || false;
+            
+            if (eggling.graduated) {
+                eggling.graduate();
+            }
             
             return eggling;
         } catch (e) {
