@@ -2,9 +2,9 @@
 
 :root {
     --matrix-green: #0f0;
-    --matrix-dark: #111;
+    --matrix-dark: #000000;
     --matrix-darker: #000;
-    --matrix-light: #1a1a1a;
+    --matrix-light: #000000;
     --matrix-glow: 0 0 10px #0f0, 0 0 20px #0f0;
 }
 

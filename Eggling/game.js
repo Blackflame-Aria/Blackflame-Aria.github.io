@@ -340,9 +340,6 @@ class Eggling {
         document.documentElement.style.setProperty('--matrix-green', 'white');
         document.documentElement.style.setProperty('--matrix-glow', '0 0 10px white, 0 0 20px white');
         
-        const actionButtons = document.querySelectorAll('.action-btn');
-        actionButtons.forEach(btn => btn.disabled = true);
-        
         document.querySelectorAll('.bar, button, h1, h2, h3, .instructions, .game-container').forEach(element => {
             element.style.transition = 'all 1s ease';
             if (element.style.backgroundColor === '#0f0' || element.style.backgroundColor === 'rgb(0, 255, 0)') {
@@ -540,7 +537,7 @@ document.addEventListener('DOMContentLoaded', () => {
     });
     
     function initGame() {
-        document.getElementById('start').addEventListener('click', () => {
+        function startGame() {
             const name = document.getElementById('name').value.trim();
             if (!name) return;
             
@@ -557,6 +554,15 @@ document.addEventListener('DOMContentLoaded', () => {
             
             const actionButtons = document.querySelectorAll('.action-btn');
             actionButtons.forEach(btn => btn.disabled = false);
+        }
+
+        document.getElementById('start').addEventListener('click', startGame);
+
+        document.getElementById('name').addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                startGame();
+            }
         });
         
         document.getElementById('feed-btn').addEventListener('click', () => {
@@ -642,6 +648,28 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
     
+    document.addEventListener('keydown', (e) => {
+        if (!eggling || !eggling.isAlive()) return;
+        
+        switch (e.key) {
+            case '1':
+                document.getElementById('feed-btn').click();
+                break;
+            case '2':
+                document.getElementById('play-btn').click();
+                break;
+            case '3':
+                document.getElementById('clean-btn').click();
+                break;
+            case '4':
+                document.getElementById('talk-btn').click();
+                break;
+            case '5':
+                document.getElementById('wait-btn').click();
+                break;
+        }
+    });
+
     initGame();
     loadSavedEggling();
 });
