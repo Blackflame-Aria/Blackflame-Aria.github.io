@@ -43,7 +43,11 @@ const egglingSprites = {
     sick: "<img src='Sprites/Sick.gif' class='sprite-img'>",
     dead: "<img src='Sprites/Dead.gif' class='sprite-img'>",
     graduate: "<img src='Sprites/Graduate.gif' class='sprite-img'>",
-    secret: "<img src='Sprites/Secret.gif' class='sprite-img'>"
+    secret: "<img src='Sprites/Secret.gif' class='sprite-img'>",
+    egg2: "<img src='Sprites/Egg2.gif' class='sprite-img'>",
+    baby2: "<img src='Sprites/Baby2.gif' class='sprite-img'>",
+    child2: "<img src='Sprites/Child2.gif' class='sprite-img'>",
+    secret2: "<img src='Sprites/Secret2.gif' class='sprite-img'>"
 };
 
 const boredomIcons = ["💤", "💭", "❓"];
