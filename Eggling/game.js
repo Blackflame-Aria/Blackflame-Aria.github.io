@@ -6,14 +6,14 @@ const verbs = [
     "Ice", "Ink", "Join", "Kick", "Leave", "Marry",
     "Mix", "Nab", "Nail", "Open", "Press", "Quash",
     "Rub", "Run", "Save", "Snap", "Taste", "Touch",
-    "Use", "Vet", "View", "Wash", "Xerox", "Yield"
+    "Use", "Boil", "Moisten", "Wash", "Raze", "Yield"
 ];
 
 const nouns = [
     "arms", "bugs", "boots", "bowls", "cabins", "fascists",
     "dogs", "eggs", "fakes", "flags", "greens", "guests",
     "hens", "hogs", "items", "jowls", "jewels", "juices",
-    "kits", "logs", "lamps", "lions", "levers", "lemons",
+    "kits", "pogs", "lamps", "lions", "levers", "lemons",
     "maps", "mugs", "names", "nests", "nights", "nurses",
     "orbs", "owls", "pages", "posts", "quests", "quotas",
     "rats", "ribs", "roots", "rules", "salads", "sauces",
@@ -21,7 +21,7 @@ const nouns = [
 ];
 
 const awards = [
-    "RECEIVED A SCHOLORSHIP TO OXFORD", "JOINED THE FIRE DEPARTMENT", "CAN'T AFFORD TO MOVE OUT", "MOVED TO LUXEMBOURG", "GOT SNATCHED BY A HAWK", "BECAME A POLITICIAN",
+    "RECEIVED A SCHOLORSHIP TO OXFORD", "JOINED THE FIRE DEPARTMENT", "CAN'T AFFORD TO MOVE OUT", "MOVED TO LUXEMBOURG", "BECAME A POLITICIAN",
     "WON A NOBEL PEACE PRIZE", "MOVED INTO THE SEWERS", "HAS TO RETAKE HIGH SCHOOL",
     "LEARNED TO FLY", "BECAME A FASHION MODEL",
     "MOVED OUT AND STARTED A CULT", "JOINED A REVOLUTION", "FOUNDED A BIRD SANCTUARY",
@@ -30,7 +30,7 @@ const awards = [
 ];
 
 const deaths = [
-    "got abducted by aliens", "got crushed by a falling piano", "died of dysentery", "died trying to drive 2 cars at once", "fell down the old well", "died doing what they love",
+    "got abducted by aliens", "got crushed by a falling piano", "died of dysentery", "died trying to drive 2 cars at once", "fell down the old well", "died doing what they love", "got snatched by a hawk",
     "ran away from home", "joined a gang", "turned to drugs (oregano)", "joined the circus", "got mistaken for food", "tempted the fates", "met an untimely end", "gave their life for Sweden"
 ];
 
@@ -41,13 +41,16 @@ const egglingSprites = {
     teen: "<img src='Sprites/Teen.gif' class='sprite-img'>",
     adult: "<img src='Sprites/Adult.gif' class='sprite-img'>",
     sick: "<img src='Sprites/Sick.gif' class='sprite-img'>",
+    sick2: "<img src='Sprites/Sick2.gif' class='sprite-img'>",
     dead: "<img src='Sprites/Dead.gif' class='sprite-img'>",
+    dead2: "<img src='Sprites/Dead2.gif' class='sprite-img'>",
     graduate: "<img src='Sprites/Graduate.gif' class='sprite-img'>",
     secret: "<img src='Sprites/Secret.gif' class='sprite-img'>",
     egg2: "<img src='Sprites/Egg2.gif' class='sprite-img'>",
     baby2: "<img src='Sprites/Baby2.gif' class='sprite-img'>",
     child2: "<img src='Sprites/Child2.gif' class='sprite-img'>",
-    secret2: "<img src='Sprites/Secret2.gif' class='sprite-img'>"
+    secret2: "<img src='Sprites/Secret2.gif' class='sprite-img'>",
+    wip: "<img src='Sprites/WIP.gif' class='sprite-img'>"
 };
 
 const boredomIcons = ["💤", "💭", "❓"];
@@ -269,7 +272,7 @@ class Eggling {
     }
 
     health() {
-        if (this.age >= 20 && !this.graduated) {
+        if (this.age >= 20 && this.age < 40 && !this.graduated) {
             this.graduate();
             return;
         }
@@ -307,11 +310,21 @@ class Eggling {
         const spriteElement = document.getElementById('eggling-sprite');
         
         if (!this.isAlive()) {
-            this.spriteState = "dead";
-        } else if (this.graduated) {
+            this.spriteState = this.age >= 40 ? "dead2" : "dead";
+        } else if (this.graduated && this.age < 40) {
             this.spriteState = "graduate";
         } else if (this.sickness() > 15) {
-            this.spriteState = "sick";
+            this.spriteState = this.age >= 40 ? "sick2" : "sick";
+        } else if (this.age >= 80) {
+            this.spriteState = "wip";
+        } else if (this.age >= 70) {
+            this.spriteState = "child2";
+        } else if (this.age >= 60) {
+            this.spriteState = "baby2";
+        } else if (this.age >= 50) {
+            this.spriteState = "egg2";
+        } else if (this.age >= 41) {
+            this.spriteState = "secret2";
         } else if (this.age >= 40) {
             this.spriteState = "secret";
         } else if (this.age >= 15) {
@@ -327,9 +340,9 @@ class Eggling {
         spriteElement.innerHTML = `<div class="sprite-content">${egglingSprites[this.spriteState]}</div>`;
         
         spriteElement.className = 'eggling-sprite';
-        if (this.spriteState === "dead") {
+        if (this.spriteState === "dead" || this.spriteState === "dead2") {
             spriteElement.classList.add('dead');
-        } else if (this.spriteState === "sick") {
+        } else if (this.spriteState === "sick" || this.spriteState === "sick2") {
             spriteElement.classList.add('sick');
         } else if (this.spriteState === "graduate") {
             spriteElement.classList.add('graduate');
@@ -346,17 +359,20 @@ class Eggling {
         
         document.querySelectorAll('.bar, button, h1, h2, h3, .instructions, .game-container').forEach(element => {
             element.style.transition = 'all 1s ease';
-            if (element.style.backgroundColor === '#0f0' || element.style.backgroundColor === 'rgb(0, 255, 0)') {
+            if (element.style.backgroundColor === '#0f0' || element.style.backgroundColor === 'rgb(0, 255, 0)' || 
+                element.style.backgroundColor === '#f0f' || element.style.backgroundColor === 'rgb(255, 0, 255)') {
                 element.style.backgroundColor = 'white';
             }
-            if (element.style.color === '#0f0' || element.style.color === 'rgb(0, 255, 0)') {
+            if (element.style.color === '#0f0' || element.style.color === 'rgb(0, 255, 0)' || 
+                element.style.color === '#f0f' || element.style.color === 'rgb(255, 0, 255)') {
                 element.style.color = 'white';
             }
-            if (element.style.borderColor === '#0f0' || element.style.borderColor === 'rgb(0, 255, 0)') {
+            if (element.style.borderColor === '#0f0' || element.style.borderColor === 'rgb(0, 255, 0)' || 
+                element.style.borderColor === '#f0f' || element.style.borderColor === 'rgb(255, 0, 255)') {
                 element.style.borderColor = 'white';
             }
-            if (element.style.textShadow && element.style.textShadow.includes('#0f0')) {
-                element.style.textShadow = element.style.textShadow.replace(/#0f0/g, 'white');
+            if (element.style.textShadow && (element.style.textShadow.includes('#0f0') || element.style.textShadow.includes('#f0f'))) {
+                element.style.textShadow = element.style.textShadow.replace(/#0f0/g, 'white').replace(/#f0f/g, 'white');
             }
         });
         
@@ -368,7 +384,6 @@ class Eggling {
         
         this.saveToLocalStorage();
         
-        // Remove existing restart button if it exists
         const existingButton = document.querySelector('#graduate-restart-btn');
         if (existingButton) {
             existingButton.remove();
@@ -470,6 +485,12 @@ class Eggling {
             this.appendToLog(`💔 ${this.name} has passed away... R.I.P.`);
             
             localStorage.removeItem('egglingData');
+        } else if (this.age >= 41) {
+            document.documentElement.style.setProperty('--matrix-green', '#f0f');
+            document.documentElement.style.setProperty('--matrix-glow', '0 0 10px #f0f, 0 0 20px #f0f');
+        } else if (this.age <= 40) {
+            document.documentElement.style.setProperty('--matrix-green', '#0f0');
+            document.documentElement.style.setProperty('--matrix-glow', '0 0 10px #0f0, 0 0 20px #0f0');
         }
     }
     
