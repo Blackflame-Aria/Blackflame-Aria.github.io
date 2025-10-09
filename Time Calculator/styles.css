@@ -72,9 +72,10 @@ h1 {
 .input-container {
     display: flex;
     margin-bottom: 1rem;
+    align-items: stretch;
 }
 
-#time-input, #time-input-2 {
+#time-input {
     flex: 1;
     padding: 1rem;
     font-size: 1.5em;
@@ -85,14 +86,19 @@ h1 {
     border-image: linear-gradient(to right, #0f0, rgb(0, 46, 0)) 1;
     border-radius: 5px 0 0 5px;
     transition: border-color 0.3s;
+    min-height: 4rem;
+    height: auto;
+    overflow-y: hidden;
+    word-wrap: break-word;
+    white-space: pre-wrap;
 }
 
-#time-input:focus, #time-input-2:focus {
+#time-input:focus {
     outline: none;
     border-image: linear-gradient(to right, #0f0, rgb(0, 46, 0)) 1;
 }
 
-#calculate-btn, #calculate-btn-2 {
+#calculate-btn {
     width: 70px;
     background-color:rgb(0, 0, 0);
     color: #0f0;
@@ -103,9 +109,10 @@ h1 {
     border-radius: 0 5px 5px 0;
     cursor: pointer;
     transition: background-color 0.3s;
+    align-self: stretch;
 }
 
-#calculate-btn:hover, #calculate-btn-2:hover {
+#calculate-btn:hover {
     background-color: #0f0;
     color: #000;
     border-image: linear-gradient(to right, #0f0, rgb(0, 46, 0)) 1;

@@ -13,7 +13,7 @@
         <h1>Time Calculator</h1>
         <div class="calculator">
             <div class="input-container">
-                <input type="text" id="time-input" placeholder="Example: 6.5 + 3.21" autofocus>
+                <input type="text" id="time-input" placeholder="Example: 6.5 + 3.25" autofocus>
                 <button id="calculate-btn" aria-label="Calculate">=</button>
             </div>
             <div class="result-container">
@@ -24,32 +24,20 @@
         <div class="instructions">
             <h3>How to use:</h3>
             <ul>
-                <li>Enter time values as hours.minutes</li>
-                <li>Example: 6.5 = 6 hours, 50 minutes</li>
-                <li>Add/Subtract more than two (2.45 + 6.12 - 7.22)</li>
-                <li>Press Enter or '=' to calculate</li>
-            </ul>
-        </div>
-    </div>
-    <div class="calculator-container">
-        <h1 class="title">Minute Converter</h1>
-        <div class="calculator">
-            <div class="input-container">
-                <input type="text" id="time-input-2" placeholder="Example: 1.75">
-                <button id="calculate-btn-2" aria-label="Calculate">=</button>
-            </div>
-            <div class="result-container">
-                <div id="result-2">Result will appear here</div>
-                <div id="explanation-2"></div>
-            </div>
-        </div>
-        <div class="instructions">
-            <h3>How to use:</h3>
-            <ul>
-                <li>Enter a time value (e.g., 1.75)</li>
-                <li>The decimal represents the percentage of an hour</li>
-                <li>Example: 1.75 = 1 hour and 45 minutes (75% of an hour)</li>
-                <li>Press Enter or '=' to convert</li>
+                <li>Enter time values as hours.minutes<br>
+                    separated by '+', '-', or 'x'/'*' </li>
+                <li>Press Enter or '=' to calculate.</li>
+                <li>The decimal represents the<br>
+                    percentage of an hour.<br>
+                    Ex: 6.5 = 6hrs, 30mins<br>
+                    (50% of an hour)</li>
+                <li>Input single value to convert.<br>
+                    Ex: 3.33 + Enter/'=' = 3hrs, 20mins</li>
+                <li>Add/Sub/Mult two or more together.<br>
+                    Ex: 2.05 + 6.72 - 1.3 x 2</li>
+                <li>Multiply with parentheses.<br>
+                    Ex: 2.5 + (5 * 1.25)</li>
+                
             </ul>
         </div>
     </div>
