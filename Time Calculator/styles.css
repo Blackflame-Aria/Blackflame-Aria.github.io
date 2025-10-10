@@ -79,6 +79,7 @@ h1 {
     flex-direction: column;
     gap: 0.5rem;
     margin-top: 0.5rem;
+    color: #0f0;
 }
 
 .input-method-options label {
