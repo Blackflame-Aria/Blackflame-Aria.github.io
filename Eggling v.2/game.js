@@ -136,13 +136,11 @@ class Eggling {
         
         colorManager.updateColors(this);
 
-        // Initialize poop sprites with event listeners
         document.addEventListener('DOMContentLoaded', () => {
             const poopLeft = document.getElementById('poop-left');
             const poopRight = document.getElementById('poop-right');
             
             if (poopLeft && poopRight) {
-                // Hide both poops initially
                 poopLeft.style.display = 'none';
                 poopRight.style.display = 'none';
                 
@@ -309,23 +307,18 @@ class Eggling {
     }
 
     spawnPoop() {
-        // Get the fixed poop elements
         const poopLeft = document.getElementById('poop-left');
         const poopRight = document.getElementById('poop-right');
         
-        // Check if they exist
         if (!poopLeft || !poopRight) {
             console.error("Fixed poop elements not found!");
             return;
         }
         
-        // Check current visibility
         const leftVisible = poopLeft.style.display === 'block';
         const rightVisible = poopRight.style.display === 'block';
         
-        // Choose which poop to show
         if (!leftVisible && !rightVisible) {
-            // Both are hidden, randomly choose one
             const side = Math.random() < 0.5 ? 'left' : 'right';
             if (side === 'left') {
                 poopLeft.style.display = 'block';
@@ -341,14 +334,12 @@ class Eggling {
                 }
             }
         } else if (rightVisible && !leftVisible) {
-            // Right is visible, show left
             poopLeft.style.display = 'block';
             console.log('Showing left poop');
             if (!this.poopSprites.includes(poopLeft)) {
                 this.poopSprites.push(poopLeft);
             }
         } else if (leftVisible && !rightVisible) {
-            // Left is visible, show right
             poopRight.style.display = 'block';
             console.log('Showing right poop');
             if (!this.poopSprites.includes(poopRight)) {
@@ -358,7 +349,6 @@ class Eggling {
             console.log('Both poops already visible');
         }
         
-        // Add click event listeners if they don't already have them
         if (!poopLeft.hasClickListener) {
             poopLeft.addEventListener('click', () => {
                 console.log('Left poop clicked');
@@ -381,12 +371,10 @@ class Eggling {
     }
 
     cleanPoop(poop) {
-        // Hide the poop instead of removing it
         if (poop) {
             poop.style.display = 'none';
             this.poopSprites = this.poopSprites.filter(p => p !== poop);
             
-            // Increase cleanliness by 5% as requested
             const maxPoop = 10;
             const currentCleanlinessPercent = 100 - ((this.poopLevel / maxPoop) * 100);
             const newCleanlinessPercent = Math.min(100, currentCleanlinessPercent + 5);
@@ -828,7 +816,6 @@ document.addEventListener('DOMContentLoaded', () => {
         const egg2Option = document.getElementById('option-egg2');
         let selectedEggType = "egg";
         
-        // Make sure poop sprites are hidden initially
     const poopLeft = document.getElementById('poop-left');
     const poopRight = document.getElementById('poop-right');
     if (poopLeft) poopLeft.style.display = 'none';
