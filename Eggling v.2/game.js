@@ -46,12 +46,9 @@ const descriptors = [
 ];
 
 const awards = [
-    "RECEIVED A SCHOLORSHIP TO OXFORD", "JOINED THE FIRE DEPARTMENT", "CAN'T AFFORD TO MOVE OUT", "MOVED TO LUXEMBOURG", "BECAME A POLITICIAN",
-    "WON A NOBEL PEACE PRIZE", "MOVED INTO THE SEWERS", "HAS TO RETAKE HIGH SCHOOL",
-    "LEARNED TO FLY", "BECAME A FASHION MODEL",
-    "MOVED OUT AND STARTED A CULT", "JOINED A REVOLUTION",
-    "MOVED OUT AND SPIRALED INTO DEPRESSION", "GOT DIAGNOSED FOR AUTISM",
-    "FELL INTO TOXIC WASTE", "DROPPED OUT OF COMMUNITY COLLEGE", "BECAME A SUCCESSFUL ARTIST"
+    "RECEIVED A SCHOLORSHIP TO OXFORD", "CAN'T AFFORD TO MOVE OUT",
+    "WON A NOBEL PEACE PRIZE", "LEARNED TO FLY",
+    "MOVED OUT AND STARTED A CULT", "MOVED OUT AND SPIRALED INTO DEPRESSION", "GOT DIAGNOSED WITH AUTISM", "DROPPED OUT OF COMMUNITY COLLEGE", "MOVED OUT AND BECAME A SUCCESSFUL ARTIST"
 ];
 
 const deaths = [
@@ -85,7 +82,6 @@ const boredomIcons = ["💤", "💭", "❓"];
 const foodIcons = ["🍣", "🍔", "🍟", "🍰", "🍜"];
 const playIcons = ["🎮", "🪀", "🏸", "🧸", "🪁"];
 const workIcons = ["💻", "🛠️", "💰", "☹️", "📉"];
-const poopIcons = ["💩"];
 const sickIcons1 = ["😄", "😃", "😀", "😊", "😎", "👍"];
 const sickIcons2 = ["😪", "😥", "😓"];
 const sickIcons3 = ["😩", "😰", "😫", "😠"];
@@ -129,34 +125,11 @@ class Eggling {
         this.boredom = 5;
         this.foodLevel = 5;
         this.poopLevel = 0;
-        this.poopSprites = [];
         this.poopDecayRate = 0.15;
         this.socialLevel = 6.5;
         this.graduated = false;
         
         colorManager.updateColors(this);
-
-        document.addEventListener('DOMContentLoaded', () => {
-            const poopLeft = document.getElementById('poop-left');
-            const poopRight = document.getElementById('poop-right');
-            
-            if (poopLeft && poopRight) {
-                poopLeft.style.display = 'none';
-                poopRight.style.display = 'none';
-                
-                poopLeft.addEventListener('click', () => {
-                    console.log('Left poop clicked');
-                    this.cleanPoop(poopLeft);
-                });
-                poopLeft.hasClickListener = true;
-                
-                poopRight.addEventListener('click', () => {
-                    console.log('Right poop clicked');
-                    this.cleanPoop(poopRight);
-                });
-                poopRight.hasClickListener = true;
-            }
-        });
     }
 
     randomInRange(limit) {
@@ -262,7 +235,7 @@ class Eggling {
             if (cleanPercent >= 100) {
                 this.appendToLog(`🧹 ${this.name} is sparkling, blinding!`);
             } else {
-                this.poopLevel = Math.max(0, this.poopLevel - 1.5);
+                this.poopLevel = Math.max(0, this.poopLevel - 1.2);
                 if (this.age >= 20) {
                     this.appendToLog(`🧹 ${this.name} is cleaning...`);
                 } else {
@@ -285,12 +258,7 @@ class Eggling {
             this.boredom += this.randomInRange(3);
             this.foodLevel = Math.max(0, this.foodLevel - 1.425);
             
-            this.poopLevel = Math.min(10, this.poopLevel + 1.25);
-            
-            const numPoops = Math.floor(Math.random() * 2) + 1;
-            for (let i = 0; i < numPoops; i++) {
-                this.spawnPoop();
-            }
+            this.poopLevel = Math.min(10, this.poopLevel + 1.45);
             
             colorManager.updateColors(this);
             
@@ -303,86 +271,6 @@ class Eggling {
             this.checkStatus();
             this.updateMeters();
             this.saveToLocalStorage();
-        }
-    }
-
-    spawnPoop() {
-        const poopLeft = document.getElementById('poop-left');
-        const poopRight = document.getElementById('poop-right');
-        
-        if (!poopLeft || !poopRight) {
-            console.error("Fixed poop elements not found!");
-            return;
-        }
-        
-        const leftVisible = poopLeft.style.display === 'block';
-        const rightVisible = poopRight.style.display === 'block';
-        
-        if (!leftVisible && !rightVisible) {
-            const side = Math.random() < 0.5 ? 'left' : 'right';
-            if (side === 'left') {
-                poopLeft.style.display = 'block';
-                console.log('Showing left poop');
-                if (!this.poopSprites.includes(poopLeft)) {
-                    this.poopSprites.push(poopLeft);
-                }
-            } else {
-                poopRight.style.display = 'block';
-                console.log('Showing right poop');
-                if (!this.poopSprites.includes(poopRight)) {
-                    this.poopSprites.push(poopRight);
-                }
-            }
-        } else if (rightVisible && !leftVisible) {
-            poopLeft.style.display = 'block';
-            console.log('Showing left poop');
-            if (!this.poopSprites.includes(poopLeft)) {
-                this.poopSprites.push(poopLeft);
-            }
-        } else if (leftVisible && !rightVisible) {
-            poopRight.style.display = 'block';
-            console.log('Showing right poop');
-            if (!this.poopSprites.includes(poopRight)) {
-                this.poopSprites.push(poopRight);
-            }
-        } else {
-            console.log('Both poops already visible');
-        }
-        
-        if (!poopLeft.hasClickListener) {
-            poopLeft.addEventListener('click', () => {
-                console.log('Left poop clicked');
-                this.cleanPoop(poopLeft);
-            });
-            poopLeft.hasClickListener = true;
-        }
-        
-        if (!poopRight.hasClickListener) {
-            poopRight.addEventListener('click', () => {
-                console.log('Right poop clicked');
-                this.cleanPoop(poopRight);
-            });
-            poopRight.hasClickListener = true;
-        }
-        
-        this.poopLevel = Math.min(10, this.poopLevel + 1);
-        this.updateMeters();
-        this.saveToLocalStorage();
-    }
-
-    cleanPoop(poop) {
-        if (poop) {
-            poop.style.display = 'none';
-            this.poopSprites = this.poopSprites.filter(p => p !== poop);
-            
-            const maxPoop = 10;
-            const currentCleanlinessPercent = 100 - ((this.poopLevel / maxPoop) * 100);
-            const newCleanlinessPercent = Math.min(100, currentCleanlinessPercent + 5);
-            this.poopLevel = maxPoop * (1 - (newCleanlinessPercent / 100));
-            
-            this.updateMeters();
-            this.saveToLocalStorage();
-            this.appendToLog('Cleaned a poop. Cleanliness improved!');
         }
     }
 
@@ -769,13 +657,6 @@ class Eggling {
                 document.documentElement.style.setProperty('--matrix-green', '#f00');
                 document.documentElement.style.setProperty('--matrix-glow', '0 0 10px #f00, 0 0 20px #f00');
             }
-                if (eggling.isAlive()) {
-                        const numPoops = Math.floor(Math.random() * 3) + 1;
-                        for (let i = 0; i < numPoops; i++) {
-                            eggling.spawnPoop();
-                    
-                    }
-            }
                 return eggling;
         } catch (e) {
             console.error('Error loading eggling data:', e);
@@ -816,11 +697,6 @@ document.addEventListener('DOMContentLoaded', () => {
         const egg2Option = document.getElementById('option-egg2');
         let selectedEggType = "egg";
         
-    const poopLeft = document.getElementById('poop-left');
-    const poopRight = document.getElementById('poop-right');
-    if (poopLeft) poopLeft.style.display = 'none';
-    if (poopRight) poopRight.style.display = 'none';
-    
     const optionEgg = document.getElementById('option-egg');
     const optionEgg2 = document.getElementById('option-egg2');
     optionEgg.classList.add('selected');
@@ -849,7 +725,6 @@ document.addEventListener('DOMContentLoaded', () => {
             if (!name) return;
             
             eggling = new Eggling(name, selectedEggType);
-            eggling.spawnPoop();
             eggling.health();
             eggling.instructions();
             eggling.appendToLog(`🥚 ${name} is hatching! Take care of your eggling.`);
