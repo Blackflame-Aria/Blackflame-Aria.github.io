@@ -69,6 +69,29 @@ h1 {
     margin-bottom: 2rem;
 }
 
+.input-method-container {
+    margin-bottom: 1rem;
+    color: #0f0;
+}
+
+.input-method-options {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    margin-top: 0.5rem;
+}
+
+.input-method-options label {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    cursor: pointer;
+}
+
+.input-method-options input[type="radio"] {
+    accent-color: #0f0;
+}
+
 .input-container {
     display: flex;
     margin-bottom: 1rem;

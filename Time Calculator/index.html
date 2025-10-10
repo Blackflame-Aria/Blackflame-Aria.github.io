@@ -12,6 +12,19 @@
         <a href="../index.html" class="back-btn">←</a>
         <h1>Time Calculator</h1>
         <div class="calculator">
+            <div class="input-method-container">
+                <label>Input method:</label>
+                <div class="input-method-options">
+                    <label>
+                        <input type="radio" name="input-method" value="percent" checked>
+                        .minutes as % of an hour (1.50 = 1hr, 30mins)
+                    </label>
+                    <label>
+                        <input type="radio" name="input-method" value="minutes">
+                        .minutes as minutes (1.30 = 1hr, 30mins)
+                    </label>
+                </div>
+            </div>
             <div class="input-container">
                 <input type="text" id="time-input" placeholder="Example: 6.5 + 3.25" autofocus>
                 <button id="calculate-btn" aria-label="Calculate">=</button>

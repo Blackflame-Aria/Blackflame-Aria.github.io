@@ -7,6 +7,20 @@ function initializeCalculator(inputId, buttonId, resultId, explanationId) {
     const calculateBtn = document.getElementById(buttonId);
     const resultDisplay = document.getElementById(resultId);
     const explanationDisplay = document.getElementById(explanationId);
+    const inputMethodRadios = document.querySelectorAll('input[name="input-method"]');
+    
+    let currentInputMethod = 'percent';
+
+    inputMethodRadios.forEach(radio => {
+        radio.addEventListener('change', (e) => {
+            currentInputMethod = e.target.value;
+            if (currentInputMethod === 'percent') {
+                timeInput.placeholder = "Example: 6.5 + 3.25";
+            } else {
+                timeInput.placeholder = "Example: 6.30 + 3.15";
+            }
+        });
+    });
 
     adjustInputHeight();
 
@@ -125,8 +139,13 @@ function initializeCalculator(inputId, buttonId, resultId, explanationId) {
             
             let minutes = 0;
             if (parts[1]) {
-                const percentage = parseFloat('0.' + parts[1]);
-                minutes = percentage * 60;
+                if (currentInputMethod === 'percent') {
+                    const percentage = parseFloat('0.' + parts[1]);
+                    minutes = percentage * 60;
+                } else if (currentInputMethod === 'minutes') {
+                    minutes = parseInt(parts[1]);
+                    if (parts[1].length === 1) minutes *= 10;
+                }
             }
             
             return hours + (minutes / 60);
