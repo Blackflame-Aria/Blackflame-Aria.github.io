@@ -7,6 +7,9 @@
     font-family: 'Share Tech Mono', monospace;
 }
 
+.label {
+    color: #0f0;
+}
 .back-btn {
     position: relative;
     top: -20px;
