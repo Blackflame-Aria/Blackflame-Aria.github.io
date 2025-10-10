@@ -87,6 +87,7 @@ h1 {
     align-items: center;
     gap: 0.5rem;
     cursor: pointer;
+    color: #0f0;
 }
 
 .input-method-options input[type="radio"] {
