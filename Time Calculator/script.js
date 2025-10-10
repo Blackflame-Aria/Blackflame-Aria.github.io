@@ -1,6 +1,22 @@
 document.addEventListener('DOMContentLoaded', () => {
     initializeCalculator('time-input', 'calculate-btn', 'result', 'explanation');
+    initializeInstructionsToggle();
 });
+
+function initializeInstructionsToggle() {
+    const toggleBtn = document.getElementById('toggle-instructions');
+    const instructionsContent = document.getElementById('instructions-content');
+    
+    toggleBtn.addEventListener('click', function() {
+        if (instructionsContent.style.display === 'none') {
+            instructionsContent.style.display = 'block';
+            toggleBtn.textContent = '▼';
+        } else {
+            instructionsContent.style.display = 'none';
+            toggleBtn.textContent = '►';
+        }
+    });
+}
 
 function initializeCalculator(inputId, buttonId, resultId, explanationId) {
     const timeInput = document.getElementById(inputId);
@@ -95,8 +111,22 @@ function initializeCalculator(inputId, buttonId, resultId, explanationId) {
         while (i < tokens.length) {
             if (tokens[i] === '*') {
                 const leftValue = parseTimeValue(tokens[i-1]);
-                const rightValue = parseTimeValue(tokens[i+1]);
-                const result = leftValue * rightValue;
+                let rightValue;
+                let result;
+                
+                if (!tokens[i+1].includes('.') && !isNaN(parseFloat(tokens[i+1]))) {
+                    rightValue = parseFloat(tokens[i+1]);
+                    result = leftValue * rightValue;
+                } else {
+                    rightValue = parseTimeValue(tokens[i+1]);
+                    
+                    const rightHours = Math.floor(rightValue);
+                    const rightMinutes = (rightValue - rightHours) * 60;
+                    
+                    const rightScalar = rightHours + (rightMinutes / 60);
+                    
+                    result = leftValue * rightScalar;
+                }
                 
                 tokens.splice(i-1, 3, result.toString());
                 
@@ -126,8 +156,38 @@ function initializeCalculator(inputId, buttonId, resultId, explanationId) {
     }
 
     function parseTimeValue(timeValue) {
+        if (typeof timeValue === 'number') {
+            return timeValue;
+        }
+        
+        timeValue = timeValue.trim();
+        
+        if (timeValue === '') {
+            throw new Error('Empty time value');
+        }
+        
         if (!isNaN(parseFloat(timeValue))) {
-            return parseFloat(timeValue);
+            const value = parseFloat(timeValue);
+            if (value.toString().includes('.')) {
+                if (currentInputMethod === 'minutes') {
+                    const parts = value.toString().split('.');
+                    let hours = parseInt(parts[0]);
+                    let minutes = 0;
+                    
+                    if (parts[1]) {
+                        if (parts[1].length === 1) {
+                            minutes = parseInt(parts[1]) * 10;
+                        } else {
+                            minutes = parseInt(parts[1]);
+                        }
+                    }
+                    
+                    return hours + (minutes / 60);
+                } else {
+                    return value;
+                }
+            }
+            return value;
         }
         
         const parts = timeValue.split('.');
@@ -143,8 +203,11 @@ function initializeCalculator(inputId, buttonId, resultId, explanationId) {
                     const percentage = parseFloat('0.' + parts[1]);
                     minutes = percentage * 60;
                 } else if (currentInputMethod === 'minutes') {
-                    minutes = parseInt(parts[1]);
-                    if (parts[1].length === 1) minutes *= 10;
+                    if (parts[1].length === 1) {
+                        minutes = parseInt(parts[1]) * 10;
+                    } else {
+                        minutes = parseInt(parts[1]);
+                    }
                 }
             }
             
