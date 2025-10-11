@@ -235,7 +235,7 @@ class Eggling {
             if (cleanPercent >= 100) {
                 this.appendToLog(`🧹 ${this.name} is sparkling, blinding!`);
             } else {
-                this.poopLevel = Math.max(0, this.poopLevel - 1.2);
+                this.poopLevel = Math.max(0, this.poopLevel - 1.8);
                 if (this.age >= 20) {
                     this.appendToLog(`🧹 ${this.name} is cleaning...`);
                 } else {
@@ -566,21 +566,28 @@ class Eggling {
             <button id="toggle-instructions" class="toggle-btn">▼</button>
         </div>
         <div id="instructions-content">
-            <strong>Feed</strong> - Reduce hunger <br>
-            <strong>Play</strong> - Reduce boredom <br>
-            <strong>Talk</strong> - Reduce boredom <br>
-            <strong>Clean</strong> - Clean Eggling <br>
-            <strong>Sleep</strong> - Let time pass <br>
-            <strong>Poop</strong> - Tap to clean <br>
-            <strong style="color: #fff; text-shadow: 0 0 2px #fff, 0 0 10px #fff;">Release</strong> - Release your eggling <br>
+            <strong>Feed</strong> - Reduce Hunger <br>
+            <strong>Play</strong> - Reduce Boredom <br>
+            <strong>Clean</strong> - Increase Hygeine <br>
+            <strong>Talk</strong> - Hear ${this.name}'s Wisdom <br>
+            <strong>Sleep</strong> - Let Time Pass <br>
+            <strong>Poop</strong> - Tap to Remove <br>
+            <strong style="color: #fff; text-shadow: 0 0 2px #fff, 0 0 10px #fff;">Release</strong> - Release Your Eggling <br>
         </div>
         `;
         document.getElementById('instructions').innerHTML = instr;
-        
+        setTimeout(() => {
+            const content = document.getElementById('instructions-content');
+            const toggleBtn = document.getElementById('toggle-instructions');
+            if (content && toggleBtn) {
+                content.style.display = 'none';
+                toggleBtn.textContent = '►';
+            }
+        }, 0);
+
         document.getElementById('toggle-instructions').addEventListener('click', function() {
             const content = document.getElementById('instructions-content');
             const toggleBtn = document.getElementById('toggle-instructions');
-            
             if (content.style.display === 'none') {
                 content.style.display = 'block';
                 toggleBtn.textContent = '▼';
@@ -728,7 +735,6 @@ function resetPoopSprites() {
     });
     updateCleanlinessOverlay();
     enforceCleanlinessCap();
-    persistPoopSpritesState();
 }
 function revealNextPoop() {
     for (let i = 0; i < 4; i++) {
@@ -824,14 +830,16 @@ document.addEventListener('DOMContentLoaded', () => {
     if (realStartBtn) {
         const orig = realStartBtn.onclick || (()=>{});
         realStartBtn.onclick = function(ev) {
-            patchPoopFeatureOnStart();
-            restorePoopSpritesState();
+            patchPoopFeatureOnStart(); // only reset when real new game
             orig.call(this, ev);
         };
     }
     setTimeout(()=>{
-      patchPoopFeatureOnStart();
-      restorePoopSpritesState();
+      setupPoopSpriteListeners(); // add listeners always
+      patchWaitBtnForPoop();
+      restorePoopSpritesState(); // only restore, do not reset
+      updateCleanlinessOverlay();
+      enforceCleanlinessCap();
     },400);
 
     let eggling;
@@ -1042,3 +1050,15 @@ document.addEventListener('DOMContentLoaded', () => {
     initGame();
     loadSavedEggling();
 });
+
+setTimeout(()=>{
+  const restartBtn = document.getElementById('restart');
+  if (restartBtn) {
+    const origRestart = restartBtn.onclick || (()=>{});
+    restartBtn.onclick = function(ev) {
+      resetPoopSprites();
+      localStorage.removeItem('egglingPoopSprites');
+      origRestart.call(this, ev);
+    }
+  }
+}, 900);
