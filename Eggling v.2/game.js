@@ -555,7 +555,7 @@ class Eggling {
         
         document.getElementById('hunger-bar').className = hungerPercent >= 70 ? 'bar danger' : hungerPercent >= 21 ? 'bar warning' : 'bar good';
         document.getElementById('boredom-bar').className = boredomPercent >= 70 ? 'bar danger' : boredomPercent >= 21 ? 'bar warning' : 'bar good';
-        document.getElementById('clean-bar').className = cleanPercent <= 20 ? 'bar danger' : cleanPercent <= 69 ? 'bar warning' : 'bar good';
+        document.getElementById('clean-bar').className = cleanPercent <= 20 ? 'bar danger' : cleanPercent <= 70 ? 'bar warning' : 'bar good';
         document.getElementById('social-bar').className = socialPercent <= 20 ? 'bar danger' : socialPercent <= 69 ? 'bar warning' : 'bar good';
     }
 
@@ -569,8 +569,9 @@ class Eggling {
             <strong>Feed</strong> - Reduce hunger <br>
             <strong>Play</strong> - Reduce boredom <br>
             <strong>Talk</strong> - Reduce boredom <br>
-            <strong>Clean</strong> - Improve cleanliness <br>
-            <strong>Wait</strong> - Let time pass <br>
+            <strong>Clean</strong> - Clean Eggling <br>
+            <strong>Sleep</strong> - Let time pass <br>
+            <strong>Poop</strong> - Tap to clean <br>
             <strong style="color: #fff; text-shadow: 0 0 2px #fff, 0 0 10px #fff;">Release</strong> - Release your eggling <br>
         </div>
         `;
@@ -666,7 +667,173 @@ class Eggling {
     }
 }
 
+let poopSpritesState = [false, false, false, false];
+const poopSpriteIds = [
+    'poop-left-1',
+    'poop-right-1',
+    'poop-left-2',
+    'poop-right-2'
+];
+
+function getCleanlinessCap() {
+    const capped = 100 - poopSpritesState.filter(Boolean).length * 10;
+    return Math.max(0, capped);
+}
+function updateCleanlinessOverlay() {
+    const activePoops = poopSpritesState.filter(Boolean).length;
+    const overlay = document.getElementById('clean-cap-overlay');
+    if (!overlay) return;
+    const capPercent = activePoops * 10;
+    overlay.style.width = capPercent + '%';
+}
+function enforceCleanlinessCap() {
+    const cleanBar = document.getElementById('clean-bar');
+    const cleanValue = document.getElementById('clean-value');
+    if (!cleanBar || !cleanValue) return;
+    let current = parseFloat(cleanBar.style.width)||0;
+    let cap = getCleanlinessCap();
+    if (current > cap) {
+        cleanBar.style.width = cap + '%';
+        cleanValue.innerText = cap.toFixed(1) + '%';
+    }
+    updateCleanlinessOverlay();
+}
+
+function persistPoopSpritesState() {
+  localStorage.setItem('egglingPoopSprites', JSON.stringify(poopSpritesState));
+}
+function restorePoopSpritesState() {
+  let s = localStorage.getItem('egglingPoopSprites');
+  if (!s) return;
+  try {
+    let arr = JSON.parse(s);
+    if (Array.isArray(arr) && arr.length === 4) {
+      poopSpritesState = arr.map(Boolean);
+      poopSpriteIds.forEach((id, idx) => {
+        const el = document.getElementById(id);
+        if (!el) return;
+        el.style.display = poopSpritesState[idx] ? 'block' : 'none';
+      });
+    }
+  }catch(e){}
+  updateCleanlinessOverlay();
+  enforceCleanlinessCap();
+}
+
+function resetPoopSprites() {
+    poopSpritesState = [false, false, false, false];
+    poopSpriteIds.forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.style.display = 'none';
+    });
+    updateCleanlinessOverlay();
+    enforceCleanlinessCap();
+    persistPoopSpritesState();
+}
+function revealNextPoop() {
+    for (let i = 0; i < 4; i++) {
+        if (!poopSpritesState[i]) {
+            poopSpritesState[i] = true;
+            const el = document.getElementById(poopSpriteIds[i]);
+            if (el) el.style.display = 'block';
+            updateCleanlinessOverlay();
+            enforceCleanlinessCap();
+            persistPoopSpritesState();
+            break;
+        }
+    }
+}
+function onPoopSpriteClick(idx) {
+    if (poopSpritesState[idx]) {
+        poopSpritesState[idx] = false;
+        const el = document.getElementById(poopSpriteIds[idx]);
+        if (el) el.style.display = 'none';
+
+        const cleanBar = document.getElementById('clean-bar');
+        const cleanValue = document.getElementById('clean-value');
+        let widthNow = parseFloat(cleanBar.style.width)||0;
+        const cap = getCleanlinessCap();
+        widthNow = Math.min(cap, widthNow + 7.5);
+        cleanBar.style.width = widthNow + '%';
+        cleanValue.innerText = widthNow.toFixed(1) + '%';
+
+        enforceCleanlinessCap();
+        updateCleanlinessOverlay();
+        persistPoopSpritesState();
+    }
+}
+
+const originalClean = Eggling.prototype.clean;
+Eggling.prototype.clean = function () {
+    const cap = window.getCleanlinessCap ? window.getCleanlinessCap() : 100;
+    originalClean.apply(this, arguments);
+    const cleanBar = document.getElementById('clean-bar');
+    const cleanValue = document.getElementById('clean-value');
+    let widthNow = parseFloat(cleanBar.style.width)||0;
+    if (widthNow > cap) {
+        widthNow = cap;
+        cleanBar.style.width = widthNow + '%';
+        cleanValue.innerText = widthNow.toFixed(1) + '%';
+    }
+    const maxPoop = 10;
+    const forcedPoopLevel = maxPoop * (1 - cap / 100);
+    if (this.poopLevel < forcedPoopLevel) this.poopLevel = forcedPoopLevel;
+    enforceCleanlinessCap();
+    updateCleanlinessOverlay();
+}
+
+const originalUpdateMeters = Eggling.prototype.updateMeters;
+Eggling.prototype.updateMeters = function () {
+    originalUpdateMeters.apply(this, arguments);
+    enforceCleanlinessCap();
+    updateCleanlinessOverlay();
+}
+
+function setupPoopSpriteListeners() {
+    poopSpriteIds.forEach((id, idx) => {
+        const el = document.getElementById(id);
+        if (el && !el.dataset.poopready) {
+            el.onclick = () => onPoopSpriteClick(idx);
+            el.dataset.poopready = '1';
+        }
+    });
+}
+
+function patchWaitBtnForPoop() {
+    const waitBtn = document.getElementById('wait-btn');
+    if (!waitBtn || waitBtn._poopPatched) return;
+    const orig = waitBtn.onclick || (()=>{});
+    waitBtn.onclick = function(ev) {
+        let shouldReveal = poopSpritesState.some(s=>!s);
+        if (shouldReveal) revealNextPoop();
+        orig.call(this, ev);
+    };
+    waitBtn._poopPatched=true;
+}
+
+function patchPoopFeatureOnStart() {
+    resetPoopSprites();
+    setupPoopSpriteListeners();
+    patchWaitBtnForPoop();
+    updateCleanlinessOverlay();
+    enforceCleanlinessCap();
+}
+
 document.addEventListener('DOMContentLoaded', () => {
+    const realStartBtn = document.getElementById('start');
+    if (realStartBtn) {
+        const orig = realStartBtn.onclick || (()=>{});
+        realStartBtn.onclick = function(ev) {
+            patchPoopFeatureOnStart();
+            restorePoopSpritesState();
+            orig.call(this, ev);
+        };
+    }
+    setTimeout(()=>{
+      patchPoopFeatureOnStart();
+      restorePoopSpritesState();
+    },400);
+
     let eggling;
     
     window.addEventListener('beforeunload', () => {
@@ -685,7 +852,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const newBoredomPercent = Math.min(100, boredomPercent + 12.5);
             eggling.boredom = Math.min(maxBoredom, maxBoredom * (newBoredomPercent / 100));
             
-            const newCleanPercent = Math.max(0, cleanPercent - 12.5);
+            const newCleanPercent = Math.max(0, cleanPercent - 16.5);
             eggling.poopLevel = Math.min(maxPoop, maxPoop * (1 - newCleanPercent / 100));
             
             eggling.saveToLocalStorage();
@@ -838,7 +1005,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const savedEggling = Eggling.loadFromLocalStorage();
         if (savedEggling) {
             eggling = savedEggling;
-            eggling.appendToLog(`Welcome back to ${eggling.name}! Your eggling was waiting for you.`);
+            eggling.appendToLog(`Welcome back to ${eggling.name}!`);
             eggling.health();
             eggling.instructions();
             

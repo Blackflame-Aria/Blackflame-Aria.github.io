@@ -33,9 +33,19 @@
         </div>
         <div id="game-content" style="display: none;">
             <div id="status" class="status"></div>
-            <div id="sprite-container" class="sprite-container">
-                <div id="eggling-sprite" class="eggling-sprite"></div>
+            <div class="sprite-flex-row">
+                <div class="poop-col left">
+                    <img src="Sprites/poop.gif" id="poop-left-1" class="sprite-img poop-sprite" style="display:none" alt="poop">
+                    <img src="Sprites/poop.gif" id="poop-left-2" class="sprite-img poop-sprite" style="display:none" alt="poop">
                 </div>
+                <div id="sprite-container" class="sprite-container sprite-layout">
+                    <div id="eggling-sprite" class="eggling-sprite"></div>
+                </div>
+                <div class="poop-col right">
+                    <img src="Sprites/poop.gif" id="poop-right-1" class="sprite-img poop-sprite" style="display:none" alt="poop">
+                    <img src="Sprites/poop.gif" id="poop-right-2" class="sprite-img poop-sprite" style="display:none" alt="poop">
+                </div>
+            </div>
             <div class="pet-needs">
                 <div class="need-indicator">
                     <div class="need-label">Hunger:</div>
@@ -52,9 +62,10 @@
                     <div class="meter-value" id="boredom-value">0%</div>
                 </div>
                 <div class="need-indicator">
-                    <div class="need-label">Cleanliness:</div>
-                    <div id="clean-meter" class="meter">
+                    <div class="need-label">Hygeine:</div>
+                    <div id="clean-meter" class="meter clean-meter">
                         <div id="clean-bar" class="bar"></div>
+                        <div id="clean-cap-overlay" class="clean-cap-overlay"></div>
                     </div>
                     <div class="meter-value" id="clean-value">0%</div>
                 </div>
