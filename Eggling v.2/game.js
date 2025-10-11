@@ -830,14 +830,14 @@ document.addEventListener('DOMContentLoaded', () => {
     if (realStartBtn) {
         const orig = realStartBtn.onclick || (()=>{});
         realStartBtn.onclick = function(ev) {
-            patchPoopFeatureOnStart(); // only reset when real new game
+            patchPoopFeatureOnStart(); 
             orig.call(this, ev);
         };
     }
     setTimeout(()=>{
-      setupPoopSpriteListeners(); // add listeners always
+      setupPoopSpriteListeners(); 
       patchWaitBtnForPoop();
-      restorePoopSpritesState(); // only restore, do not reset
+      restorePoopSpritesState(); 
       updateCleanlinessOverlay();
       enforceCleanlinessCap();
     },400);
