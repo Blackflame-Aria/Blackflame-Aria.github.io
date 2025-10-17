@@ -72,7 +72,7 @@ const egglingSprites = {
     egg2: "<img src='Sprites/Egg2.gif' class='sprite-img'>",
     baby2: "<img src='Sprites/Baby2.gif' class='sprite-img'>",
     child2: "<img src='Sprites/Child2.gif' class='sprite-img'>",
-    teen2: "<img src='Sprites/WIP.gif' class='sprite-img'>",
+    teen2: "<img src='Sprites/Teen2.gif' class='sprite-img'>",
     adult2: "<img src='Sprites/WIP.gif' class='sprite-img'>",
     secret2: "<img src='Sprites/Secret2.gif' class='sprite-img'>",
     wip: "<img src='Sprites/WIP.gif' class='sprite-img'>"
@@ -123,10 +123,10 @@ class Eggling {
         this.spriteState = "egg";
         this.eggType = eggType;
         this.boredom = 5;
-        this.foodLevel = 5;
+        this.foodLevel = 2;
         this.poopLevel = 0;
         this.poopDecayRate = 0.15;
-        this.socialLevel = 6.5;
+        this.socialLevel = 7;
         this.graduated = false;
         
         colorManager.updateColors(this);
@@ -209,7 +209,7 @@ class Eggling {
                 
                 this.appendToLog(message);
                 
-                const newSocialPercent = Math.min(100, socialPercent + 15.5);
+                const newSocialPercent = Math.min(100, socialPercent + 10.5);
                 this.socialLevel = Math.min(maxSocial, maxSocial * (newSocialPercent / 100));
                 
                 const maxBoredom = 10;
@@ -264,7 +264,7 @@ class Eggling {
             
             const maxSocial = 10;
             const socialPercent = Math.max(0, Math.min(100, (this.socialLevel / maxSocial) * 100));
-            const newSocialPercent = Math.max(0, Math.min(100, socialPercent - 5.5));
+            const newSocialPercent = Math.max(0, Math.min(100, socialPercent - 8.5));
             this.socialLevel = Math.max(0, maxSocial * (newSocialPercent / 100));
             
             this.appendToLog(`⏱️ Time passes... ${this.name} is now ${this.age} days old.`);
