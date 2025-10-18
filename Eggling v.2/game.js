@@ -73,7 +73,7 @@ const egglingSprites = {
     baby2: "<img src='Sprites/Baby2.gif' class='sprite-img'>",
     child2: "<img src='Sprites/Child2.gif' class='sprite-img'>",
     teen2: "<img src='Sprites/Teen2.gif' class='sprite-img'>",
-    adult2: "<img src='Sprites/WIP.gif' class='sprite-img'>",
+    adult2: "<img src='Sprites/Adult2.gif' class='sprite-img'>",
     secret2: "<img src='Sprites/Secret2.gif' class='sprite-img'>",
     wip: "<img src='Sprites/WIP.gif' class='sprite-img'>"
 };
