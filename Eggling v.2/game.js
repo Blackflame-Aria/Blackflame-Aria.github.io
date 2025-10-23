@@ -67,7 +67,7 @@ const egglingSprites = {
     dead: "<img src='Sprites/Dead.gif' class='sprite-img'>",
     dead2: "<img src='Sprites/Dead2.gif' class='sprite-img'>",
     graduate: "<img src='Sprites/Graduate.gif' class='sprite-img'>",
-    graduate2: "<img src='Sprites/WIP.gif' class='sprite-img'>",
+    graduate2: "<img src='Sprites/Graduate2.gif' class='sprite-img'>",
     secret: "<img src='Sprites/Secret.gif' class='sprite-img'>",
     egg2: "<img src='Sprites/Egg2.gif' class='sprite-img'>",
     baby2: "<img src='Sprites/Baby2.gif' class='sprite-img'>",
