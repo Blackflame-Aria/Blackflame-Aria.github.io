@@ -751,17 +751,10 @@ function revealNextPoop() {
 }
 function onPoopSpriteClick(idx) {
     if (poopSpritesState[idx]) {
+        playSound('poop');
         poopSpritesState[idx] = false;
         const el = document.getElementById(poopSpriteIds[idx]);
         if (el) el.style.display = 'none';
-
-        const cleanBar = document.getElementById('clean-bar');
-        const cleanValue = document.getElementById('clean-value');
-        let widthNow = parseFloat(cleanBar.style.width)||0;
-        const cap = getCleanlinessCap();
-        widthNow = Math.min(cap, widthNow + 7.5);
-        cleanBar.style.width = widthNow + '%';
-        cleanValue.innerText = widthNow.toFixed(1) + '%';
 
         enforceCleanlinessCap();
         updateCleanlinessOverlay();
@@ -825,6 +818,32 @@ function patchPoopFeatureOnStart() {
     enforceCleanlinessCap();
 }
 
+const sounds = {
+  start: new Audio('Sounds/start.wav'),
+  release: new Audio('Sounds/release.wav'),
+  poop: new Audio('Sounds/poop.wav'),
+  age: new Audio('Sounds/age.wav'),
+  evolve: new Audio('Sounds/Evolve.wav'),
+  graduate: new Audio('Sounds/Graduate.wav'),
+  sick: new Audio('Sounds/Sick.wav'),
+  death: new Audio('Sounds/death.wav'),
+  select: new Audio('Sounds/Select.wav'),
+  select2: new Audio('Sounds/Select2.wav'),
+  food: new Audio('Sounds/food.wav'),
+  play: new Audio('Sounds/play.wav'),
+  clean: new Audio('Sounds/clean.wav'),
+  talk: new Audio('Sounds/talk.wav'),
+  no: new Audio('Sounds/No.wav'),
+};
+function playSound(name) {
+  if (sounds[name]) {
+    try {
+      sounds[name].currentTime = 0;
+      sounds[name].play();
+    } catch (e) {}
+  }
+}
+
 document.addEventListener('DOMContentLoaded', () => {
     const realStartBtn = document.getElementById('start');
     if (realStartBtn) {
@@ -880,6 +899,7 @@ document.addEventListener('DOMContentLoaded', () => {
     document.documentElement.style.setProperty('--matrix-glow', colorManager.getGlowEffect(colorManager.GREEN_COLOR));
     
     optionEgg.addEventListener('click', function() {
+        playSound('select2');
         optionEgg.classList.add('selected');
         optionEgg2.classList.remove('selected');
         selectedEggType = "egg";
@@ -888,6 +908,7 @@ document.addEventListener('DOMContentLoaded', () => {
     });
     
     optionEgg2.addEventListener('click', function() {
+        playSound('select');
         optionEgg2.classList.add('selected');
         optionEgg.classList.remove('selected');
         selectedEggType = "egg2";
@@ -897,8 +918,12 @@ document.addEventListener('DOMContentLoaded', () => {
         
         function startGame() {
             const name = document.getElementById('name').value.trim();
-            if (!name) return;
+            if (!name) {
+                playSound('no');
+                return;
+            }
             
+            playSound('start');
             eggling = new Eggling(name, selectedEggType);
             eggling.health();
             eggling.instructions();
@@ -924,7 +949,11 @@ document.addEventListener('DOMContentLoaded', () => {
         });
         
         document.getElementById('feed-btn').addEventListener('click', () => {
-            if (!eggling || !eggling.isAlive()) return;
+            if (!eggling || !eggling.isAlive()) {
+                playSound('no');
+                return;
+            }
+            playSound('food');
             if (eggling.age >= 20) {
                 document.getElementById('feed-btn').querySelector('.btn-text').textContent = 'Cook';
             }
@@ -934,7 +963,11 @@ document.addEventListener('DOMContentLoaded', () => {
         });
         
         document.getElementById('play-btn').addEventListener('click', () => {
-            if (!eggling || !eggling.isAlive()) return;
+            if (!eggling || !eggling.isAlive()) {
+                playSound('no');
+                return;
+            }
+            playSound('play');
             if (eggling.age >= 20) {
                 document.getElementById('play-btn').querySelector('.btn-text').textContent = 'Work';
             }
@@ -944,7 +977,11 @@ document.addEventListener('DOMContentLoaded', () => {
         });
         
         document.getElementById('talk-btn').addEventListener('click', () => {
-            if (!eggling || !eggling.isAlive()) return;
+            if (!eggling || !eggling.isAlive()) {
+                playSound('no');
+                return;
+            }
+            playSound('talk');
             if (eggling.age >= 20) {
                 document.getElementById('talk-btn').querySelector('.btn-text').textContent = 'Talk';
             }
@@ -954,7 +991,11 @@ document.addEventListener('DOMContentLoaded', () => {
         });
         
         document.getElementById('clean-btn').addEventListener('click', () => {
-            if (!eggling || !eggling.isAlive()) return;
+            if (!eggling || !eggling.isAlive()) {
+                playSound('no');
+                return;
+            }
+            playSound('clean');
             if (eggling.age >= 20) {
                 document.getElementById('clean-btn').querySelector('.btn-text').textContent = 'Clean';
             }
@@ -964,7 +1005,17 @@ document.addEventListener('DOMContentLoaded', () => {
         });
         
         document.getElementById('wait-btn').addEventListener('click', () => {
-            if (!eggling || !eggling.isAlive()) return;
+            if (!eggling || !eggling.isAlive()) {
+                playSound('no');
+                return;
+            }
+            if ([0, 4, 12, 19].includes(eggling.age)) {
+                playSound('evolve');
+            } else if (eggling.age === 38) {
+                playSound('graduate');
+            } else {
+                playSound('age');
+            }
             eggling.appendToLog(`${eggling.name} is sleeping...`);
             document.getElementById('wait-btn').querySelector('.btn-text').textContent = 'Sleep';
             eggling.wait();
@@ -973,6 +1024,7 @@ document.addEventListener('DOMContentLoaded', () => {
         });
         
         document.getElementById('murder-btn').addEventListener('click', () => {
+            playSound('release');
             document.documentElement.style.setProperty('--matrix-green', 'white');
             document.documentElement.style.setProperty('--matrix-glow', '0 0 10px white, 0 0 20px white');
             
@@ -995,6 +1047,7 @@ document.addEventListener('DOMContentLoaded', () => {
         });
         
         document.getElementById('restart').addEventListener('click', () => {
+            playSound('release');
             document.getElementById('log').innerText = '';
             
             document.getElementById('start-container').style.display = 'block';
@@ -1062,3 +1115,20 @@ setTimeout(()=>{
     }
   }
 }, 900);
+
+Eggling.prototype._updateSprite_prevSick = false;
+const originalUpdateSprite = Eggling.prototype.updateSprite;
+Eggling.prototype.updateSprite = function() {
+    const wasSick = this._updateSprite_prevSick;
+    const isSickNow = this.sickness() >= 4;
+    if (isSickNow && !wasSick) {
+        playSound('sick');
+    }
+    this._updateSprite_prevSick = isSickNow;
+    originalUpdateSprite.apply(this, arguments);
+}
+const originalRandomDeath = Eggling.prototype.randomDeath;
+Eggling.prototype.randomDeath = function() {
+    playSound('death');
+    originalRandomDeath.apply(this, arguments);
+}
