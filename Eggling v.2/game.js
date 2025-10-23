@@ -819,21 +819,21 @@ function patchPoopFeatureOnStart() {
 }
 
 const sounds = {
-  start: new Audio('Sounds/start.wav'),
-  release: new Audio('Sounds/release.wav'),
-  poop: new Audio('Sounds/poop.wav'),
-  age: new Audio('Sounds/age.wav'),
-  evolve: new Audio('Sounds/Evolve.wav'),
-  graduate: new Audio('Sounds/Graduate.wav'),
-  sick: new Audio('Sounds/Sick.wav'),
-  death: new Audio('Sounds/death.wav'),
-  select: new Audio('Sounds/Select.wav'),
-  select2: new Audio('Sounds/Select2.wav'),
-  food: new Audio('Sounds/food.wav'),
-  play: new Audio('Sounds/play.wav'),
-  clean: new Audio('Sounds/clean.wav'),
-  talk: new Audio('Sounds/talk.wav'),
-  no: new Audio('Sounds/No.wav'),
+  start: new Audio('./Sounds/start.wav'),
+  release: new Audio('./Sounds/release.wav'),
+  poop: new Audio('./Sounds/poop.wav'),
+  age: new Audio('./Sounds/age.wav'),
+  evolve: new Audio('./Sounds/Evolve.wav'),
+  graduate: new Audio('./Sounds/Graduate.wav'),
+  sick: new Audio('./Sounds/Sick.wav'),
+  death: new Audio('./Sounds/death.wav'),
+  select: new Audio('./Sounds/Select.wav'),
+  select2: new Audio('./Sounds/Select2.wav'),
+  food: new Audio('./Sounds/food.wav'),
+  play: new Audio('./Sounds/play.wav'),
+  clean: new Audio('./Sounds/clean.wav'),
+  talk: new Audio('./Sounds/talk.wav'),
+  no: new Audio('./Sounds/No.wav'),
 };
 function playSound(name) {
   if (sounds[name]) {
@@ -938,7 +938,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 
                 const actionButtons = document.querySelectorAll('.action-btn');
                 actionButtons.forEach(btn => btn.disabled = false);
-            }, 1500);
+            }, 1000);
         }
 
         document.getElementById('start').addEventListener('click', startGame);
