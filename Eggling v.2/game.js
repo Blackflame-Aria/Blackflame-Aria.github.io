@@ -919,7 +919,7 @@ document.addEventListener('DOMContentLoaded', () => {
         function startGame() {
             const name = document.getElementById('name').value.trim();
             if (!name) {
-                playSound('no');
+                playSound('start');
                 return;
             }
             
@@ -952,7 +952,7 @@ document.addEventListener('DOMContentLoaded', () => {
         
         document.getElementById('feed-btn').addEventListener('click', () => {
             if (!eggling || !eggling.isAlive()) {
-                playSound('no');
+                playSound('release');
                 return;
             }
             playSound('food');
@@ -966,7 +966,7 @@ document.addEventListener('DOMContentLoaded', () => {
         
         document.getElementById('play-btn').addEventListener('click', () => {
             if (!eggling || !eggling.isAlive()) {
-                playSound('no');
+                playSound('release');
                 return;
             }
             playSound('play');
@@ -980,7 +980,7 @@ document.addEventListener('DOMContentLoaded', () => {
         
         document.getElementById('talk-btn').addEventListener('click', () => {
             if (!eggling || !eggling.isAlive()) {
-                playSound('no');
+                playSound('release');
                 return;
             }
             playSound('talk');
@@ -994,7 +994,7 @@ document.addEventListener('DOMContentLoaded', () => {
         
         document.getElementById('clean-btn').addEventListener('click', () => {
             if (!eggling || !eggling.isAlive()) {
-                playSound('no');
+                playSound('release');
                 return;
             }
             playSound('clean');
@@ -1008,7 +1008,7 @@ document.addEventListener('DOMContentLoaded', () => {
         
         document.getElementById('wait-btn').addEventListener('click', () => {
             if (!eggling || !eggling.isAlive()) {
-                playSound('no');
+                playSound('release');
                 return;
             }
             if ([0, 4, 12, 19].includes(eggling.age)) {
