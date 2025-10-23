@@ -819,21 +819,21 @@ function patchPoopFeatureOnStart() {
 }
 
 const sounds = {
-  start: new Audio('./Sounds/start.wav'),
-  release: new Audio('./Sounds/release.wav'),
-  poop: new Audio('./Sounds/poop.wav'),
-  age: new Audio('./Sounds/age.wav'),
-  evolve: new Audio('./Sounds/Evolve.wav'),
-  graduate: new Audio('./Sounds/Graduate.wav'),
-  sick: new Audio('./Sounds/Sick.wav'),
-  death: new Audio('./Sounds/death.wav'),
-  select: new Audio('./Sounds/Select.wav'),
-  select2: new Audio('./Sounds/Select2.wav'),
-  food: new Audio('./Sounds/food.wav'),
-  play: new Audio('./Sounds/play.wav'),
-  clean: new Audio('./Sounds/clean.wav'),
-  talk: new Audio('./Sounds/talk.wav'),
-  no: new Audio('./Sounds/No.wav'),
+  start: new Audio('Sounds/Start.mp3'),
+  release: new Audio('Sounds/Release.mp3'),
+  poop: new Audio('Sounds/poop.mp3'),
+  age: new Audio('Sounds/Age.mp3'),
+  evolve: new Audio('Sounds/Evolve.mp3'),
+  graduate: new Audio('Sounds/Graduate.mp3'),
+  sick: new Audio('Sounds/Sick.mp3'),
+  death: new Audio('Sounds/Death.mp3'),
+  select: new Audio('Sounds/Select.mp3'),
+  select2: new Audio('Sounds/Select2.mp3'),
+  food: new Audio('Sounds/food.mp3'),
+  play: new Audio('Sounds/play.mp3'),
+  clean: new Audio('Sounds/clean.mp3'),
+  talk: new Audio('Sounds/talk.mp3'),
+  no: new Audio('Sounds/No.mp3'),
 };
 function playSound(name) {
   if (sounds[name]) {
@@ -919,26 +919,24 @@ document.addEventListener('DOMContentLoaded', () => {
         function startGame() {
             const name = document.getElementById('name').value.trim();
             if (!name) {
-                playSound('start');
+                playSound('no');
                 return;
             }
             
             playSound('start');
-            setTimeout(() => {
-                eggling = new Eggling(name, selectedEggType);
-                eggling.health();
-                eggling.instructions();
-                eggling.appendToLog(`🥚 ${name} is hatching! Take care of your eggling.`);
-                eggling.saveToLocalStorage();
-                
-                document.getElementById('start-container').style.display = 'none';
-                document.getElementById('game-content').style.display = 'block';
-                
-                document.getElementById('game-over').style.display = 'none';
-                
-                const actionButtons = document.querySelectorAll('.action-btn');
-                actionButtons.forEach(btn => btn.disabled = false);
-            }, 1000);
+            eggling = new Eggling(name, selectedEggType);
+            eggling.health();
+            eggling.instructions();
+            eggling.appendToLog(`🥚 ${name} is hatching! Take care of your eggling.`);
+            eggling.saveToLocalStorage();
+            
+            document.getElementById('start-container').style.display = 'none';
+            document.getElementById('game-content').style.display = 'block';
+            
+            document.getElementById('game-over').style.display = 'none';
+            
+            const actionButtons = document.querySelectorAll('.action-btn');
+            actionButtons.forEach(btn => btn.disabled = false);
         }
 
         document.getElementById('start').addEventListener('click', startGame);
@@ -952,7 +950,7 @@ document.addEventListener('DOMContentLoaded', () => {
         
         document.getElementById('feed-btn').addEventListener('click', () => {
             if (!eggling || !eggling.isAlive()) {
-                playSound('release');
+                playSound('no');
                 return;
             }
             playSound('food');
@@ -966,7 +964,7 @@ document.addEventListener('DOMContentLoaded', () => {
         
         document.getElementById('play-btn').addEventListener('click', () => {
             if (!eggling || !eggling.isAlive()) {
-                playSound('release');
+                playSound('no');
                 return;
             }
             playSound('play');
@@ -980,7 +978,7 @@ document.addEventListener('DOMContentLoaded', () => {
         
         document.getElementById('talk-btn').addEventListener('click', () => {
             if (!eggling || !eggling.isAlive()) {
-                playSound('release');
+                playSound('no');
                 return;
             }
             playSound('talk');
@@ -994,7 +992,7 @@ document.addEventListener('DOMContentLoaded', () => {
         
         document.getElementById('clean-btn').addEventListener('click', () => {
             if (!eggling || !eggling.isAlive()) {
-                playSound('release');
+                playSound('no');
                 return;
             }
             playSound('clean');
@@ -1008,7 +1006,7 @@ document.addEventListener('DOMContentLoaded', () => {
         
         document.getElementById('wait-btn').addEventListener('click', () => {
             if (!eggling || !eggling.isAlive()) {
-                playSound('release');
+                playSound('no');
                 return;
             }
             if ([0, 4, 12, 19].includes(eggling.age)) {
