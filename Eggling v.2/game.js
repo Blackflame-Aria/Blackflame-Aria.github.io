@@ -924,19 +924,21 @@ document.addEventListener('DOMContentLoaded', () => {
             }
             
             playSound('start');
-            eggling = new Eggling(name, selectedEggType);
-            eggling.health();
-            eggling.instructions();
-            eggling.appendToLog(`🥚 ${name} is hatching! Take care of your eggling.`);
-            eggling.saveToLocalStorage();
-            
-            document.getElementById('start-container').style.display = 'none';
-            document.getElementById('game-content').style.display = 'block';
-            
-            document.getElementById('game-over').style.display = 'none';
-            
-            const actionButtons = document.querySelectorAll('.action-btn');
-            actionButtons.forEach(btn => btn.disabled = false);
+            setTimeout(() => {
+                eggling = new Eggling(name, selectedEggType);
+                eggling.health();
+                eggling.instructions();
+                eggling.appendToLog(`🥚 ${name} is hatching! Take care of your eggling.`);
+                eggling.saveToLocalStorage();
+                
+                document.getElementById('start-container').style.display = 'none';
+                document.getElementById('game-content').style.display = 'block';
+                
+                document.getElementById('game-over').style.display = 'none';
+                
+                const actionButtons = document.querySelectorAll('.action-btn');
+                actionButtons.forEach(btn => btn.disabled = false);
+            }, 1500);
         }
 
         document.getElementById('start').addEventListener('click', startGame);
