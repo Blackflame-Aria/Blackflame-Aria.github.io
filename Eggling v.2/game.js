@@ -821,7 +821,7 @@ function patchPoopFeatureOnStart() {
 const sounds = {
   start: new Audio('Sounds/Start.mp3'),
   release: new Audio('Sounds/Release.mp3'),
-  poop: new Audio('Sounds/poop.mp3'),
+  poop: new Audio('Sounds/Poop.mp3'),
   age: new Audio('Sounds/Age.mp3'),
   evolve: new Audio('Sounds/Evolve.mp3'),
   graduate: new Audio('Sounds/Graduate.mp3'),
@@ -829,10 +829,10 @@ const sounds = {
   death: new Audio('Sounds/Death.mp3'),
   select: new Audio('Sounds/Select.mp3'),
   select2: new Audio('Sounds/Select2.mp3'),
-  food: new Audio('Sounds/food.mp3'),
-  play: new Audio('Sounds/play.mp3'),
-  clean: new Audio('Sounds/clean.mp3'),
-  talk: new Audio('Sounds/talk.mp3'),
+  food: new Audio('Sounds/Food.mp3'),
+  play: new Audio('Sounds/Play.mp3'),
+  clean: new Audio('Sounds/Clean.mp3'),
+  talk: new Audio('Sounds/Talk.mp3'),
   no: new Audio('Sounds/No.mp3'),
 };
 function playSound(name) {
