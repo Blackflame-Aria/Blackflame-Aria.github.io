@@ -821,7 +821,7 @@ function patchPoopFeatureOnStart() {
 const sounds = {
   start: new Audio('Sounds/Start.mp3'),
   release: new Audio('Sounds/Release.mp3'),
-  poop: new Audio('Sounds/Poop.mp3'),
+  poop: new Audio('Sounds/poop.mp3'),
   age: new Audio('Sounds/Age.mp3'),
   evolve: new Audio('Sounds/Evolve.mp3'),
   graduate: new Audio('Sounds/Graduate.mp3'),
@@ -949,11 +949,10 @@ document.addEventListener('DOMContentLoaded', () => {
         });
         
         document.getElementById('feed-btn').addEventListener('click', () => {
+            playSound('food');
             if (!eggling || !eggling.isAlive()) {
-                playSound('no');
                 return;
             }
-            playSound('food');
             if (eggling.age >= 20) {
                 document.getElementById('feed-btn').querySelector('.btn-text').textContent = 'Cook';
             }
@@ -963,11 +962,10 @@ document.addEventListener('DOMContentLoaded', () => {
         });
         
         document.getElementById('play-btn').addEventListener('click', () => {
+            playSound('play');
             if (!eggling || !eggling.isAlive()) {
-                playSound('no');
                 return;
             }
-            playSound('play');
             if (eggling.age >= 20) {
                 document.getElementById('play-btn').querySelector('.btn-text').textContent = 'Work';
             }
@@ -977,11 +975,10 @@ document.addEventListener('DOMContentLoaded', () => {
         });
         
         document.getElementById('talk-btn').addEventListener('click', () => {
+            playSound('talk');
             if (!eggling || !eggling.isAlive()) {
-                playSound('no');
                 return;
             }
-            playSound('talk');
             if (eggling.age >= 20) {
                 document.getElementById('talk-btn').querySelector('.btn-text').textContent = 'Talk';
             }
@@ -991,11 +988,10 @@ document.addEventListener('DOMContentLoaded', () => {
         });
         
         document.getElementById('clean-btn').addEventListener('click', () => {
+            playSound('clean');
             if (!eggling || !eggling.isAlive()) {
-                playSound('no');
                 return;
             }
-            playSound('clean');
             if (eggling.age >= 20) {
                 document.getElementById('clean-btn').querySelector('.btn-text').textContent = 'Clean';
             }
