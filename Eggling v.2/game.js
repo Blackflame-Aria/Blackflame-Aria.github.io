@@ -1083,15 +1083,19 @@ document.addEventListener('DOMContentLoaded', () => {
         
         switch (e.key) {
             case '1':
+                playSound('food');
                 document.getElementById('feed-btn').click();
                 break;
             case '2':
+                playSound('play');
                 document.getElementById('play-btn').click();
                 break;
             case '3':
+                playSound('clean');
                 document.getElementById('clean-btn').click();
                 break;
             case '4':
+                playSound('talk');
                 document.getElementById('talk-btn').click();
                 break;
             case '5':
