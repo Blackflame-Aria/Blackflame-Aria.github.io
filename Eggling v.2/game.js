@@ -835,16 +835,171 @@ const sounds = {
   talk: new Audio('Sounds/talk.mp3'),
   no: new Audio('Sounds/No.mp3'),
 };
+
+let soundEnabled = true;
+let volumeLevel = 1.0;
+let isDragging = false;
+let lastNonZeroVolume = 50;
+
 function playSound(name) {
-  if (sounds[name]) {
+  if (soundEnabled && sounds[name]) {
     try {
       sounds[name].currentTime = 0;
+      sounds[name].volume = volumeLevel;
       sounds[name].play();
     } catch (e) {}
   }
 }
 
+function updateVolume(volume) {
+  volumeLevel = volume / 100;
+  const volumeBar = document.getElementById('volume-bar');
+  const volumeHandle = document.querySelector('.volume-handle');
+  const volumeControl = document.querySelector('.volume-control');
+  const volumeIcon = document.querySelector('.volume-icon');
+  
+  volumeBar.style.width = `${volume}%`;
+  
+  const meterWidth = 60;
+  const handlePosition = (volume / 100) * meterWidth;
+  volumeHandle.style.left = `${handlePosition}px`;
+  
+   if (volume > 0) {
+    lastNonZeroVolume = volume;
+  }
+  
+  if (volume === 0) {
+    soundEnabled = false;
+    volumeControl.classList.add('muted');
+    volumeIcon.textContent = '🔇';
+  } else {
+    soundEnabled = true;
+    volumeControl.classList.remove('muted');
+    volumeIcon.textContent = '🔊';
+  }
+  
+  Object.values(sounds).forEach(sound => {
+    if (sound) {
+      sound.volume = volumeLevel;
+    }
+  });
+  
+  localStorage.setItem('egglingSoundEnabled', soundEnabled);
+  localStorage.setItem('egglingVolume', volume);
+}
+
+function loadSoundPreference() {
+  const savedSoundPreference = localStorage.getItem('egglingSoundEnabled');
+  const savedVolume = localStorage.getItem('egglingVolume');
+  
+  if (savedVolume !== null) {
+    const volume = parseInt(savedVolume);
+    lastNonZeroVolume = volume > 0 ? volume : 50;
+    updateVolume(volume);
+  } else {
+    lastNonZeroVolume = 100;
+    updateVolume(100);
+  }
+}
+
+function handleMeterClick(e) {
+  const meter = e.currentTarget;
+  const rect = meter.getBoundingClientRect();
+  const clickX = e.clientX - rect.left;
+  const meterWidth = rect.width;
+  const volumePercent = Math.round((clickX / meterWidth) * 100);
+  
+  updateVolume(Math.max(0, Math.min(100, volumePercent)));
+}
+
+function handleMeterDrag(e) {
+  if (!isDragging) return;
+  
+  const meter = document.querySelector('.volume-meter');
+  const rect = meter.getBoundingClientRect();
+  const dragX = e.clientX - rect.left;
+  const meterWidth = rect.width;
+  const volumePercent = Math.round((dragX / meterWidth) * 100);
+  
+  updateVolume(Math.max(0, Math.min(100, volumePercent)));
+}
+
+function startDrag(e) {
+  isDragging = true;
+  e.preventDefault();
+  
+  const volumeControl = document.querySelector('.volume-control');
+  volumeControl.classList.add('dragging');
+  
+  handleMeterClick(e);
+}
+
+function stopDrag() {
+  isDragging = false;
+  
+  const volumeControl = document.querySelector('.volume-control');
+  volumeControl.classList.remove('dragging');
+}
+
 document.addEventListener('DOMContentLoaded', () => {
+    loadSoundPreference();
+    
+    const volumeMeter = document.querySelector('.volume-meter');
+    const volumeIcon = document.querySelector('.volume-icon');
+    
+    if (volumeIcon) {
+        volumeIcon.addEventListener('click', (e) => {
+            e.stopPropagation();
+            
+            if (soundEnabled && volumeLevel > 0) {
+                updateVolume(0);
+            } else {
+                updateVolume(lastNonZeroVolume);
+            }
+        });
+    }
+    
+    if (volumeMeter) {
+        volumeMeter.addEventListener('click', handleMeterClick);
+        
+        volumeMeter.addEventListener('mousedown', startDrag);
+        document.addEventListener('mousemove', handleMeterDrag);
+        document.addEventListener('mouseup', stopDrag);
+        
+        volumeMeter.addEventListener('touchstart', (e) => {
+            e.preventDefault();
+            isDragging = true;
+            
+            const volumeControl = document.querySelector('.volume-control');
+            volumeControl.classList.add('dragging');
+            
+            const touch = e.touches[0];
+            const rect = volumeMeter.getBoundingClientRect();
+            const touchX = touch.clientX - rect.left;
+            const meterWidth = rect.width;
+            const volumePercent = Math.round((touchX / meterWidth) * 100);
+            updateVolume(Math.max(0, Math.min(100, volumePercent)));
+        });
+        
+        document.addEventListener('touchmove', (e) => {
+            if (!isDragging) return;
+            e.preventDefault();
+            const touch = e.touches[0];
+            const rect = volumeMeter.getBoundingClientRect();
+            const touchX = touch.clientX - rect.left;
+            const meterWidth = rect.width;
+            const volumePercent = Math.round((touchX / meterWidth) * 100);
+            updateVolume(Math.max(0, Math.min(100, volumePercent)));
+        });
+        
+        document.addEventListener('touchend', () => {
+            isDragging = false;
+            
+            const volumeControl = document.querySelector('.volume-control');
+            volumeControl.classList.remove('dragging');
+        });
+    }
+    
     const realStartBtn = document.getElementById('start');
     if (realStartBtn) {
         const orig = realStartBtn.onclick || (()=>{});

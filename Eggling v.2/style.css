@@ -34,7 +34,113 @@ body {
     width: 95%;
     max-width: 500px;
     text-align: center;
-    position: static;
+    position: relative;
+}
+
+.sound-control-container {
+    position: absolute;
+    top: 10px;
+    left: 5px;
+    z-index: 10;
+}
+
+.volume-control {
+    display: flex;
+    align-items: center;
+    background-color: var(--matrix-dark);
+    border: 2px solid var(--matrix-green);
+    border-radius: 20px;
+    padding: 8px;
+    box-shadow: var(--matrix-glow);
+    transition: all 0.3s ease;
+    cursor: pointer;
+    width: 30px;
+    height: 30px;
+    overflow: hidden;
+    position: relative;
+}
+
+.volume-control:hover,
+.volume-control.dragging {
+    width: 700%;
+    box-shadow: 0 0 15px var(--matrix-green), 0 0 25px var(--matrix-green);
+}
+
+.volume-icon {
+    position: absolute;
+    left: 3px;
+    top: 45%;
+    transform: translateY(-50%);
+    font-size: 16px;
+    color: var(--matrix-green);
+    text-shadow: 0 0 5px var(--matrix-green);
+    transition: all 0.3s ease;
+    z-index: 2;
+}
+
+.volume-meter {
+    width: 80px;
+    height: 15px;
+    background-color: var(--matrix-light);
+    border: 1px solid var(--matrix-green);
+    border-radius: 10px;
+    overflow: hidden;
+    position: absolute;
+    right: 8px;
+    top: 50%;
+    transform: translateY(-50%);
+    cursor: pointer;
+    opacity: 0;
+    transition: opacity 0.3s ease;
+}
+
+.volume-control:hover .volume-meter,
+.volume-control.dragging .volume-meter {
+    opacity: 1;
+}
+
+.volume-bar {
+    height: 100%;
+    width: 100%;
+    background-color: var(--matrix-green);
+    box-shadow: 0 0 5px var(--matrix-green);
+    transition: width 0.2s ease;
+    border-radius: 10px;
+    position: relative;
+}
+
+.volume-handle {
+    position: absolute;
+    top: 50%;
+    right: 0;
+    transform: translateY(-50%);
+    width: 0px;
+    height: 0px;
+    background-color: var(--matrix-green);
+    border-radius: 50%;
+    box-shadow: 0 0 5px var(--matrix-green);
+    opacity: 0;
+    transition: opacity 0.3s ease;
+}
+
+.volume-control:hover .volume-handle,
+.volume-control.dragging .volume-handle {
+    opacity: 1;
+}
+
+.volume-control.muted .volume-icon {
+    color: #666;
+    text-shadow: 0 0 5px #666;
+}
+
+.volume-control.muted .volume-bar {
+    background-color: #666;
+    box-shadow: 0 0 5px #666;
+}
+
+.volume-control.muted .volume-handle {
+    background-color: #666;
+    box-shadow: 0 0 5px #666;
 }
 
 .sprite-container {
