@@ -219,27 +219,31 @@ class Eggling {
                         message = `🗣️ ${this.name} says: The ${subject} ${descriptor}`;
                     }
                     this.appendToLog(message);
-                    const newSocialPercent = Math.min(100, socialPercent + 10.5);
-                    this.socialLevel = Math.min(this.MAX_SOCIAL, this.MAX_SOCIAL * (newSocialPercent / 100));
-                    const boredomPercent = this.getPercentage(this.boredom, this.MAX_BOREDOM);
-                    const newBoredomPercent = Math.max(0, boredomPercent - 4.5);
-                    this.boredom = Math.max(0, this.MAX_BOREDOM * (newBoredomPercent / 100));
                 }
+                const newSocialPercent = Math.min(100, socialPercent + 10.5);
+                this.socialLevel = Math.min(this.MAX_SOCIAL, this.MAX_SOCIAL * (newSocialPercent / 100));
+                const boredomPercent = this.getPercentage(this.boredom, this.MAX_BOREDOM);
+                const newBoredomPercent = Math.max(0, boredomPercent - 4.5);
+                this.boredom = Math.max(0, this.MAX_BOREDOM * (newBoredomPercent / 100));
                 this.updateMeters();
                 this.saveToLocalStorage();
                 colorManager.updateColors(this);
             } else if (randType < 0.66) {
-                const opinion = opinions[this.randomInRange(opinions.length)];
-                const noun = nouns[this.randomInRange(nouns.length)];
-                let message;
-                if (Math.random() < 0.5) {
-                  const descriptor = descriptors[this.randomInRange(descriptors.length)];
-                  message = `🗣️ ${this.name} says: I ${opinion} ${descriptor} ${noun}`;
-                } else {
-                  message = `🗣️ ${this.name} says: I ${opinion} ${noun}`;
-                }
-                this.appendToLog(message);
                 const socialPercent = this.getPercentage(this.socialLevel, this.MAX_SOCIAL);
+                if (socialPercent >= 100) {
+                    this.appendToLog(`🗣️ ${this.name} has nothing to say!`);
+                } else {
+                    const opinion = opinions[this.randomInRange(opinions.length)];
+                    const noun = nouns[this.randomInRange(nouns.length)];
+                    let message;
+                    if (Math.random() < 0.5) {
+                      const descriptor = descriptors[this.randomInRange(descriptors.length)];
+                      message = `🗣️ ${this.name} says: I ${opinion} ${descriptor} ${noun}`;
+                    } else {
+                      message = `🗣️ ${this.name} says: I ${opinion} ${noun}`;
+                    }
+                    this.appendToLog(message);
+                }
                 const newSocialPercent = Math.min(100, socialPercent + 10.5);
                 this.socialLevel = Math.min(this.MAX_SOCIAL, this.MAX_SOCIAL * (newSocialPercent / 100));
                 const boredomPercent = this.getPercentage(this.boredom, this.MAX_BOREDOM);
