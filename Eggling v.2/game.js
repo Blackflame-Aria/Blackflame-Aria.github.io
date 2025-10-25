@@ -1259,6 +1259,25 @@ document.addEventListener('DOMContentLoaded', () => {
     loadSavedEggling();
 });
 
+document.addEventListener("DOMContentLoaded", () => {
+  const vControl = document.querySelector('.volume-control');
+  let collapseTimer = null;
+  if (vControl) {
+    vControl.addEventListener('mouseenter', () => {
+      clearTimeout(collapseTimer);
+      vControl.classList.add('expanded');
+    });
+    vControl.addEventListener('mouseleave', () => {
+      collapseTimer = setTimeout(() => {
+        vControl.classList.remove('expanded');
+      }, 500);
+    });
+    vControl.addEventListener('mouseenter', () => {
+      clearTimeout(collapseTimer);
+    });
+  }
+});
+
 setTimeout(()=>{
   const restartBtn = document.getElementById('restart');
   if (restartBtn) {
