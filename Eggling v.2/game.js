@@ -34,7 +34,7 @@ const subjects = [
 
 const descriptors = [
     "amazing", "terrible", "beautiful", "ugly", "sweet", 
-    "sour", "loud", "quiet", "fast", "slow",
+    "sour", "loud", "quiet", "fast", "slow", "fascists",
     "bright", "dark", "hot", "cold", "soft",
     "hard", "smooth", "rough", "heavy", "light",
     "strong", "weak", "big", "small", "tall",
@@ -48,12 +48,7 @@ const descriptors = [
 const awards = [
     "RECEIVED A SCHOLORSHIP TO OXFORD", "CAN'T AFFORD TO MOVE OUT",
     "WON A NOBEL PEACE PRIZE", "LEARNED TO FLY",
-    "MOVED OUT AND STARTED A CULT", "MOVED OUT AND SPIRALED INTO DEPRESSION", "GOT DIAGNOSED WITH AUTISM", "DROPPED OUT OF COMMUNITY COLLEGE", "MOVED OUT AND BECAME A SUCCESSFUL ARTIST"
-];
-
-const deaths = [
-    "got abducted by aliens", "got crushed by a falling piano", "died of dysentery", "died trying to drive 2 cars at once", "fell down the old well", "died doing what they love", "got snatched by a hawk",
-    "ran away from home", "joined a gang", "turned to drugs (oregano)", "joined the circus", "got mistaken for food", "tempted the fates", "met an untimely end", "gave their life for Sweden"
+    "MOVED OUT AND STARTED A CULT", "MOVED OUT AND SPIRALED INTO DEPRESSION", "DROPPED OUT OF COMMUNITY COLLEGE", "MOVED OUT AND BECAME A SUCCESSFUL ARTIST"
 ];
 
 const egglingSprites = {
@@ -504,7 +499,7 @@ class Eggling {
         
         const statusText = `🎊 EGGLING ${award}! 🎊` + '\n';
         document.getElementById('status').innerText = statusText;
-        this.appendToLog(`🎊 EGGLING ${award}! 🎊`);
+        this.appendToLog(`🎊 EGGLING ${award}! 🎊` + '\n');
         
         this.saveToLocalStorage();
         
@@ -580,8 +575,8 @@ class Eggling {
             const content = document.getElementById('instructions-content');
             const toggleBtn = document.getElementById('toggle-instructions');
             if (content && toggleBtn) {
-                content.style.display = 'none';
-                toggleBtn.textContent = '►';
+                content.style.display = 'block';
+                toggleBtn.textContent = '▼';
             }
         }, 0);
 
@@ -1262,18 +1257,35 @@ document.addEventListener('DOMContentLoaded', () => {
 document.addEventListener("DOMContentLoaded", () => {
   const vControl = document.querySelector('.volume-control');
   let collapseTimer = null;
+  let isDragging = false;
+  
   if (vControl) {
     vControl.addEventListener('mouseenter', () => {
       clearTimeout(collapseTimer);
       vControl.classList.add('expanded');
     });
+    
     vControl.addEventListener('mouseleave', () => {
-      collapseTimer = setTimeout(() => {
-        vControl.classList.remove('expanded');
-      }, 500);
+      if (!isDragging) {
+        collapseTimer = setTimeout(() => {
+          vControl.classList.remove('expanded');
+        }, 500);
+      }
     });
-    vControl.addEventListener('mouseenter', () => {
+    
+    vControl.addEventListener('mousedown', () => {
+      isDragging = true;
       clearTimeout(collapseTimer);
+      vControl.classList.add('expanded');
+    });
+    
+    document.addEventListener('mouseup', () => {
+      isDragging = false;
+      if (!vControl.matches(':hover')) {
+        collapseTimer = setTimeout(() => {
+          vControl.classList.remove('expanded');
+        }, 500);
+      }
     });
   }
 });
