@@ -29,7 +29,7 @@ body {
     background-color: var(--matrix-dark);
     border: 2px solid var(--matrix-green);
     border-radius: 8px;
-    box-shadow: var(--matrix-glow);
+    box-shadow: 0 0 10px var(--matrix-green), 0 0 20px var(--matrix-green), 0 0 10px 2px var(--matrix-green) inset;
     padding: 20px;
     width: 95%;
     max-width: 500px;
@@ -39,8 +39,8 @@ body {
 
 .sound-control-container {
     position: absolute;
-    top: 10px;
-    left: 5px;
+    top: 8px;
+    left: 8px;
     z-index: 10;
 }
 

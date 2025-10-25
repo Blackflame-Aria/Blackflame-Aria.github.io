@@ -419,7 +419,7 @@ class Eggling {
             icon = sickIcons1[this.randomInRange(sickIcons1.length)];
         }
         
-        document.getElementById('status').innerText = `${this.name} | Age: ${this.age} | Feeling: ${icon}${this.status()}`;
+        document.getElementById('status').innerText = `${this.name} | Age: ${this.age} | Mood: ${icon}${this.status()}`;
     }
     
     updateSprite() {
