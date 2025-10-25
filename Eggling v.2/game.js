@@ -34,7 +34,7 @@ const subjects = [
 
 const descriptors = [
     "amazing", "terrible", "beautiful", "ugly", "sweet", 
-    "sour", "loud", "quiet", "fast", "slow", "fascists",
+    "sour", "loud", "quiet", "fast", "slow",
     "bright", "dark", "hot", "cold", "soft",
     "hard", "smooth", "rough", "heavy", "light",
     "strong", "weak", "big", "small", "tall",
@@ -43,6 +43,11 @@ const descriptors = [
     "clean", "dirty", "dry", "wet", "shiny",
     "dull", "sharp", "blunt", "deep", "shallow",
     "empty", "full", "open", "closed", "simple", "near"
+];
+
+const opinions = [
+    "like", "hate", "love", "don't care for", "prefer", "despise", "admire", "tolerate", "avoid", "enjoy", "hunt", "moisturize", "sniff", "obliterate", "have no opinion on",
+    "spit on", "worship", "loathe"
 ];
 
 const awards = [
@@ -113,6 +118,11 @@ const colorManager = {
 
 class Eggling {
     constructor(name, eggType = "egg") {
+        this.MAX_FOOD = 5;
+        this.MAX_BOREDOM = 10;
+        this.MAX_POOP = 10;
+        this.MAX_SOCIAL = 10;
+        
         this.name = name;
         this.age = 0;
         this.spriteState = "egg";
@@ -130,17 +140,28 @@ class Eggling {
     randomInRange(limit) {
         return Math.floor(Math.random() * limit);
     }
+    
+    getPercentage(value, max, inverted = false) {
+        const percent = (value / max) * 100;
+        return Math.max(0, Math.min(100, inverted ? 100 - percent : percent));
+    }
+    
+    getMeterClass(percent, dangerThreshold, warningThreshold, inverted = false) {
+        if (inverted) {
+            return percent <= dangerThreshold ? 'bar danger' : percent <= warningThreshold ? 'bar warning' : 'bar good';
+        }
+        return percent >= dangerThreshold ? 'bar danger' : percent >= warningThreshold ? 'bar warning' : 'bar good';
+    }
 
     feed() {
         if (this.isAlive()) {
-            const maxFood = 5;
-            const hungerPercent = Math.max(0, Math.min(100, (1 - this.foodLevel / maxFood) * 100));
+            const hungerPercent = this.getPercentage(this.foodLevel, this.MAX_FOOD, true);
             const foodEmoji = foodIcons[this.randomInRange(foodIcons.length)];
             
             if (hungerPercent <= 0) {
                 this.appendToLog(`${foodEmoji} ${this.name} is full!`);
             } else {
-                this.foodLevel = Math.min(5, this.foodLevel + .8);
+                this.foodLevel = Math.min(this.MAX_FOOD, this.foodLevel + .8);
                 if (this.age >= 20) {
                     this.appendToLog(`${foodEmoji} ${this.name} is cooking...`);
                 } else {
@@ -161,10 +182,9 @@ class Eggling {
             if (this.boredom <= 0) {
                 this.appendToLog(`😠 ${this.name} is annoyed!`);
             } else {
-                const maxBoredom = 10;
-                const boredomPercent = Math.max(0, Math.min(100, (this.boredom / maxBoredom) * 100));
+                const boredomPercent = this.getPercentage(this.boredom, this.MAX_BOREDOM);
                 const newBoredomPercent = Math.max(0, boredomPercent - 10.5);
-                this.boredom = Math.max(0, maxBoredom * (newBoredomPercent / 100));
+                this.boredom = Math.max(0, this.MAX_BOREDOM * (newBoredomPercent / 100));
                 
                 if (this.age >= 20) {
                     const workEmoji = workIcons[this.randomInRange(workIcons.length)];
@@ -176,59 +196,68 @@ class Eggling {
             this.updateMeters();
             this.saveToLocalStorage();
             
-            if (this.eggType === "egg2") {
-                document.documentElement.style.setProperty('--matrix-green', '#f0f');
-                document.documentElement.style.setProperty('--matrix-glow', '0 0 10px #f0f, 0 0 20px #f0f');
-            }
+            colorManager.updateColors(this);
         }
     }
 
     talk() {
         if (this.isAlive()) {
-            const maxSocial = 10;
-            const socialPercent = Math.max(0, Math.min(100, (this.socialLevel / maxSocial) * 100));
-            
-            if (socialPercent >= 100) {
-                this.appendToLog(`🗣️ ${this.name} has nothing to say!`);
-            } else {
+            const randType = Math.random();
+            if (randType < 0.33) {
+                const socialPercent = this.getPercentage(this.socialLevel, this.MAX_SOCIAL);
+                if (socialPercent >= 100) {
+                    this.appendToLog(`🗣️ ${this.name} has nothing to say!`);
+                } else {
+                    let message;
+                    if (Math.random() < 0.5) {
+                        const verb = verbs[this.randomInRange(verbs.length)];
+                        const noun = nouns[this.randomInRange(nouns.length)];
+                        message = `🗣️ ${this.name} says: ${verb} the ${noun}`;
+                    } else {
+                        const subject = subjects[this.randomInRange(subjects.length)];
+                        const descriptor = descriptors[this.randomInRange(descriptors.length)];
+                        message = `🗣️ ${this.name} says: The ${subject} ${descriptor}`;
+                    }
+                    this.appendToLog(message);
+                    const newSocialPercent = Math.min(100, socialPercent + 10.5);
+                    this.socialLevel = Math.min(this.MAX_SOCIAL, this.MAX_SOCIAL * (newSocialPercent / 100));
+                    const boredomPercent = this.getPercentage(this.boredom, this.MAX_BOREDOM);
+                    const newBoredomPercent = Math.max(0, boredomPercent - 4.5);
+                    this.boredom = Math.max(0, this.MAX_BOREDOM * (newBoredomPercent / 100));
+                }
+                this.updateMeters();
+                this.saveToLocalStorage();
+                colorManager.updateColors(this);
+            } else if (randType < 0.66) {
+                const opinion = opinions[this.randomInRange(opinions.length)];
+                const noun = nouns[this.randomInRange(nouns.length)];
                 let message;
                 if (Math.random() < 0.5) {
-                    const verb = verbs[this.randomInRange(verbs.length)];
-                    const noun = nouns[this.randomInRange(nouns.length)];
-                    message = `🗣️ ${this.name} says: ${verb} the ${noun}`;
+                  const descriptor = descriptors[this.randomInRange(descriptors.length)];
+                  message = `🗣️ ${this.name} says: I ${opinion} ${descriptor} ${noun}`;
                 } else {
-                    const subject = subjects[this.randomInRange(subjects.length)];
-                    const descriptor = descriptors[this.randomInRange(descriptors.length)];
-                    message = `🗣️ ${this.name} says: The ${subject} ${descriptor}`;
+                  message = `🗣️ ${this.name} says: I ${opinion} ${noun}`;
                 }
-                
                 this.appendToLog(message);
-                
+                const socialPercent = this.getPercentage(this.socialLevel, this.MAX_SOCIAL);
                 const newSocialPercent = Math.min(100, socialPercent + 10.5);
-                this.socialLevel = Math.min(maxSocial, maxSocial * (newSocialPercent / 100));
-                
-                const maxBoredom = 10;
-                const boredomPercent = Math.max(0, Math.min(100, (this.boredom / maxBoredom) * 100));
+                this.socialLevel = Math.min(this.MAX_SOCIAL, this.MAX_SOCIAL * (newSocialPercent / 100));
+                const boredomPercent = this.getPercentage(this.boredom, this.MAX_BOREDOM);
                 const newBoredomPercent = Math.max(0, boredomPercent - 4.5);
-                this.boredom = Math.max(0, maxBoredom * (newBoredomPercent / 100));
-            }
-            this.updateMeters();
-            this.saveToLocalStorage();
-            
-            if (this.eggType === "egg2") {
-                document.documentElement.style.setProperty('--matrix-green', '#f0f');
-                document.documentElement.style.setProperty('--matrix-glow', '0 0 10px #f0f, 0 0 20px #f0f');
+                this.boredom = Math.max(0, this.MAX_BOREDOM * (newBoredomPercent / 100));
+                this.updateMeters();
+                this.saveToLocalStorage();
+                colorManager.updateColors(this);
             }
         }
     }
 
     clean() {
         if (this.isAlive()) {
-            const maxPoop = 10;
-            const cleanPercent = Math.max(0, Math.min(100, 100 - (this.poopLevel / maxPoop) * 100));
+            const cleanPercent = this.getPercentage(this.poopLevel, this.MAX_POOP, true);
             
             if (cleanPercent >= 100) {
-                this.appendToLog(`🧹 ${this.name} is sparkling, blinding!`);
+                this.appendToLog(`🧹 ${this.name} is sparkling!`);
             } else {
                 this.poopLevel = Math.max(0, this.poopLevel - 1.8);
                 if (this.age >= 20) {
@@ -240,10 +269,7 @@ class Eggling {
             this.updateMeters();
             this.saveToLocalStorage();
             
-            if (this.eggType === "egg2") {
-                document.documentElement.style.setProperty('--matrix-green', '#f0f');
-                document.documentElement.style.setProperty('--matrix-glow', '0 0 10px #f0f, 0 0 20px #f0f');
-            }
+            colorManager.updateColors(this);
         }
     }
 
@@ -253,16 +279,15 @@ class Eggling {
             this.boredom += this.randomInRange(3);
             this.foodLevel = Math.max(0, this.foodLevel - 1.425);
             
-            this.poopLevel = Math.min(10, this.poopLevel + 1.45);
+            this.poopLevel = Math.min(this.MAX_POOP, this.poopLevel + 1.45);
             
             colorManager.updateColors(this);
             
-            const maxSocial = 10;
-            const socialPercent = Math.max(0, Math.min(100, (this.socialLevel / maxSocial) * 100));
+            const socialPercent = this.getPercentage(this.socialLevel, this.MAX_SOCIAL);
             const newSocialPercent = Math.max(0, Math.min(100, socialPercent - 8.5));
-            this.socialLevel = Math.max(0, maxSocial * (newSocialPercent / 100));
+            this.socialLevel = Math.max(0, this.MAX_SOCIAL * (newSocialPercent / 100));
             
-            this.appendToLog(`⏱️ Time passes... ${this.name} is now ${this.age} days old.`);
+            this.appendToLog(`⏱️ Time passes... ${this.name} is now ${this.age.toString()} days old.`);
             this.checkStatus();
             this.updateMeters();
             this.saveToLocalStorage();
@@ -272,42 +297,30 @@ class Eggling {
     tick() {
         this.age += 1;
         
-        const maxPoop = 10;
-        this.poopLevel = Math.min(maxPoop, this.poopLevel + 1.25);
+        this.poopLevel = Math.min(this.MAX_POOP, this.poopLevel + 1.25);
         
         const ageScalingFactor = 0.005 * this.age;
         
-        const maxFood = 5;
-        const currentHungerPercent = (1 - this.foodLevel / maxFood) * 100;
-        const additionalHungerDecrease = maxFood * 0.01 * (1 + ageScalingFactor);
+        const additionalHungerDecrease = this.MAX_FOOD * 0.01 * (1 + ageScalingFactor);
         this.foodLevel = Math.max(0, this.foodLevel - additionalHungerDecrease);
         
-        const maxBoredom = 10;
-        const currentBoredomPercent = (this.boredom / maxBoredom) * 100;
-        const additionalBoredomIncrease = maxBoredom * 0.01 * (1 + ageScalingFactor);
-        this.boredom = Math.min(maxBoredom, this.boredom + additionalBoredomIncrease);
+        const additionalBoredomIncrease = this.MAX_BOREDOM * 0.01 * (1 + ageScalingFactor);
+        this.boredom = Math.min(this.MAX_BOREDOM, this.boredom + additionalBoredomIncrease);
         
-        const currentCleanlinessPercent = 100 - (this.poopLevel / maxPoop) * 100;
-        const additionalCleanlinessDecrease = maxPoop * 0.01 * (1 + ageScalingFactor);
-        this.poopLevel = Math.min(maxPoop, this.poopLevel + additionalCleanlinessDecrease);
+        const additionalCleanlinessDecrease = this.MAX_POOP * 0.01 * (1 + ageScalingFactor);
+        this.poopLevel = Math.min(this.MAX_POOP, this.poopLevel + additionalCleanlinessDecrease);
         
-        const maxSocial = 10;
-        const currentSocialPercent = (this.socialLevel / maxSocial) * 100;
-        const additionalSocialDecrease = maxSocial * 0.01 * (1 + ageScalingFactor);
+        const additionalSocialDecrease = this.MAX_SOCIAL * 0.01 * (1 + ageScalingFactor);
         this.socialLevel = Math.max(0, this.socialLevel - additionalSocialDecrease);
         
         colorManager.updateColors(this);
         
-        const newSocialPercent = Math.max(0, Math.min(100, (this.socialLevel / maxSocial) * 100));
+        const newSocialPercent = this.getPercentage(this.socialLevel, this.MAX_SOCIAL);
         if (newSocialPercent <= 0) {
             this.appendToLog(`${this.name} is feeling lonely!`);
         }
         
-        if (this.age >= 15 && this.age <= 20 && Math.random() < 0.2) {
-            this.randomDeath();
-        } else {
-            this.checkStatus();
-        }
+        this.checkStatus();
         
         this.updateMeters();
         this.saveToLocalStorage();
@@ -316,31 +329,23 @@ class Eggling {
     isAlive() {
         let redMeters = 0;
         
-        const maxFood = 5;
-        const hungerPercent = Math.max(0, Math.min(100, (1 - this.foodLevel / maxFood) * 100));
+        const hungerPercent = this.getPercentage(this.foodLevel, this.MAX_FOOD, true);
         if (hungerPercent >= 70) redMeters++;
         
-        const maxBoredom = 10;
-        const boredomPercent = Math.max(0, Math.min(100, (this.boredom / maxBoredom) * 100));
+        const boredomPercent = this.getPercentage(this.boredom, this.MAX_BOREDOM);
         if (boredomPercent >= 70) redMeters++;
         
-        const maxPoop = 10;
-        const cleanlinessPercent = Math.max(0, Math.min(100, (1 - this.poopLevel / maxPoop) * 100));
+        const cleanlinessPercent = this.getPercentage(this.poopLevel, this.MAX_POOP, true);
         if (cleanlinessPercent <= 20) redMeters++;
         
         return redMeters < 2;
     }
 
     sickness() {
-        const maxFood = 5;
-        const maxBoredom = 10;
-        const maxPoop = 10;
-        const maxSocial = 10;
-
-        const hungerPercent = Math.max(0, Math.min(100, (1 - this.foodLevel / maxFood) * 100));
-        const boredomPercent = Math.max(0, Math.min(100, (this.boredom / maxBoredom) * 100));
-        const cleanPercent = Math.max(0, Math.min(100, 100 - (this.poopLevel / maxPoop) * 100));
-        const socialPercent = Math.max(0, Math.min(100, (this.socialLevel / maxSocial) * 100));
+        const hungerPercent = this.getPercentage(this.foodLevel, this.MAX_FOOD, true);
+        const boredomPercent = this.getPercentage(this.boredom, this.MAX_BOREDOM);
+        const cleanPercent = this.getPercentage(this.poopLevel, this.MAX_POOP, true);
+        const socialPercent = this.getPercentage(this.socialLevel, this.MAX_SOCIAL);
 
         let redMeters = 0;
         let yellowMeters = 0;
@@ -360,21 +365,6 @@ class Eggling {
         return (redMeters >= 1 || yellowMeters >= 3) ? 16 : 0;
     }
     
-    randomDeath() {
-        const randomDeathMessage = deaths[this.randomInRange(deaths.length)];
-        
-        document.documentElement.style.setProperty('--matrix-green', '#f00');
-        document.documentElement.style.setProperty('--matrix-glow', '0 0 10px #f00, 0 0 20px #f00');
-        
-        const actionButtons = document.querySelectorAll('.action-btn');
-        actionButtons.forEach(btn => btn.disabled = true);
-        
-        document.getElementById('game-over').style.display = 'block';
-        this.appendToLog(`${this.name} ${randomDeathMessage}.`);
-        
-        localStorage.removeItem('egglingData');
-    }
-
     status() {
         if (this.isAlive()) {
             return "";
@@ -528,30 +518,26 @@ class Eggling {
     }
     
     updateMeters() {
-        const maxFood = 5;
-        const hungerPercent = Math.max(0, Math.min(100, (1 - this.foodLevel / maxFood) * 100));
+        const hungerPercent = this.getPercentage(this.foodLevel, this.MAX_FOOD, true);
         document.getElementById('hunger-bar').style.width = `${hungerPercent}%`;
         document.getElementById('hunger-value').innerText = `${hungerPercent.toFixed(1)}%`;
         
-        const maxBoredom = 10;
-        const boredomPercent = Math.max(0, Math.min(100, (this.boredom / maxBoredom) * 100));
+        const boredomPercent = this.getPercentage(this.boredom, this.MAX_BOREDOM);
         document.getElementById('boredom-bar').style.width = `${boredomPercent}%`;
         document.getElementById('boredom-value').innerText = `${boredomPercent.toFixed(1)}%`;
         
-        const maxPoop = 10;
-        const cleanPercent = Math.max(0, Math.min(100, 100 - (this.poopLevel / maxPoop) * 100));
+        const cleanPercent = this.getPercentage(this.poopLevel, this.MAX_POOP, true);
         document.getElementById('clean-bar').style.width = `${cleanPercent}%`;
         document.getElementById('clean-value').innerText = `${cleanPercent.toFixed(1)}%`;
         
-        const maxSocial = 10;
-        const socialPercent = Math.max(0, Math.min(100, (this.socialLevel / maxSocial) * 100));
+        const socialPercent = this.getPercentage(this.socialLevel, this.MAX_SOCIAL);
         document.getElementById('social-bar').style.width = `${socialPercent}%`;
         document.getElementById('social-value').innerText = `${socialPercent.toFixed(1)}%`;
         
-        document.getElementById('hunger-bar').className = hungerPercent >= 70 ? 'bar danger' : hungerPercent >= 21 ? 'bar warning' : 'bar good';
-        document.getElementById('boredom-bar').className = boredomPercent >= 70 ? 'bar danger' : boredomPercent >= 21 ? 'bar warning' : 'bar good';
-        document.getElementById('clean-bar').className = cleanPercent <= 20 ? 'bar danger' : cleanPercent <= 70 ? 'bar warning' : 'bar good';
-        document.getElementById('social-bar').className = socialPercent <= 20 ? 'bar danger' : socialPercent <= 69 ? 'bar warning' : 'bar good';
+        document.getElementById('hunger-bar').className = this.getMeterClass(hungerPercent, 70, 21);
+        document.getElementById('boredom-bar').className = this.getMeterClass(boredomPercent, 70, 21);
+        document.getElementById('clean-bar').className = this.getMeterClass(cleanPercent, 20, 70, true);
+        document.getElementById('social-bar').className = this.getMeterClass(socialPercent, 20, 69, true);
     }
 
     instructions() {
@@ -937,6 +923,26 @@ function stopDrag() {
 }
 
 document.addEventListener('DOMContentLoaded', () => {
+    Object.values(sounds).forEach(sound => {
+        if (sound) {
+            sound.preload = 'auto';
+            sound.load();
+        }
+    });
+    
+    const spriteUrls = [
+        'Sprites/Egg.gif', 'Sprites/Baby.gif', 'Sprites/Child.gif', 'Sprites/Teen.gif', 'Sprites/Adult.gif',
+        'Sprites/Sick.gif', 'Sprites/Sick2.gif', 'Sprites/Dead.gif', 'Sprites/Dead2.gif',
+        'Sprites/Graduate.gif', 'Sprites/Graduate2.gif', 'Sprites/Secret.gif', 'Sprites/Egg2.gif',
+        'Sprites/Baby2.gif', 'Sprites/Child2.gif', 'Sprites/Teen2.gif', 'Sprites/Adult2.gif',
+        'Sprites/Secret2.gif', 'Sprites/WIP.gif', 'Sprites/poop.gif'
+    ];
+    
+    spriteUrls.forEach(url => {
+        const img = new Image();
+        img.src = url;
+    });
+    
     loadSoundPreference();
     
     const volumeMeter = document.querySelector('.volume-meter');
@@ -1015,35 +1021,29 @@ document.addEventListener('DOMContentLoaded', () => {
     
     window.addEventListener('beforeunload', () => {
         if (eggling && eggling.isAlive()) {
-            const maxFood = 5;
-            const maxBoredom = 10;
-            const maxPoop = 10;
-            
-            const hungerPercent = Math.max(0, Math.min(100, (1 - eggling.foodLevel / maxFood) * 100));
-            const boredomPercent = Math.max(0, Math.min(100, (eggling.boredom / maxBoredom) * 100));
-            const cleanPercent = Math.max(0, Math.min(100, 100 - (eggling.poopLevel / maxPoop) * 100));
+            const hungerPercent = eggling.getPercentage(eggling.foodLevel, eggling.MAX_FOOD, true);
+            const boredomPercent = eggling.getPercentage(eggling.boredom, eggling.MAX_BOREDOM);
+            const cleanPercent = eggling.getPercentage(eggling.poopLevel, eggling.MAX_POOP, true);
             
             const newHungerPercent = Math.min(100, hungerPercent + 12.5);
-            eggling.foodLevel = Math.max(0, maxFood * (1 - newHungerPercent / 100));
+            eggling.foodLevel = Math.max(0, eggling.MAX_FOOD * (1 - newHungerPercent / 100));
             
             const newBoredomPercent = Math.min(100, boredomPercent + 12.5);
-            eggling.boredom = Math.min(maxBoredom, maxBoredom * (newBoredomPercent / 100));
+            eggling.boredom = Math.min(eggling.MAX_BOREDOM, eggling.MAX_BOREDOM * (newBoredomPercent / 100));
             
             const newCleanPercent = Math.max(0, cleanPercent - 16.5);
-            eggling.poopLevel = Math.min(maxPoop, maxPoop * (1 - newCleanPercent / 100));
+            eggling.poopLevel = Math.min(eggling.MAX_POOP, eggling.MAX_POOP * (1 - newCleanPercent / 100));
             
             eggling.saveToLocalStorage();
         }
     });
     
     function initGame() {
-        const eggOption = document.getElementById('option-egg');
-        const egg2Option = document.getElementById('option-egg2');
+        const optionEgg = document.getElementById('option-egg');
+        const optionEgg2 = document.getElementById('option-egg2');
         let selectedEggType = "egg";
         
-    const optionEgg = document.getElementById('option-egg');
-    const optionEgg2 = document.getElementById('option-egg2');
-    optionEgg.classList.add('selected');
+        optionEgg.classList.add('selected');
     
     document.documentElement.style.setProperty('--matrix-green', colorManager.GREEN_COLOR);
     document.documentElement.style.setProperty('--matrix-glow', colorManager.getGlowEffect(colorManager.GREEN_COLOR));
@@ -1252,42 +1252,40 @@ document.addEventListener('DOMContentLoaded', () => {
 
     initGame();
     loadSavedEggling();
-});
-
-document.addEventListener("DOMContentLoaded", () => {
-  const vControl = document.querySelector('.volume-control');
-  let collapseTimer = null;
-  let isDragging = false;
-  
-  if (vControl) {
-    vControl.addEventListener('mouseenter', () => {
-      clearTimeout(collapseTimer);
-      vControl.classList.add('expanded');
-    });
     
-    vControl.addEventListener('mouseleave', () => {
-      if (!isDragging) {
-        collapseTimer = setTimeout(() => {
-          vControl.classList.remove('expanded');
-        }, 500);
-      }
-    });
+    const vControl = document.querySelector('.volume-control');
+    let collapseTimer = null;
+    let isVolDragging = false;
     
-    vControl.addEventListener('mousedown', () => {
-      isDragging = true;
-      clearTimeout(collapseTimer);
-      vControl.classList.add('expanded');
-    });
-    
-    document.addEventListener('mouseup', () => {
-      isDragging = false;
-      if (!vControl.matches(':hover')) {
-        collapseTimer = setTimeout(() => {
-          vControl.classList.remove('expanded');
-        }, 500);
-      }
-    });
-  }
+    if (vControl) {
+        vControl.addEventListener('mouseenter', () => {
+            clearTimeout(collapseTimer);
+            vControl.classList.add('expanded');
+        });
+        
+        vControl.addEventListener('mouseleave', () => {
+            if (!isVolDragging) {
+                collapseTimer = setTimeout(() => {
+                    vControl.classList.remove('expanded');
+                }, 500);
+            }
+        });
+        
+        vControl.addEventListener('mousedown', () => {
+            isVolDragging = true;
+            clearTimeout(collapseTimer);
+            vControl.classList.add('expanded');
+        });
+        
+        document.addEventListener('mouseup', () => {
+            isVolDragging = false;
+            if (!vControl.matches(':hover')) {
+                collapseTimer = setTimeout(() => {
+                    vControl.classList.remove('expanded');
+                }, 500);
+            }
+        });
+    }
 });
 
 setTimeout(()=>{
@@ -1312,9 +1310,4 @@ Eggling.prototype.updateSprite = function() {
     }
     this._updateSprite_prevSick = isSickNow;
     originalUpdateSprite.apply(this, arguments);
-}
-const originalRandomDeath = Eggling.prototype.randomDeath;
-Eggling.prototype.randomDeath = function() {
-    playSound('death');
-    originalRandomDeath.apply(this, arguments);
 }
