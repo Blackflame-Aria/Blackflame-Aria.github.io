@@ -40,8 +40,9 @@ body {
 .sound-control-container {
     position: absolute;
     top: 8px;
-    left: 8px;
+    left: 18px;
     z-index: 10;
+    width: calc(100% - 16px);
 }
 
 .volume-control {
@@ -49,20 +50,25 @@ body {
     align-items: center;
     background-color: var(--matrix-dark);
     border: 2px solid var(--matrix-green);
-    border-radius: 20px;
-    padding: 8px;
+    border-radius: 50%;
+    padding: 0;
     box-shadow: var(--matrix-glow);
-    transition: all 0.3s ease;
+    transition: width 0.4s cubic-bezier(1,.29,.99), border-radius 0.3s, box-shadow 0.3s, background 0.3s;
     cursor: pointer;
     width: 30px;
     height: 30px;
-    overflow: hidden;
+    min-width: 30px;
+    min-height: 30px;
+    max-width: 100%;
     position: relative;
+    overflow: visible;
 }
 
 .volume-control:hover,
 .volume-control.dragging {
-    width: 700%;
+    width: 92%;
+    max-width: 100%;
+    border-radius: 24px;
     box-shadow: 0 0 15px var(--matrix-green), 0 0 25px var(--matrix-green);
 }
 
@@ -71,32 +77,34 @@ body {
     left: 3px;
     top: 45%;
     transform: translateY(-50%);
-    font-size: 16px;
+    font-size: 1em;
     color: var(--matrix-green);
     text-shadow: 0 0 5px var(--matrix-green);
-    transition: all 0.3s ease;
     z-index: 2;
 }
 
 .volume-meter {
-    width: 80px;
+    width: calc(98% - 48px);
     height: 15px;
     background-color: var(--matrix-light);
     border: 1px solid var(--matrix-green);
     border-radius: 10px;
     overflow: hidden;
     position: absolute;
-    right: 8px;
+    left: 35px;
+    right: 4px;
     top: 50%;
     transform: translateY(-50%);
     cursor: pointer;
     opacity: 0;
-    transition: opacity 0.3s ease;
+    pointer-events: none;
+    transition: opacity 0.3s cubic-bezier(.6,1,.29,.99);
 }
 
 .volume-control:hover .volume-meter,
 .volume-control.dragging .volume-meter {
     opacity: 1;
+    pointer-events: auto;
 }
 
 .volume-bar {
