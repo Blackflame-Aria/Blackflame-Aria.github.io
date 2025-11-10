@@ -1,0 +1,108 @@
+body {
+    background-image: url('images/twinkletwinsbg.jpg');
+    background-size: 60%;
+    background-repeat: repeat;
+    font-family: 'Comic Sans MS', cursive;
+    color: #333;
+}
+
+.game-title {
+    color: #ff6f91;
+    text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.2);
+}
+
+.turn-text {
+    color: #700200;
+    font-size: 1.5rem;
+    margin: 20px 0;
+}
+
+.glass-container {
+    background: rgba(255, 255, 255, 0.2);
+    border-radius: 20px;
+    padding: 20px;
+    backdrop-filter: blur(3px);
+    box-shadow: 0 8px 32px rgba(31, 38, 135, 0.37);
+    border: 1px solid rgba(255, 255, 255, 0.18);
+}
+
+.glass-modal {
+    background: rgba(255, 255, 255, 0.3);
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(255, 255, 255, 0.18);
+}
+
+.game-grid {
+    display: grid;
+    grid-template-columns: repeat(5, 60px);
+    grid-gap: 5px;
+    justify-content: center;
+}
+
+.cell {
+    width: 60px;
+    height: 60px;
+    background: rgba(255, 135, 135, 0.8);
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.5rem;
+    cursor: pointer;
+    transition: background 0.3s;
+}
+
+.cell:hover {
+    background: rgba(255, 182, 193, 0.8);
+}
+
+.cell img {
+    width: 40px;
+    height: 40px;
+}
+
+.btn-primary {
+    background-color: #ff6f91;;
+    border: 2px solid #fff;
+    padding: 10px 20px;
+    font-size: 1.2rem;
+    border-radius: 15px;
+    transition: transform 0.2s;
+}
+
+.btn-primary:hover {
+    background-color: #ffffff;
+    transform: scale(1.05);
+    border-color: #ff6f91;
+    color: #ff6f91;
+}
+
+.modal-title {
+    color: #000000;
+}
+
+.modal-body {
+    color: #000000;
+    font-size: 1.2rem;
+}
+
+a {
+    padding: 10px 20px;
+    color: #ff8181;
+   }
+a:hover {
+    color: #fff;
+   }
+   
+#return-button {
+  background-color: #ffffff;
+  border: 2px solid #ff8181;
+  margin-top: 20px;
+  padding: 10px 0px;
+  color: rgb(0, 0, 0);
+}
+
+#return-button:hover {
+  background-color: #ff6f91;;
+  border: 2px solid #fff;
+}

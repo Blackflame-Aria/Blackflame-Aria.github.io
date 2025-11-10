@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>The 4um-11</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="container">
+        <a href="../index.html" class="sleepy-home">
+            <img src="assets/sleepy.gif" alt="Home">
+            <span>~Home~</span>
+        </a>
+        <h1>/Welcome to the Forum/</h1>
+        <div class="category-nav">
+            <button class="category-btn active" data-category="all">/all/</button>
+            <button class="category-btn" data-category="fashion">/fashion/</button>
+            <button class="category-btn" data-category="makeup">/makeup/</button>
+            <button class="category-btn" data-category="games">/games/</button>
+            <button class="category-btn" data-category="art">/art/</button>
+            <button class="category-btn" data-category="life">/life/</button>
+            <button class="category-btn" data-category="literature">/literature/</button>
+            <button class="category-btn" data-category="tech">/tech/</button>
+            <button class="category-btn" data-category="random">/random/</button>
+        </div>
+        <div class="post-form">
+            <div class="current-category">Posting in: <span id="current-category-display">/all/</span></div>
+            <input type="text" id="nickname" placeholder="What should we call you?" />
+            <select id="avatar">
+                <option value="pfp.png">Default Avatar</option>
+                <option value="pyrus.png">Red</option>
+                <option value="aquos.png">Blue</option>
+                <option value="ventus.png">Green</option>
+                <option value="subterra.png">Brown</option>
+                <option value="haos.png">White</option>
+                <option value="darkus.png">Purple</option>
+            </select>
+            <textarea id="message" placeholder="What's on your mind?"></textarea>
+            <button onclick="submitPost()">Post!</button>
+        </div>
+        <div class="sort-options">
+            <button onclick="sortPosts('newest')">Newest</button>
+            <button onclick="sortPosts('highest')">Highly Acclaimed</button>
+            <button onclick="sortPosts('lowest')">Worst Posts</button>
+            <button onclick="sortPosts('replies')">Most Replies</button>
+        </div>
+        <div id="posts" class="posts-container"></div>
+        <div class="pagination">
+            <button id="prev-page" onclick="prevPage()">Previous</button>
+            <span id="page-info"></span>
+            <button id="next-page" onclick="nextPage()">Next</button>
+        </div>
+    </div>
+    <script type="module" src="script.js"></script>
+</body>
+</html>

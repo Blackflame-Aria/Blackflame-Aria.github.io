@@ -1,0 +1,406 @@
+@import url('https://fonts.googleapis.com/css2?family=VT323&display=swap');
+
+:root {
+    --matrix-green: #0f0;
+    --matrix-dark: #000000;
+    --matrix-darker: #000;
+    --matrix-light: #000000;
+    --matrix-glow: 0 0 10px #0f0, 0 0 20px #0f0;
+}
+
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    background-color: var(--matrix-darker);
+    color: var(--matrix-green);
+    font-family: 'VT323', 'Courier New', monospace;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 100vh;
+    text-shadow: 0 0 5px var(--matrix-green);
+}
+
+.game-container {
+    background-color: var(--matrix-dark);
+    border: 2px solid var(--matrix-green);
+    border-radius: 8px;
+    box-shadow: var(--matrix-glow);
+    padding: 20px;
+    width: 90%;
+    max-width: 500px;
+    text-align: center;
+}
+
+.sprite-container {
+    display: flex;
+    justify-content: center;
+    margin: 15px 0;
+    height: 100px;
+}
+
+.eggling-sprite {
+    width: 80px;
+    height: 80px;
+    background-color: var(--matrix-dark);
+    border: 2px solid var(--matrix-green);
+    border-radius: 50%;
+    position: relative;
+    overflow: hidden;
+    box-shadow: var(--matrix-glow);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+.sprite-content {
+    font-size: 40px;
+    animation: bounce 2s infinite;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+.sprite-img {
+    width: 80%;
+    height: 80%;
+    object-fit: contain;
+}
+
+.eggling-sprite.alive .sprite-content {
+    animation: bounce 2.25s infinite;
+}
+
+
+.eggling-sprite.dead .sprite-content {
+    animation: none;
+}
+
+.eggling-sprite.graduate .sprite-content {
+    animation: bounce 1.5s infinite;
+}
+
+@keyframes bounce {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-10px); }
+}
+
+@keyframes wobble {
+    0%, 100% { transform: translateX(0); }
+    25% { transform: translateX(-5px); }
+    75% { transform: translateX(5px); }
+}
+
+@keyframes float {
+    0%, 100% { transform: translateY(0) rotate(5deg); }
+    50% { transform: translateY(-10px) rotate(-5deg); }
+    0%, 100% { transform: translateY(0) rotate(5deg); }
+    50% { transform: translateY(10px) rotate(5deg); }
+}
+
+h1 {
+    color: var(--matrix-green);
+    font-size: 2.5rem;
+    margin-bottom: 20px;
+    text-transform: uppercase;
+    letter-spacing: 3px;
+    animation: pulse 2s infinite;
+}
+
+#start-container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 15px;
+    padding: 20px;
+    animation: pulse 1.5s infinite;
+}
+
+#start-container p {
+    font-size: 1.2rem;
+    margin: 0;
+}
+
+#start-container input {
+    background-color: var(--matrix-light);
+    border: 1px solid var(--matrix-green);
+    color: var(--matrix-green);
+    padding: 10px;
+    font-family: 'VT323', 'Courier New', monospace;
+    font-size: 1.2rem;
+    width: 80%;
+    text-align: center;
+    outline: none;
+}
+
+#start-container button {
+    background-color: var(--matrix-dark);
+    color: var(--matrix-green);
+    border: 1px solid var(--matrix-green);
+    padding: 10px 20px;
+    font-family: 'VT323', 'Courier New', monospace;
+    font-size: 1.2rem;
+    cursor: pointer;
+    transition: all 0.3s;
+}
+
+#start-container button:hover {
+    background-color: var(--matrix-green);
+    color: var(--matrix-darker);
+    box-shadow: var(--matrix-glow);
+}
+
+#game-content {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+}
+
+.status {
+    font-size: 1.2rem;
+    padding: 10px;
+    border: 1px solid var(--matrix-green);
+    background-color: var(--matrix-light);
+    border-radius: 4px;
+    text-align: center;
+    overflow-wrap: break-word;
+    margin: 20px 0;
+    font-family: 'Courier New', monospace;
+    color: var(--matrix-green);
+}
+
+.pet-needs {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    margin: 15px 0;
+}
+
+.need-indicator {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.need-label {
+    width: 100px;
+    text-align: right;
+    font-size: 1rem;
+}
+
+.meter {
+    flex-grow: 1;
+    height: 15px;
+    background-color: var(--matrix-light);
+    border: 1px solid var(--matrix-green);
+    border-radius: 10px;
+    overflow: hidden;
+}
+
+.meter-value {
+    width: 50px;
+    text-align: left;
+    font-size: 1rem;
+}
+
+.bar {
+    height: 100%;
+    width: 50%;
+    transition: width 0.5s, background-color 0.5s;
+}
+
+.bar.good {
+    background-color: var(--matrix-green);
+    box-shadow: 0 0 5px var(--matrix-green);
+}
+
+.bar.warning {
+    background-color: #ff0;
+    box-shadow: 0 0 5px #ff0;
+}
+
+.bar.danger {
+    background-color: #f00;
+    box-shadow: 0 0 5px #f00;
+}
+
+.log {
+    height: 150px;
+    overflow-y: auto;
+    padding: 10px;
+    text-align: left;
+    background-color: var(--matrix-darker);
+    border: 1px solid var(--matrix-green);
+    border-radius: 4px;
+    font-family: 'Courier New', monospace;
+    color: var(--matrix-green);
+    margin: 20px 0;
+    position: relative;
+}
+
+.log::after {
+    content: '█';
+    position: absolute;
+    bottom: 10px;
+    animation: blink 1s infinite;
+}
+
+.instructions {
+    padding: 10px;
+    background-color: var(--matrix-light);
+    border: 1px solid var(--matrix-green);
+    border-radius: 4px;
+    font-size: 0.9rem;
+    text-align: left;
+    margin: 20px 0;
+    color: var(--matrix-green);
+    font-family: 'Courier New', monospace;
+}
+
+.instructions-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 10px;
+}
+
+.instructions-header h3 {
+    margin: 0;
+}
+
+.toggle-btn {
+    background: none;
+    border: 1px solid var(--matrix-green);
+    color: var(--matrix-green);
+    font-size: 1rem;
+    cursor: pointer;
+    padding: 0 5px;
+    border-radius: 3px;
+}
+
+.toggle-btn:hover {
+    background-color: var(--matrix-green);
+    color: var(--matrix-dark);
+}
+
+.action-buttons {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 10px;
+    margin-top: 15px;
+}
+
+.input-container {
+    display: flex;
+    justify-content: center;
+    gap: 10px;
+    margin-top: 10px;
+}
+
+input[type="text"] {
+    padding: 10px;
+    font-size: 1em;
+    flex: 1;
+    border: 1px solid var(--matrix-green);
+    border-radius: 3px;
+    background-color: var(--matrix-darker);
+    color: var(--matrix-green);
+    font-family: 'Courier New', monospace;
+    margin-top: 10px;
+}
+
+button {
+    padding: 10px 20px;
+    font-size: 1em;
+    background-color: var(--matrix-darker);
+    color: var(--matrix-green);
+    border: 1px solid var(--matrix-green);
+    border-radius: 3px;
+    cursor: pointer;
+    transition: all 0.3s;
+    font-family: 'Courier New', monospace;
+    position: relative;
+}
+
+.btn-number {
+    position: absolute;
+    top: 2px;
+    left: 5px;
+    font-size: 0.8em;
+    opacity: 0.8;
+}
+
+button:hover {
+    background-color: var(--matrix-green);
+    color: var(--matrix-darker);
+    box-shadow: var(--matrix-glow);
+}
+
+button:disabled {
+    background-color: var(--matrix-light);
+    border-color: var(--matrix-light);
+    color: #333333;
+    cursor: not-allowed;
+}
+
+.game-over {
+    background-color: rgba(0, 0, 0, 0.8);
+    padding: 20px;
+    border: 2px solid var(--matrix-green);
+    border-radius: 8px;
+    margin-top: 15px;
+    animation: pulse 2s infinite;
+}
+
+.game-over p {
+    font-size: 1.5rem;
+    margin-bottom: 15px;
+}
+
+.action-btn.murder-btn {
+    background-color: rgb(29, 29, 29);
+    color: white;
+    font-weight: bold;
+    border: 1px solid white;
+    text-shadow: 0 0 5px white;
+    margin-top: 10px;
+    width: 100%;
+}
+
+.action-btn.murder-btn:hover {
+    box-shadow: 0 0 10px white;
+}
+
+@keyframes pulse {
+    0% { opacity: 1; }
+    50% { opacity: 0.7; }
+    100% { opacity: 1; }
+}
+
+@keyframes blink {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0; }
+}
+
+::-webkit-scrollbar {
+    width: 8px;
+}
+
+::-webkit-scrollbar-track {
+    background: var(--matrix-dark);
+}
+
+::-webkit-scrollbar-thumb {
+    background: var(--matrix-green);
+    border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background: #0c0;
+    box-shadow: var(--matrix-glow);
+}

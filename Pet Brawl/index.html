@@ -1,0 +1,114 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Pet Brawl</title>
+  <meta name="theme-color" content="#00ff00">
+    <meta name="description" content="Play Demo">
+    <meta property="og:title" content="Pet Brawl">
+  <meta property="og:image" content="https://blackflame-aria.github.io/Pet%20Brawl/Images/link.png">
+  <meta property="twitter:image" content="https://blackflame-aria.github.io/Pet%20Brawl/Images/link.png">
+    <meta property="og:description" content="Play Demo">
+    <meta property="og:type" content="website">
+  <link rel="icon" type="image/png" href="Images/Vesi.png">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div class="app">
+    <header>
+      <h1>Pet Brawl</h1>
+    </header>
+
+    <main>
+      <section id="splash" class="panel">
+        <div class="controls">
+          <button id="splash-play">Play</button>
+          <a href="team.html"><button id="splash-team" class="no-pulse">3v3</button></a>
+        </div>
+      </section>
+
+      <section id="setup" class="panel hidden">
+        <div style="display:flex;justify-content:center;margin-bottom:6px;">
+          <a href="team.html"><button id="team-match-btn">Team Arena</button></a>
+        </div>
+        <h2>Choose your pet</h2>
+  <div id="pet-list" class="pet-list"></div>
+
+        <h3>Choose 3 abilities</h3>
+  <div id="ability-list" class="ability-list"></div>
+    <h3 id="selected-title">Selected Abilities</h3>
+    <div id="selected-abilities" class="selected-abilities">No abilities selected</div>
+    <div id="ability-cats" class="ability-cats"></div>
+
+        <div class="controls">
+          <button id="start-btn" disabled>Pick a pet and 3 abilities</button>
+        </div>
+      </section>
+
+      <section id="battle" class="panel hidden">
+        <div id="vs-hp" class="vs-hp">
+          <div id="round-row" class="round-row">
+            <div class="round-left"><div id="vs-left-hp" class="hp-badge">0 / 0</div></div>
+            <div id="round-counter">1</div>
+            <div class="round-right"><div id="vs-right-hp" class="hp-badge">0 / 0</div></div>
+          </div>
+          <div class="vs-track">
+            <div id="turn-left" class="turn-pill left hidden">TURN</div>
+            <div id="turn-right" class="turn-pill right hidden">TURN</div>
+            <div class="vs-divider"></div>
+            <div id="vs-left" class="vs-fill left">
+              <div id="vs-left-inner" class="vs-fill-inner"></div>
+            </div>
+            <div id="vs-right" class="vs-fill right">
+              <div id="vs-right-inner" class="vs-fill-inner"></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="combatants">
+          <div class="combatant player">
+            <div class="name-wrap">
+              <h4 id="player-name">Player</h4>
+              <div id="player-type" class="type">Type</div>
+              <span id="player-status" class="status"></span>
+            </div>
+            <div class="sprite"><img id="player-sprite" src="Images/Vesi.png" alt="player sprite"/></div>
+            <div class="hp-bar">
+              <div id="player-hp-fill" class="fill"><div id="player-hp-inner" class="fill-inner"></div></div>
+            </div>
+            <div id="player-hp-text" class="hp-text"></div>
+            <div id="player-effects" class="effects"></div>
+          </div>
+
+          <div class="combatant enemy">
+            <div class="name-wrap">
+              <h4 id="enemy-name">Enemy</h4>
+              <div id="enemy-type" class="type">Type</div>
+              <span id="enemy-status" class="status"></span>
+            </div>
+            <div class="sprite"><img id="enemy-sprite" src="Images/Palo.png" alt="enemy sprite"/></div>
+            <div class="hp-bar">
+              <div id="enemy-hp-fill" class="fill"><div id="enemy-hp-inner" class="fill-inner"></div></div>
+            </div>
+            <div id="enemy-hp-text" class="hp-text"></div>
+            <div id="enemy-effects" class="effects"></div>
+          </div>
+        </div>
+
+        <div id="actions" class="actions"></div>
+
+        <div id="log" class="log"></div>
+
+        <div class="controls">
+          <button id="back-btn">Back</button>
+          <button id="home-btn">Home</button>
+          <button id="restart-btn" class="hidden">Restart</button>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <script src="game.js"></script>
+</body>
+</html>

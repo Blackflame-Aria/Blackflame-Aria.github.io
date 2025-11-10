@@ -1,0 +1,391 @@
+@import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=VT323&display=swap');
+
+body {
+    font-family: 'Share Tech Mono', monospace;
+    text-align: center;
+    background-color: #000;
+    border: 2px solid #0f0;
+    box-shadow: 0 0 15px #0f0, 0 0 15px #0f0, 0 0 20px 2px #0f0 inset;
+    color: #0f0;
+    margin: 0;
+    padding: 20px;
+    min-height: 100vh;
+    position: relative;
+    overflow-x: hidden;
+}
+
+body::before {
+    content: '';
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: 
+        linear-gradient(rgba(0, 255, 0, 0.03) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(0, 255, 0, 0.03) 1px, transparent 1px);
+    background-size: 20px 20px;
+    pointer-events: none;
+    z-index: 0;
+}
+
+h1 {
+    font-family: 'VT323', monospace;
+    cursor: default;
+    color: #0f0;
+    text-shadow: 0 0 10px #0f0;
+    font-size: 2.5rem;
+    margin: 20px 0;
+    position: relative;
+    z-index: 1;
+    animation: glitch 0.5s infinite alternate;
+}
+
+.button-container {
+    display: flex;
+    justify-content: space-between;
+    margin: 8px auto 0; 
+    width: calc(4 * 60px + 3 * 8px); 
+    position: relative;
+    z-index: 1;
+}
+
+#restart-button, #return-button {
+    font-size: 1.2rem;
+    margin: 0;
+}
+
+#score-board {
+    display: flex;
+    justify-content: space-between; 
+    margin: 20px auto;
+    font-size: 1.2rem;
+    font-family: 'Share Tech Mono', monospace;
+    color: #0f0;
+    text-shadow: 0 0 5px #0f0;
+    position: relative;
+    z-index: 1;
+    width: calc(4 * 60px + 3 * 8px);
+    cursor: default;
+    margin-bottom: 8px; 
+}
+
+#score-board > div {
+    padding: 10px 20px;
+    border: 1px solid #0f0;
+    background: rgba(0, 0, 0, 0.8);
+    box-shadow: 0 0 10px rgba(0, 255, 0, 0.3);
+}
+
+#game-board {
+    display: grid;
+    grid-template-columns: repeat(4, 60px);
+    grid-template-rows: repeat(5, 60px); 
+    gap: 8px;
+    margin: 20px auto;
+    width: calc(4 * 60px + 3 * 8px);
+    position: relative;
+    z-index: 1;
+}
+
+.card {
+    width: 60px;
+    height: 60px;
+    background-color: #000;
+    color: #0f0;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    cursor: pointer;
+    border: 1px solid #0f0;
+    border-radius: 0;
+    transition: all 0.3s;
+    font-family: 'Share Tech Mono', monospace;
+    position: relative;
+    overflow: hidden;
+    box-shadow: 0 0 5px rgba(0, 255, 0, 0.2);
+}
+
+.card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 0 15px rgba(0, 255, 0, 0.5);
+    border-color: #0f0;
+}
+
+.card.flipped {
+    background-color: var(--card-color, #000);
+    color: #fff;
+    border-color: var(--card-color, #0f0);
+    box-shadow: 0 0 20px var(--card-color, #0f0);
+}
+
+.card.matched {
+    background-color: #0f0;
+    color: #000;
+    pointer-events: none;
+    border-color: #0f0;
+    box-shadow: 0 0 20px #0f0;
+    animation: matchPulse 0.5s ease-out;
+}
+
+@keyframes matchPulse {
+    0% {
+        transform: scale(1);
+    }
+    50% {
+        transform: scale(1.1);
+    }
+    100% {
+        transform: scale(1);
+    }
+}
+
+button {
+    margin: 0;
+    padding: 10px 20px;
+    font-size: 1rem;
+    cursor: pointer;
+    font-family: 'VT323', monospace;
+    background: #000;
+    color: #0f0;
+    border: 1px solid #0f0;
+    border-radius: 0;
+    transition: all 0.3s;
+    text-transform: uppercase;
+    letter-spacing: 2px;
+    position: relative;
+    z-index: 1;
+}
+
+button:hover {
+    background: #0f0;
+    color: #000;
+    box-shadow: 0 0 15px #0f0;
+}
+
+#return-button {
+    margin: 0;
+    padding: 10px 20px;
+    background-color: #000;
+    border-color: #0f0;
+    color: #0f0;
+}
+
+#return-button:hover {
+    background-color: #0f0;
+    color: #000;
+    border-color: #0f0;
+}
+
+#return-button a {
+    color: inherit;
+    text-decoration: none;
+    padding: 0;
+}
+
+@media (min-width: 480px) {
+    #game-board {
+        grid-template-columns: repeat(4, 70px);
+        grid-template-rows: repeat(5, 70px);
+        gap: 10px;
+        width: calc(4 * 70px + 3 * 10px);
+    }
+    
+    .card {
+        width: 70px;
+        height: 70px;
+    }
+    
+    #score-board {
+        width: calc(4 * 70px + 3 * 10px);
+        margin-bottom: 10px;
+    }
+    
+    .button-container {
+        width: calc(4 * 70px + 3 * 10px);
+        margin-top: 10px;
+    }
+}
+
+@media (min-width: 600px) {
+    #game-board {
+        grid-template-columns: repeat(4, 80px);
+        grid-template-rows: repeat(5, 80px);
+        gap: 12px;
+        width: calc(4 * 80px + 3 * 12px);
+    }
+    
+    .card {
+        width: 80px;
+        height: 80px;
+    }
+    
+    #score-board {
+        width: calc(4 * 80px + 3 * 12px);
+        margin-bottom: 12px;
+    }
+    
+    .button-container {
+        width: calc(4 * 80px + 3 * 12px);
+        margin-top: 12px;
+    }
+}
+
+@media (min-width: 900px) {
+    #game-board {
+        grid-template-columns: repeat(4, 100px);
+        grid-template-rows: repeat(5, 100px);
+        gap: 15px;
+        width: calc(4 * 100px + 3 * 15px);
+    }
+    
+    .card {
+        width: 100px;
+        height: 100px;
+    }
+    
+    #score-board {
+        width: calc(4 * 100px + 3 * 15px);
+        margin-bottom: 15px;
+    }
+    
+    .button-container {
+        width: calc(4 * 100px + 3 * 15px);
+        margin-top: 15px;
+    }
+}
+
+@media (min-width: 1200px) {
+    #game-board {
+        grid-template-columns: repeat(4, 120px);
+        grid-template-rows: repeat(5, 120px);
+        gap: 15px;
+        width: calc(4 * 120px + 3 * 15px);
+    }
+    
+    .card {
+        width: 120px;
+        height: 120px;
+    }
+    
+    #score-board {
+        width: calc(4 * 120px + 3 * 15px);
+        margin-bottom: 15px;
+    }
+    
+    .button-container {
+        width: calc(4 * 120px + 3 * 15px);
+        margin-top: 15px;
+    }
+}
+
+::selection {
+    background: #0f0;
+    color: #000;
+}
+
+.modal {
+    display: none;
+    position: fixed;
+    z-index: 1000;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.8);
+    backdrop-filter: blur(2px);
+    animation: fadeIn 0.3s ease-in;
+}
+
+.modal.active {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+.modal-content {
+    background-color: #000;
+    border: 2px solid #0f0;
+    box-shadow: 0 0 30px #0f0, 0 0 60px rgba(0, 255, 0, 0.5), inset 0 0 20px rgba(0, 255, 0, 0.1);
+    padding: 0;
+    max-width: 90%;
+    width: 400px;
+    position: relative;
+    animation: slideIn 0.3s ease-out;
+    font-family: 'Share Tech Mono', monospace;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+
+@keyframes slideIn {
+    from {
+        transform: translateY(-50px);
+        opacity: 0;
+    }
+    to {
+        transform: translateY(0);
+        opacity: 1;
+    }
+}
+
+.modal-header {
+    padding: 20px;
+    border-bottom: 1px solid #0f0;
+    background: rgba(0, 255, 0, 0.05);
+}
+
+.modal-header h2 {
+    font-family: 'VT323', monospace;
+    color: #0f0;
+    text-shadow: 0 0 10px #0f0;
+    font-size: 2rem;
+    margin: 0;
+    text-align: center;
+    animation: glitch 0.5s infinite alternate;
+}
+
+.modal-body {
+    padding: 30px 20px;
+    text-align: center;
+}
+
+.modal-body p {
+    color: #0f0;
+    font-size: 1.2rem;
+    text-shadow: 0 0 5px #0f0;
+    margin: 0;
+    font-family: 'Share Tech Mono', monospace;
+}
+
+.modal-footer {
+    padding: 20px;
+    border-top: 1px solid #0f0;
+    display: flex;
+    justify-content: center;
+    background: rgba(0, 255, 0, 0.05);
+}
+
+#modal-ok-button {
+    margin: 0;
+    padding: 12px 40px;
+    font-size: 1.2rem;
+    min-width: 120px;
+}
+
+@media (max-width: 480px) {
+    .modal-content {
+        width: 95%;
+        margin: 20px;
+    }
+    
+    .modal-header h2 {
+        font-size: 1.5rem;
+    }
+    
+    .modal-body p {
+        font-size: 1rem;
+    }
+}

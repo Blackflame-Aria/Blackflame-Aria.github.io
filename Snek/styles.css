@@ -1,0 +1,446 @@
+body {
+  margin: 0;
+  padding: 0;
+  display: flex;
+  justify-content: flex-start;
+  align-items: center;
+  flex-direction: column;
+  min-height: 100vh;
+  background-color: rgb(15, 15, 15);
+  font-family: monospace;
+  overflow-x: hidden;
+  overflow-y: auto;
+  width: 100%;
+  height: 100%;
+  touch-action: manipulation;
+}
+
+.health-container {
+  margin-top: 8px;
+  margin-bottom: 8px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  font-family: monospace;
+  color: #0f0;
+  text-shadow: 1px 1px 2px rgba(1, 1, 1, 0.9);
+  width: 100%;
+  background-color: rgba(0, 0, 0, 0.6);
+  padding: 8px;
+  border-radius: 10px;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.5);
+  border: 1px solid rgba(51, 255, 0, 0.1);
+  box-sizing: border-box;
+}
+
+.health-bars-wrapper {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  width: 100%;
+}
+
+.health-bar-group {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  flex-wrap: nowrap;
+  position: relative;
+}
+
+.health-label {
+  margin-right: 15px;
+  font-weight: bold;
+  font-size: 1.4em;
+  text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.7);
+  letter-spacing: 0.5px;
+}
+
+.health-bar-background {
+  width: 150px;
+  height: 15px;
+  background-color: #1a1a1a;
+  border-radius: 10px;
+  overflow: hidden;
+  box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.7);
+}
+
+.health-bar {
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(to right, #bb00cc, #ff00bf);
+  transition: width 0.3s ease-in-out;
+  box-shadow: 0 0 5px rgba(204, 0, 102, 0.9);
+  position: relative;
+}
+
+.player-health {
+  background: linear-gradient(to right, #05a500, #00ff22);
+  box-shadow: 0 0 5px rgba(43, 255, 0, 0.7);
+}
+
+.health-bar::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: linear-gradient(to bottom, rgba(255, 255, 255, 0.2) 0%, rgba(255, 255, 255, 0) 100%);
+  pointer-events: none;
+}
+
+.respawn-timer {
+  font-weight: bold;
+  font-size: 1.4em;
+  color: #0f0;
+  text-shadow: 1px 1px 2px rgba(1, 1, 1, 0.9);
+  letter-spacing: 0.5px;
+  z-index: 100;
+  white-space: nowrap;
+  text-align: center;
+  margin: 10px 0;
+  padding: 5px;
+  background-color: rgba(0, 0, 0, 0.5);
+  border-radius: 8px;
+  width: 100%;
+  max-width: 500px;
+}
+
+@media (max-width: 393px) {
+  .respawn-timer {
+    font-size: 1.2em;
+  }
+  button {
+    font-size: 1.4em;
+  }
+  .health-label {
+    font-size: 1.2em;
+  }
+}
+
+@media (max-width: 360px) {
+  .respawn-timer {
+    font-size: 1em;
+  }
+  button {
+    font-size: 1.2em;
+  }
+  .health-label {
+    font-size: 1em;
+  }
+  .difficulty-selector {
+    font-size: 1.2em;
+  }
+}
+
+
+.respawn-timer.active {
+  color: #ff0000;
+  animation: pulse 1s infinite;
+  background-color: rgba(50, 0, 0, 0.5);
+  border: 1px solid rgba(255, 0, 0, 0.3);
+}
+
+@keyframes pulse {
+  0% { opacity: 1; }
+  50% { opacity: 0.5; }
+  100% { opacity: 1; }
+}
+
+
+
+.game-container {
+  position: relative;
+  background-color: rgb(0, 0, 0);
+  padding: 10px;
+  border-radius: 10px;
+  box-shadow: 0 0 15px rgba(0, 0, 0, 0.3);
+  max-width: 100%;
+  box-sizing: border-box;
+}
+
+canvas {
+  background-color: #000000;
+  background-image: url(images/Main.png);
+  background-size: cover;
+  display: block;
+  margin: 0 auto;
+  max-width: 100%;
+  border: 2px solid rgba(255, 255, 255, 0.2);
+  border-radius: 8px;
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.5);
+  box-sizing: border-box;
+}
+
+.menu {
+  font-family: monospace;
+  font-size: 1em;
+  font-weight: bold;
+  text-align: center;
+  color: #000000;
+  margin-top: 20px;
+  width: 100%;
+}
+
+button {
+  font-family: monospace;
+  font-size: 1.8em;
+  background-color: #000000;
+  color: white;
+  border: none;
+  padding: 10px 20px;
+  margin: 5px;
+  border-radius: 5px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  margin: 3px;
+  box-shadow: 0 3px 6px rgba(0, 0, 0, 0.3);
+  font-family: monospace;
+  min-height: 30px;
+  min-width: 30px;
+}
+a {
+  padding: 10px 20px;
+  color: #0f0;
+  text-decoration: none;
+  display: inline-block;
+  width: 100%;
+  height: 100%;
+  box-sizing: border-box;
+}
+
+a:hover {
+  color: #0f0;
+}
+
+#return-button {
+  margin-top: 5px;
+  margin-bottom: 5px;
+  padding: 1px 15px;
+  background-color: #000000;
+  border: 2px solid #0f0;
+  color: #0f0;
+  border-radius: 8px;
+  transition: all 0.3s ease;
+  min-height: 20px;
+  width: 140px;
+  font-size: 1.2em;
+}
+
+#return-button:hover {
+  background-color: rgb(119, 255, 119);
+  color: #0f0;
+  border-color: rgb(188, 255, 188);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
+}
+
+button:hover {
+  background-color: #0f0;
+  color: #ffffff;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
+}
+
+.score, .high-score, .snakes-eaten {
+  font-family: monospace;
+  font-weight: bold;
+  margin-top: 0px;
+  margin-bottom: 0px;
+  font-size: 1.5em;
+  text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5);
+}
+
+.score {
+  color: #fff;
+}
+
+.high-score {
+  color: #ffd700; 
+}
+
+.snakes-eaten {
+  color: #0f0; 
+  background-color: rgba(0, 0, 0, 0.3);
+  padding: 5px 10px;
+  border-radius: 10px;
+  display: inline-block;
+}
+
+.difficulty-selector {
+  font-family: monospace;
+  margin: 0 0 5px 0;
+  font-size: 1.4rem;
+  font-weight: bold;
+  color: #0f0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-wrap: wrap;
+  text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.9);
+  background-color: rgba(0, 0, 0, 0.6);
+  padding: 5px 8px;
+  border-radius: 8px;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.difficulty-selector select {
+  font-family: monospace;
+  background: linear-gradient(to bottom, rgb(26, 54, 26), #000000);
+  color: #0f0;
+  border: 1px solid #0f0;
+  padding: 8px 15px;
+  border-radius: 8px;
+  cursor: pointer;
+  margin-left: 10px;
+  font-size: 1em;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
+  transition: all 0.3s ease;
+  font-weight: bold;
+}
+
+.difficulty-selector select:hover {
+  background-color: #141414;
+  color: #0f0;
+  transform: translateY(-2px);
+  box-shadow: 0 6px 12px rgba(0, 0, 0, 0.4);
+}
+
+/* Media Queries for Responsiveness */
+@media (max-width: 768px) {
+  .gameboy-container {
+    padding: 10px;
+    margin: 5px auto;
+  }
+
+  .health-label {
+    font-size: 1.2em;
+  }
+
+  .health-bar {
+    width: 60%;
+    height: 100%;
+  }
+
+  .health-bar-background {
+    width: 100px;
+    height: 10px;
+  }
+  
+  canvas {
+    max-width: 90vw;
+  }
+  
+  .health-container {
+    margin-top: 5px;
+    margin-bottom: 5px;
+    padding: 5px;
+  }
+  
+  .health-bars-wrapper {
+    gap: 5px;
+  }
+  
+  .difficulty-selector {
+    font-size: 1.2em;
+  }
+  
+  .difficulty-selector select {
+    font-size: 0.6rem;
+    padding: 6px 12px;
+  }
+  
+  button {
+    font-size: .8rem;
+    padding: 8px 16px;
+  }
+  
+  .score {
+    font-size: 1em;
+  }
+  
+  .health-bar-background {
+    width: 120px;
+    font-size: .8em;
+  }
+}
+
+@media (max-width: 480px) {
+  .gameboy-container {
+    padding: 3px 2px;
+    margin: 2px auto;
+  }
+  
+  .controls-container {
+    flex-direction: column-reverse;
+    align-items: center;
+    margin-top: 2px;
+    gap: 2px;
+  }
+  
+  .menu-buttons {
+    width: 100%;
+    max-width: 260px;
+    margin-top: 2px;
+    font-size: 1em;
+    padding: 3px;
+  }
+  
+  .game-container {
+    padding: 2px;
+  }
+  
+  body {
+    min-height: 95vh;
+  }
+  
+  .health-label {
+    font-size: 1.2em;
+    margin-right: 5px;
+  }
+  
+  .health-bar-background {
+    width: 80px;
+    height: 8px;
+  }
+  
+  .respawn-timer {
+    font-size: 1.2em;
+    margin: 2px 0;
+    padding: 2px;
+  }
+  
+  .d-pad {
+    margin-bottom: 15px;
+  }
+  
+  .menu-buttons button, #return-button {
+    width: 100%;
+    max-width: 140px;
+    font-size: 1.2em;
+  }
+
+  #return-button {
+    max-height: 40px;
+  }
+  
+  .difficulty-selector {
+    flex-direction: column;
+    font-size: 1.2em;
+  }
+  
+  .difficulty-selector select {
+    margin-left: 0;
+    margin-top: 10px;
+    font-size: 1.2em;
+  }
+
+  .score, .high-score, .snakes-eaten, .button {
+    font-size: 1.2em;
+  }
+}

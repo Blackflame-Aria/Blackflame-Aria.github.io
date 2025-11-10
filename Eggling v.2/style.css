@@ -1,0 +1,643 @@
+@import url('https://fonts.googleapis.com/css2?family=VT323&display=swap');
+
+:root {
+    --matrix-green: #0f0;
+    --matrix-dark: #000000;
+    --matrix-darker: #000;
+    --matrix-light: #000000;
+    --matrix-glow: 0 0 10px #0f0, 0 0 20px #0f0;
+}
+
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    background-color: var(--matrix-darker);
+    color: var(--matrix-green);
+    font-family: 'VT323', 'Courier New', monospace;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 100vh;
+    text-shadow: 0 0 5px var(--matrix-green);
+}
+
+.game-container {
+    background-color: var(--matrix-dark);
+    border: 2px solid var(--matrix-green);
+    border-radius: 8px;
+    box-shadow: 0 0 10px var(--matrix-green), 0 0 20px var(--matrix-green), 0 0 10px 2px var(--matrix-green) inset;
+    padding: 20px;
+    width: 95%;
+    max-width: 500px;
+    text-align: center;
+    position: relative;
+}
+
+.sound-control-container {
+    position: absolute;
+    top: 8px;
+    left: 18px;
+    z-index: 10;
+    width: calc(100% - 16px);
+}
+
+.volume-control {
+    display: flex;
+    align-items: center;
+    background-color: var(--matrix-dark);
+    border: 2px solid var(--matrix-green);
+    border-radius: 50%;
+    padding: 0;
+    box-shadow: var(--matrix-glow);
+    transition: width 0.6s cubic-bezier(1,.29,.99), border-radius 0.7s, box-shadow 0.3s, background 0.3s;
+    cursor: pointer;
+    width: 30px;
+    height: 30px;
+    min-width: 30px;
+    min-height: 30px;
+    max-width: 100%;
+    position: relative;
+    overflow: visible;
+}
+
+.volume-control.expanded {
+    width: 92%;
+    max-width: 100%;
+    border-radius: 24px;
+    box-shadow: 0 0 15px var(--matrix-green), 0 0 25px var(--matrix-green);
+}
+
+.volume-control.expanded .volume-meter {
+    opacity: 1;
+    pointer-events: auto;
+}
+
+.volume-icon {
+    position: absolute;
+    left: 3px;
+    top: 45%;
+    transform: translateY(-50%);
+    font-size: 1em;
+    color: var(--matrix-green);
+    text-shadow: 0 0 5px var(--matrix-green);
+    z-index: 2;
+}
+
+.volume-meter {
+    width: calc(98% - 48px);
+    height: 15px;
+    background-color: var(--matrix-light);
+    border: 1px solid var(--matrix-green);
+    border-radius: 10px;
+    overflow: hidden;
+    position: absolute;
+    left: 35px;
+    right: 4px;
+    top: 50%;
+    transform: translateY(-50%);
+    cursor: pointer;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.5s cubic-bezier(.6,1,.29,.99);
+}
+
+.volume-control:hover .volume-meter,
+.volume-control.dragging .volume-meter {
+    opacity: 1;
+    pointer-events: auto;
+}
+
+.volume-bar {
+    height: 100%;
+    width: 100%;
+    background-color: var(--matrix-green);
+    box-shadow: 0 0 5px var(--matrix-green);
+    transition: width 0.2s ease;
+    border-radius: 10px;
+    position: relative;
+}
+
+.volume-handle {
+    position: absolute;
+    top: 50%;
+    right: 0;
+    transform: translateY(-50%);
+    width: 0px;
+    height: 0px;
+    background-color: var(--matrix-green);
+    border-radius: 50%;
+    box-shadow: 0 0 5px var(--matrix-green);
+    opacity: 0;
+    transition: opacity 0.3s ease;
+}
+
+.volume-control:hover .volume-handle,
+.volume-control.dragging .volume-handle {
+    opacity: 1;
+}
+
+.volume-control.muted .volume-icon {
+    color: #666;
+    text-shadow: 0 0 5px #666;
+}
+
+.volume-control.muted .volume-bar {
+    background-color: #666;
+    box-shadow: 0 0 5px #666;
+}
+
+.volume-control.muted .volume-handle {
+    background-color: #666;
+    box-shadow: 0 0 5px #666;
+}
+
+.sprite-container {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 100px;
+    height: 100px;
+    background: none;
+    border: none;
+    box-shadow: none;
+    padding: 0;
+}
+
+.eggling-sprite {
+    width: 100px;
+    height: 100px;
+    background-size: contain;
+    background-position: center bottom;
+    background-repeat: no-repeat;
+    z-index: 5;
+}
+
+.sprite-content {
+    font-size: 40px;
+    animation: bounce 2s infinite;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+.sprite-img {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+}
+
+.eggling-sprite.alive .sprite-content {
+    animation: bounce 2.25s infinite;
+}
+
+
+.eggling-sprite.dead .sprite-content {
+    animation: none;
+}
+
+.eggling-sprite.graduate .sprite-content {
+    animation: bounce 1.5s infinite;
+}
+
+@keyframes bounce {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-10px); }
+}
+
+@keyframes wobble {
+    0%, 100% { transform: translateX(0); }
+    25% { transform: translateX(-5px); }
+    75% { transform: translateX(5px); }
+}
+
+@keyframes float {
+    0%, 100% { transform: translateY(0) rotate(5deg); }
+    50% { transform: translateY(-10px) rotate(-5deg); }
+    0%, 100% { transform: translateY(0) rotate(5deg); }
+    50% { transform: translateY(10px) rotate(5deg); }
+}
+
+h1 {
+    color: var(--matrix-green);
+    font-size: 2.2rem;
+    margin-top: -15px;
+    margin-bottom: -5px;
+    text-transform: uppercase;
+    letter-spacing: 3px;
+    animation: pulse 2s infinite;
+}
+
+#start-container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 15px;
+    padding: 20px;
+    animation: pulse 1.5s infinite;
+}
+
+#start-container p {
+    font-size: 1.2rem;
+    margin: 0;
+}
+
+#start-container input {
+    background-color: var(--matrix-light);
+    border: 1px solid var(--matrix-green);
+    color: var(--matrix-green);
+    padding: 10px;
+    font-family: 'VT323', 'Courier New', monospace;
+    font-size: 1.2rem;
+    width: 80%;
+    text-align: center;
+    outline: none;
+}
+
+#start-container button {
+    background-color: var(--matrix-dark);
+    color: var(--matrix-green);
+    border: 1px solid var(--matrix-green);
+    padding: 10px 20px;
+    font-family: 'VT323', 'Courier New', monospace;
+    font-size: 1.2rem;
+    cursor: pointer;
+    transition: all 0.3s;
+}
+
+#start-container button:hover {
+    background-color: var(--matrix-green);
+    color: var(--matrix-darker);
+    box-shadow: var(--matrix-glow);
+}
+
+#game-content {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+}
+
+.status {
+    font-size: 1.1rem;
+    padding: 10px;
+    border: 1px solid var(--matrix-green);
+    background-color: var(--matrix-light);
+    border-radius: 4px;
+    text-align: center;
+    overflow-wrap: break-word;
+    margin: 12px 0;
+    font-family: 'Courier New', monospace;
+    color: var(--matrix-green);
+}
+
+.pet-needs {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    margin-top: 10px;
+    margin-bottom: 10px;
+}
+
+.need-indicator {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.need-label {
+    width: 50px;
+    text-align: left;
+    font-size: 1.1rem;
+    margin-right: 3px;
+}
+
+.meter {
+    flex-grow: 1;
+    height: 15px;
+    background-color: var(--matrix-light);
+    border: 1px solid var(--matrix-green);
+    border-radius: 10px;
+    overflow: hidden;
+}
+
+.meter-value {
+    width: 45px;
+    text-align: right;
+    font-size: 1.1rem;
+    margin-left: -10px;
+}
+
+.bar {
+    height: 100%;
+    width: 50%;
+    transition: width 0.5s, background-color 0.5s;
+}
+
+.bar.good {
+    background-color: var(--matrix-green);
+    box-shadow: 0 0 5px var(--matrix-green);
+}
+
+.bar.warning {
+    background-color: #ff0;
+    box-shadow: 0 0 5px #ff0;
+}
+
+.bar.danger {
+    background-color: #f00;
+    box-shadow: 0 0 5px #f00;
+}
+
+.log {
+    height: 100px;
+    overflow-y: auto;
+    padding: 10px;
+    text-align: left;
+    background-color: var(--matrix-darker);
+    border: 1px solid var(--matrix-green);
+    border-radius: 4px;
+    font-family: 'Courier New', monospace;
+    color: var(--matrix-green);
+    margin-top: 5px;
+    margin-bottom: 20px;
+    position: relative;
+}
+
+.log::after {
+    content: '█';
+    position: absolute;
+    bottom: 10px;
+    animation: blink 1s infinite;
+}
+
+.instructions {
+    padding: 10px;
+    background-color: var(--matrix-light);
+    border: 1px solid var(--matrix-green);
+    border-radius: 4px;
+    font-size: 0.9rem;
+    text-align: left;
+    margin-top: -8px;
+    margin-bottom: -4px;
+    color: var(--matrix-green);
+    font-family: 'Courier New', monospace;
+}
+
+.instructions-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 10px;
+}
+
+.instructions-header h3 {
+    margin: 0;
+}
+
+.toggle-btn {
+    background: none;
+    border: 1px solid var(--matrix-green);
+    color: var(--matrix-green);
+    font-size: 1rem;
+    cursor: pointer;
+    padding: 0 5px;
+    border-radius: 3px;
+}
+
+.toggle-btn:hover {
+    background-color: var(--matrix-green);
+    color: var(--matrix-dark);
+}
+
+.action-buttons {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 12px;
+    margin-top: 15px;
+}
+
+.input-container {
+    display: flex;
+    justify-content: center;
+    gap: 10px;
+    margin-top: 10px;
+}
+
+input[type="text"] {
+    padding: 10px;
+    font-size: 1em;
+    flex: 1;
+    border: 1px solid var(--matrix-green);
+    border-radius: 3px;
+    background-color: var(--matrix-darker);
+    color: var(--matrix-green);
+    font-family: 'Courier New', monospace;
+    margin-top: 10px;
+}
+
+button {
+    padding: 10px 12px;
+    font-size: 1em;
+    background-color: var(--matrix-darker);
+    color: var(--matrix-green);
+    border: 1px solid var(--matrix-green);
+    border-radius: 3px;
+    cursor: pointer;
+    transition: all 0.3s;
+    font-family: 'Courier New', monospace;
+    position: relative;
+}
+
+.btn-number {
+    position: absolute;
+    top: 1px;
+    left: 3px;
+    font-size: 0.8em;
+    opacity: 0.7;
+}
+
+button:hover {
+    background-color: var(--matrix-green);
+    color: var(--matrix-darker);
+    box-shadow: var(--matrix-glow);
+}
+
+button:disabled {
+    background-color: var(--matrix-light);
+    border-color: var(--matrix-light);
+    color: #333333;
+    cursor: not-allowed;
+}
+
+.game-over {
+    background-color: rgba(0, 0, 0, 0.8);
+    padding: 20px;
+    border: 2px solid var(--matrix-green);
+    border-radius: 8px;
+    margin-top: 15px;
+    animation: pulse 2s infinite;
+}
+
+.game-over p {
+    font-size: 1.5rem;
+    margin-bottom: 15px;
+}
+
+.action-btn.murder-btn {
+    background-color: rgb(29, 29, 29);
+    color: white;
+    font-weight: bold;
+    border: 1px solid white;
+    text-shadow: 0 0 5px white;
+    margin: -2px;
+    width: 100%;
+}
+
+.action-btn.murder-btn:hover {
+    box-shadow: 0 0 10px white;
+}
+
+.home-container {
+    margin-top: -2px;
+    margin-bottom: -10px;
+}
+
+.selection-options {
+    display: flex;
+    flex-direction: row;
+    justify-content: center;
+    gap: 20px;
+    margin: 10px 0;
+}
+
+.eggling-option {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    cursor: pointer;
+    padding: 10px;
+    border: 1px solid transparent;
+    border-radius: 8px;
+    transition: all 0.3s;
+}
+
+#option-egg:hover, #option-egg.selected {
+    border-color: var(--matrix-green);
+    box-shadow: 0 0 10px var(--matrix-green), 0 0 20px var(--matrix-green);
+}
+
+#option-egg2:hover, #option-egg2.selected {
+    border-color: #f0f;
+    box-shadow: 0 0 10px #f0f, 0 0 20px #f0f;
+}
+
+.selection-sprite {
+    width: 80%;
+    height: 80%;
+    object-fit: contain;
+}
+
+.selection-label {
+    margin-top: 5px;
+    font-size: 1rem;
+}
+
+@keyframes pulse {
+    0% { opacity: 1; }
+    50% { opacity: 0.7; }
+    100% { opacity: 1; }
+}
+
+@keyframes blink {
+    0%, 100% { opacity: 1; }
+    75% { opacity: 0; }
+}
+
+::-webkit-scrollbar {
+    width: 8px;
+}
+
+::-webkit-scrollbar-track {
+    background: var(--matrix-dark);
+}
+
+::-webkit-scrollbar-thumb {
+    background: var(--matrix-green);
+    border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background: #0c0;
+    box-shadow: var(--matrix-glow);
+}
+
+.poop-sprite {
+    width: 140%;
+    height: 140%;
+    object-fit: contain;
+    cursor: pointer;
+    display: block;
+    transition: filter 0.2s;
+}
+.poop-col.left, .poop-col.right {
+  min-width: 32px;
+}
+.poop-sprite[style*="display:none"] {
+    pointer-events: none;
+    visibility: hidden;
+}
+.sprite-layout {
+    display: flex;
+    flex-direction: row;
+    justify-content: center;
+    align-items: center;
+    gap: 6px;
+    height: 100px;
+    width: 100%;
+    position: relative;
+    z-index: 10;
+}
+.sprite-flex-row {
+  display: flex;
+  flex-direction: row;
+  justify-content: center;
+  align-items: center;
+  gap: 5px;
+  width: 100%;
+  height: 100px;
+  margin: 0 auto 15px auto;
+}
+.poop-col {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  gap: 4px;
+  width: 48px;
+  height: 100px;
+}
+.meter.clean-meter {
+    position: relative;
+    overflow: hidden;
+}
+#clean-bar.bar, .bar {
+    border-top-left-radius: 10px;
+    border-bottom-left-radius: 10px;
+}
+.clean-cap-overlay {
+    position: absolute;
+    top: 0; right: 0; bottom: 0;
+    width: 0%;
+    background: #00f;
+    z-index: 3;
+    height: 100%;
+    pointer-events: none;
+    transition: width 0.25s;
+    border-top-right-radius: 10px;
+    border-bottom-right-radius: 10px;
+    opacity: 0.85;
+}

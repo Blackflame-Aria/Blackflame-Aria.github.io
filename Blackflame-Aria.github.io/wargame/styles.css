@@ -1,0 +1,366 @@
+@import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=VT323&display=swap');
+
+body {
+    font-family: 'Share Tech Mono', monospace;
+    text-align: center;
+    background-color: #000;
+    border: 2px solid #0f0;
+    box-shadow: 0 0 15px #0f0, 0 0 15px #0f0, 0 0 15px 2px #0f0 inset;
+    color: #0f0;
+    margin: 0;
+    padding: 20px;
+    min-height: 100vh;
+    position: relative;
+    overflow-x: hidden;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    box-sizing: border-box;
+}
+
+body::before {
+    content: '';
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: 
+        linear-gradient(rgba(0, 255, 0, 0.03) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(0, 255, 0, 0.03) 1px, transparent 1px);
+    background-size: 20px 20px;
+    pointer-events: none;
+    z-index: 0;
+}
+
+h1 {
+    font-family: 'VT323', monospace;
+    cursor: default;
+    color: #0f0;
+    text-shadow: 0 0 10px #0f0;
+    font-size: 2.5rem;
+    margin-top: -5px;
+    margin-bottom: 10px;
+    position: relative;
+    z-index: 1;
+}
+
+.game-container {
+    background: rgba(0, 0, 0, 0.8);
+    border: 2px solid #0f0;
+    box-shadow: 0 0 10px rgba(0, 255, 0, 0.3), inset 0 0 20px rgba(0, 255, 0, 0.1);
+    padding: 30px;
+    text-align: center;
+    width: 90%;
+    max-width: 900px;
+    margin: 0 auto;
+    margin-left: -15px;
+    margin-right: -15px;
+    position: relative;
+    z-index: 1;
+}
+
+.players {
+    display: flex;
+    justify-content: space-around;
+    margin: 30px 0;
+    gap: 20px;
+}
+
+.player {
+    flex: 1;
+    border: 1px solid #0f0;
+    background: rgba(0, 0, 0, 0.6);
+    padding: 20px;
+    border-radius: 0;
+    box-shadow: 0 0 5px rgba(0, 255, 0, 0.2);
+    transition: all 0.3s;
+}
+
+.player h2 {
+    font-family: 'VT323', monospace;
+    color: #0f0;
+    text-shadow: 0 0 5px #0f0;
+    font-size: 2rem;
+    margin: 0 0 15px 0;
+}
+
+.card-display {
+    font-size: 1.2rem;
+    margin: 15px 0;
+    min-height: 60px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(0, 0, 0, 0.8);
+    border: 1px solid #0f0;
+    border-radius: 0;
+    box-shadow: 0 0 5px rgba(0, 255, 0, 0.2);
+    color: #0f0;
+    text-shadow: 0 0 5px #0f0;
+    padding: 15px;
+}
+
+.score {
+    font-weight: bold;
+    color: #0f0;
+    text-shadow: 0 0 5px #0f0;
+    margin-top: 10px;
+    font-size: 1.1rem;
+}
+
+.game-log {
+    background-color: rgba(0, 0, 0, 0.8);
+    border: 1px solid #0f0;
+    box-shadow: 0 0 10px rgba(0, 255, 0, 0.2);
+    padding: 15px;
+    border-radius: 0;
+    margin-top: 20px;
+    text-align: left;
+    max-height: 200px;
+    overflow-y: auto;
+    position: relative;
+}
+
+.game-log h3 {
+    font-family: 'VT323', monospace;
+    color: #0f0;
+    text-shadow: 0 0 5px #0f0;
+    font-size: 1.5rem;
+    margin: 0 0 10px 0;
+    border-bottom: 1px solid #0f0;
+    padding-bottom: 10px;
+}
+
+.log-content {
+    font-size: 0.9rem;
+    color: #0f0;
+    text-shadow: 0 0 3px #0f0;
+    line-height: 1.6;
+}
+
+.log-content div {
+    margin-bottom: 10px;
+    padding: 5px;
+    border-left: 2px solid #0f0;
+    padding-left: 10px;
+}
+
+.button-container {
+    display: flex;
+    justify-content: center;
+    gap: 15px;
+    margin-top: 30px;
+    flex-wrap: wrap;
+}
+
+button {
+    padding: 12px 24px;
+    font-size: 1rem;
+    cursor: pointer;
+    font-family: 'VT323', monospace;
+    background: #000;
+    color: #0f0;
+    border: 1px solid #0f0;
+    border-radius: 0;
+    transition: all 0.3s;
+    text-transform: uppercase;
+    letter-spacing: 2px;
+    position: relative;
+    z-index: 1;
+}
+
+button:hover:not(:disabled) {
+    background: #0f0;
+    color: #000;
+    box-shadow: 0 0 15px #0f0;
+    transform: translateY(-2px);
+}
+
+button:disabled {
+    background: #000;
+    color: #848484;
+    border-color: #848484;
+    cursor: not-allowed;
+    opacity: 0.5;
+}
+
+#return-home a {
+    color: inherit;
+    text-decoration: none;
+    display: block;
+    width: 100%;
+    height: 100%;
+}
+
+.turn-glow {
+    box-shadow: 0 0 30px #0f0, 0 0 60px rgba(0, 255, 0, 0.5), inset 0 0 20px rgba(0, 255, 0, 0.1);
+    border-color: #0f0;
+    transition: box-shadow 0.3s;
+    z-index: 1;
+}
+
+@media (max-width: 600px) {
+    .card-display {
+        font-size: 0.9rem;
+        min-height: 50px;
+        padding: 10px;
+    }
+    
+    .players {
+        flex-direction: column;
+        gap: 15px;
+    }
+    
+    .player h2 {
+        font-size: 1.5rem;
+    }
+    
+    .game-container {
+        padding: 20px;
+        width: 95%;
+    }
+    
+    h1 {
+        font-size: 2rem;
+    }
+    
+    .button-container {
+        flex-direction: column;
+        align-items: stretch;
+    }
+    
+    button {
+        width: 100%;
+    }
+}
+
+::selection {
+    background: #0f0;
+    color: #000;
+}
+
+.game-log::-webkit-scrollbar {
+    width: 8px;
+}
+
+.game-log::-webkit-scrollbar-track {
+    background: #000;
+    border: 1px solid #0f0;
+}
+
+.game-log::-webkit-scrollbar-thumb {
+    background: #0f0;
+    box-shadow: 0 0 5px #0f0;
+}
+
+.game-log::-webkit-scrollbar-thumb:hover {
+    background: #0a0;
+    box-shadow: 0 0 10px #0f0;
+}
+
+.modal {
+    display: none;
+    position: fixed;
+    z-index: 1000;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.8);
+    backdrop-filter: blur(2px);
+    animation: fadeIn 0.3s ease-in;
+}
+
+.modal.active {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+.modal-content {
+    background-color: #000;
+    border: 2px solid #0f0;
+    box-shadow: 0 0 30px #0f0, 0 0 60px rgba(0, 255, 0, 0.5), inset 0 0 20px rgba(0, 255, 0, 0.1);
+    padding: 0;
+    max-width: 90%;
+    width: 400px;
+    position: relative;
+    animation: slideIn 0.3s ease-out;
+    font-family: 'Share Tech Mono', monospace;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+
+@keyframes slideIn {
+    from {
+        transform: translateY(-50px);
+        opacity: 0;
+    }
+    to {
+        transform: translateY(0);
+        opacity: 1;
+    }
+}
+
+.modal-header {
+    padding: 20px;
+    border-bottom: 1px solid #0f0;
+    background: rgba(0, 255, 0, 0.05);
+}
+
+.modal-header h2 {
+    font-family: 'VT323', monospace;
+    color: #0f0;
+    text-shadow: 0 0 10px #0f0;
+    font-size: 2rem;
+    margin: 0;
+    text-align: center;
+    animation: glitch 0.5s infinite alternate;
+}
+
+.modal-body {
+    padding: 30px 20px;
+    text-align: center;
+}
+
+.modal-body p {
+    color: #0f0;
+    font-size: 1.2rem;
+    text-shadow: 0 0 5px #0f0;
+    margin: 0;
+    font-family: 'Share Tech Mono', monospace;
+}
+
+.modal-footer {
+    padding: 20px;
+    border-top: 1px solid #0f0;
+    display: flex;
+    justify-content: center;
+    background: rgba(0, 255, 0, 0.05);
+}
+
+#modal-ok-button {
+    margin: 0;
+    padding: 12px 40px;
+    font-size: 1.2rem;
+    min-width: 120px;
+}
+
+@media (max-width: 480px) {
+    .modal-content {
+        width: 95%;
+        margin: 20px;
+    }
+    
+    .modal-header h2 {
+        font-size: 1.5rem;
+    }
+    
+    .modal-body p {
+        font-size: 1rem;
+    }
+}
