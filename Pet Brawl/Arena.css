@@ -745,7 +745,7 @@ right: 12%;
 	transition: transform 260ms ease, opacity 260ms ease; 
 }
 .combatant.enemy .back-sprite { 
-    filter: grayscale(0%) brightness(1) !important; 
+    filter: grayscale(0%) brightness(.5) !important; 
     opacity: .8;
 }
 .combatant .sprite .back1 { 

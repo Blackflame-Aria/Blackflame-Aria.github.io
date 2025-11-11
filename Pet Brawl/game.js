@@ -5,16 +5,85 @@
   }
 
   const ABILITIES = [
-  { id:'heal', name:'Heal', type:'support', desc:'Restore HP' },
-  { id:'attack', name:'Attack', type:'offense', desc:'Deal direct damage' },
-  { id:'bolster', name:'Bolster', type:'support', desc:'Amplify next ability' },
-  { id:'hot', name:'Regen', type:'support', desc:'Heal over time <br> (3 rounds)' },
-  { id:'dot', name:'Poison', type:'offense', desc:'Dmg over time <br> (3 rounds)' },
-  { id:'charge-heal', name:'Charge Heal', type:'support', desc:'Charge 1 round' },
-  { id:'charge-attack', name:'Charge Attack', type:'offense', desc:'Charge 1 round' },
-  { id:'defend', name:'Defend', type:'support', desc:'Reduce next damage' },
-  { id:'stun', name:'Stun', type:'offense', desc:"Interrupt opponent" }
+  { 
+    id:'heal', 
+    name:'Heal', 
+    type:'support', 
+    desc:'Restore HP' },
+  { 
+    id:'attack', 
+    name:'Attack', 
+    type:'offense', 
+    desc:'Deal direct damage' },
+  { 
+    id:'bolster', 
+    name:'Bolster', 
+    type:'support', 
+    desc:'Amplify next ability' },
+  { 
+    id:'hot', 
+    name:'Regen', 
+    type:'support', 
+    desc:'Heal over time <br> (3 rounds)' },
+  { 
+    id:'dot', 
+    name:'Poison', 
+    type:'offense', 
+    desc:'Dmg over time <br> (3 rounds)' },
+  { 
+    id:'charge-heal', 
+    name:'Charge Heal', 
+    type:'support', 
+    desc:'Charge 1 round' },
+  { 
+    id:'charge-attack', 
+    name:'Charge Attack', 
+    type:'offense',
+     desc:'Charge 1 round' },
+  { 
+    id:'defend', 
+    name:'Defend', 
+    type:'support', 
+    desc:'Reduce next damage' },
+  { 
+    id:'stun', 
+    name:'Stun', 
+    type:'offense', 
+    desc:"Interrupt opponent" }
   ];
+
+  ABILITIES.push(
+    { 
+      id: 'bubble', 
+      name: 'Bubble', 
+      type: 'type-special', 
+      desc: 'Reduce damage taken (3 rounds)' },
+    { 
+      id: 'scorch', 
+      name: 'Scorch', 
+      type: 'type-special', 
+      desc: 'Scorch target (50 dmg / round, 3 rounds)' },
+    { 
+      id: 'shatter', 
+      name: 'Shatter', 
+      type: 'type-special', 
+      desc: 'Heavy strike to enemy, recoil to self' },
+    { 
+      id: 'hurricane', 
+      name: 'Hurricane', 
+      type: 'type-special', 
+      desc: 'Damage enemy team for 3 rounds' },
+    { 
+      id: 'renew', 
+      name: 'Renew', 
+      type: 'type-special', 
+      desc: 'Large self heal' },
+    { 
+      id: 'curse', 
+      name: 'Curse', 
+      type: 'type-special', 
+      desc: 'Weaken opponent (3 rounds)' }
+  );
 
   const ABILITY_COLOR = {
     attack: 'red',
@@ -27,6 +96,12 @@
     hot: 'green',
     'charge-heal': 'green'
   };
+  ABILITY_COLOR.bubble = 'blue';
+  ABILITY_COLOR.scorch = 'red';
+  ABILITY_COLOR.shatter = 'gray';
+  ABILITY_COLOR.hurricane = 'green';
+  ABILITY_COLOR.renew = 'yellow';
+  ABILITY_COLOR.curse = 'purple';
   const PETS = [
 
     { id:'p1', 
@@ -502,7 +577,7 @@
       const a = ABILITIES.find(x=>x.id===id);
       if(!a) return;
       const colorClass = ABILITY_COLOR[a.id] || '';
-      const key = String(idx + 2);
+      const key = String(idx + 3);
       const s = el('div', {class: 'sel ' + colorClass, 'data-id': id}, '');
       s.innerHTML = `<span class="sel-key">${key}</span><div class="name">${a.name}</div><div class="desc">${a.desc.replace(/<br>/g, ' ')}</div>`;
       const btn = document.createElement('button');
@@ -602,6 +677,8 @@
     const healingIds = ['heal','hot','charge-heal'];
     const offenses = ABILITIES.filter(a=>a.type === 'offense');
     const all = [...ABILITIES];
+  const typeMap = { Fluid: 'bubble', Flame: 'scorch', Stone: 'shatter', Storm: 'hurricane', Gleam: 'renew', Gloom: 'curse' };
+  const typeSpecialIds = ['bubble','scorch','shatter','hurricane','renew','curse'];
     const chosen = [];
     const attackAbility = ABILITIES.find(a=>a.id === 'attack' && a.type === 'offense');
     if(attackAbility){
@@ -615,6 +692,15 @@
       let candidates = all.filter(a=>!takenIds.has(a.id));
       if(chosen.some(c=>healingIds.includes(c.id))){
         candidates = candidates.filter(a=>!healingIds.includes(a.id));
+      }
+      if(!state.enemy.isBoss){
+        candidates = candidates.filter(a=>{
+          if(typeSpecialIds.includes(a.id)){
+            const mapped = state.enemy && state.enemy.type ? typeMap[state.enemy.type] : null;
+            return mapped === a.id;
+          }
+          return true;
+        });
       }
       if(candidates.length === 0){
         candidates = all.filter(a=>!takenIds.has(a.id));
@@ -648,9 +734,11 @@
     $log.innerHTML='';
     state.log=[];
   if($playerName) $playerName.textContent = state.player.name || '';
-  if($enemyName) {
+    if($enemyName) {
     $enemyName.textContent = state.enemy.name || '';
+
     $enemyName.style.color = state.enemy && state.enemy.isBoss ? '#f0f' : '';
+
   }
   if($playerType) $playerType.textContent = state.player.type || '';
   if($enemyType) $enemyType.textContent = state.enemy.type || '';
@@ -759,9 +847,26 @@
   passBtn.classList.add('ability-btn');
   $actions.appendChild(passBtn);
 
+    try{
+      const typeMap = { Fluid: 'bubble', Flame: 'scorch', Stone: 'shatter', Storm: 'hurricane', Gleam: 'renew', Gloom: 'curse' };
+      const typeId = state.player && state.player.type ? typeMap[state.player.type] : null;
+      if(typeId){
+        const cd = (state.player.cooldowns && state.player.cooldowns[typeId]) || 0;
+        const abilDef = ABILITIES.find(a=>a.id===typeId) || {};
+        const tbtn = el('button', {'data-id': typeId, 'data-key': '2'});
+        const label = cd>0 ? `${abilDef.name || typeId} (${cd})` : (abilDef.name || typeId);
+        tbtn.innerHTML = `<span class="keybind">2</span>${label}`;
+        if(cd>0) tbtn.disabled = true;
+        if(state.player && state.player.stunned && state.player.stunned > 0) tbtn.disabled = true;
+        const color = ABILITY_COLOR[typeId]; if(color) tbtn.classList.add('ability-btn', color);
+        tbtn.addEventListener('click', ()=>{ playerUseAbility(typeId); });
+        $actions.appendChild(tbtn);
+      }
+    }catch(e){}
+
     state.selectedAbilities.forEach((id, idx)=>{
       const a = ABILITIES.find(x=>x.id===id);
-      const key = String(idx + 2); 
+      const key = String(idx + 3);
       const b = el('button',{'data-id':id,'data-key':key});
       const cd = (state.player.cooldowns && state.player.cooldowns[id]) || 0;
       const label = cd>0 ? `${a.name} (${cd})` : a.name;
@@ -777,28 +882,43 @@
   }
 
   function applyEffects(target){
-    const t = state[target];
-    let total = 0;
-    const remaining = [];
-    t.effects.forEach(eff=>{
-      if(eff.id==='dot'){ t.hp -= eff.value; total -= eff.value; playSound('poison'); }
-      if(eff.id==='hot'){ t.hp += eff.value; total += eff.value; if(t.hp>t.maxHp) t.hp=t.maxHp; playSound('regenerate'); }
-      eff.rounds -= 1;
-      if(eff.rounds>0) remaining.push(eff);
-    });
-    t.effects = remaining;
-    if(total!==0) {
-      log(`${t.name || target} ${total<0? 'lost':'recovered'} ${Math.abs(total)} HP.`);
-      if(total<0){ if(target==='player') flashHit($playerHpFill); else flashHit($enemyHpFill); }
-      else { if(target==='player') flashHeal($playerHpFill); else flashHeal($enemyHpFill); }
-    }
-    updateUI();
-    if(t.hp <= 0){
-      t.hp = 0;
+    function _processActorEffects(actor, side){
+      if(!actor) return;
+      let total = 0;
+      const remaining = [];
+      (actor.effects || []).forEach(eff=>{
+        if(eff.id==='dot'){ actor.hp -= eff.value; total -= eff.value; playSound('poison'); }
+        if(eff.id==='hot'){ actor.hp += eff.value; total += eff.value; if(actor.hp>actor.maxHp) actor.hp=actor.maxHp; playSound('regenerate'); }
+        if(eff.id==='scorch'){ actor.hp -= eff.value; total -= eff.value; playSound('attack'); }
+        if(eff.id==='hurricane'){ actor.hp -= eff.value; total -= eff.value; playSound('attack'); }
+        eff.rounds -= 1;
+        if(eff.rounds>0) remaining.push(eff);
+      });
+      actor.effects = remaining;
+      if(total!==0) {
+        log(`${actor.name || side} ${total<0? 'lost':'recovered'} ${Math.abs(total)} HP.`);
+        if(total<0){ if(side==='player') flashHit($playerHpFill); else flashHit($enemyHpFill); }
+        else { if(side==='player') flashHeal($playerHpFill); else flashHeal($enemyHpFill); }
+      }
       updateUI();
-      log(`${t.name} was brutally murdered!`);
-      playSound('murder');
-      finishBattle();
+      if(actor.hp <= 0){
+        actor.hp = 0;
+        updateUI();
+        log(`${actor.name} was brutally murdered!`);
+        playSound('murder');
+        finishBattle();
+      }
+    }
+
+    if(target === 'player'){
+      if(Array.isArray(state.playerTeam) && state.playerTeam.length){ state.playerTeam.forEach(p=> _processActorEffects(p, 'player')); }
+      else _processActorEffects(state.player, 'player');
+      return;
+    }
+    if(target === 'enemy'){
+      if(Array.isArray(state.enemyTeam) && state.enemyTeam.length){ state.enemyTeam.forEach(e=> _processActorEffects(e, 'enemy')); }
+      else _processActorEffects(state.enemy, 'enemy');
+      return;
     }
   }
 
@@ -874,7 +994,7 @@
         applyDamage(actorKey, targetKey, amount, 'charged attack');
       } else if(type==='heal'){
         animateSprite(actorKey, 'heal', 'big');
-        if(actor.bolster){ amount += 45; actor.bolster = false; }
+        if(actor.bolster){ amount += 40; actor.bolster = false; }
         actor.hp += amount; if(actor.hp>actor.maxHp) actor.hp = actor.maxHp;
         log(`${actor.name} received a charged heal of ${amount}.`);
         if(actorKey==='player') flashHeal($playerHpFill); else flashHeal($enemyHpFill);
@@ -902,11 +1022,23 @@
     const atk = state[fromKey];
     const def = state[toKey];
     let dmg = Math.round(rawAmount);
+    if(atk && Array.isArray(atk.effects)){
+      const curse = atk.effects.find(e=>e.id === 'curse');
+      if(curse && typeof curse.value === 'number'){
+        const factor = Math.max(0, 1 - curse.value);
+        dmg = Math.round(dmg * factor);
+      }
+    }
+
     if(def.defend){
       const strength = (typeof def.defend === 'number') ? def.defend : 1;
       if(strength >= 2) dmg = Math.round(dmg * 0.25);
       else dmg = Math.round(dmg * 0.5);
       def.defend = false;
+    }
+    if(def && Array.isArray(def.effects)){
+      const bubble = def.effects.find(e=>e.id === 'bubble');
+      if(bubble && typeof bubble.value === 'number') dmg -= bubble.value;
     }
     def.hp -= dmg;
     if(!(label && /charged/i.test(label))){ playSound('attack'); }
@@ -1007,6 +1139,71 @@
           actor.cooldowns['charge-heal'] = Math.max(actor.cooldowns['charge-heal'] || 0, 4);
           updateUI(); renderActions();
         } break;
+        case 'bubble': {
+          const rounds = 3;
+          let value = 15;
+          if(actor.bolster){ value += 10; actor.bolster = false; }
+          actor.effects = actor.effects || [];
+          actor.effects.push({ id: 'bubble', name: 'Bubble', rounds, value });
+          actor.cooldowns['bubble'] = 5;
+          log({ text: `${actor.name} reduces damage taken (${rounds} rounds)`, abilityId: 'bubble' });
+        } break;
+        case 'scorch': {
+          const rounds = 3;
+          const value = 50;
+          const target = state.enemy;
+          target.effects = target.effects || [];
+          if(actor.bolster) target.effects.push({ id: 'scorch', name: 'Scorch', rounds: rounds + 1, value });
+          else target.effects.push({ id: 'scorch', name: 'Scorch', rounds, value });
+          actor.cooldowns['scorch'] = 5;
+          if(actor.bolster) actor.bolster = false;
+          log({ text: `${actor.name} scorches ${target.name} for ${value} (x${rounds})`, abilityId: 'scorch' });
+          playSound('attack');
+        } break;
+        case 'shatter': {
+          let dmg = 100;
+          let self = 30;
+          if(actor.bolster){ dmg = 125; self = 40; actor.bolster = false; }
+          applyDamage('player','enemy', dmg, 'shatter');
+          actor.hp -= self; if(actor.hp < 0) actor.hp = 0;
+          actor.cooldowns['shatter'] = 4;
+          log({ text: `${actor.name} struck ${state.enemy.name} for ${dmg} and takes ${self}`, abilityId: 'shatter' });
+          playSound('attack');
+        } break;
+        case 'hurricane': {
+          const rounds = 3;
+          const value = 50;
+          const targets = state.enemyTeam && state.enemyTeam.length ? state.enemyTeam : [state.enemy];
+          targets.forEach(t => {
+            t.effects = t.effects || [];
+            if(actor.bolster) t.effects.push({ id: 'hurricane', name: 'Hurricane', rounds: rounds + 1, value });
+            else t.effects.push({ id: 'hurricane', name: 'Hurricane', rounds, value });
+          });
+          actor.cooldowns['hurricane'] = 8;
+          if(actor.bolster) actor.bolster = false;
+          log({ text: `${actor.name} struck ${targets.map(x=>x.name).join(', ')} for ${value}`, abilityId: 'hurricane' });
+          playSound('attack');
+        } break;
+        case 'renew': {
+          let amount = 400;
+          if(actor.bolster){ amount = 500; actor.bolster = false; }
+          const curse = (actor.effects||[]).find(e=>e.id==='curse');
+          if(curse && typeof curse.value === 'number') amount = Math.round(amount * (1 - curse.value));
+          actor.hp += amount; if(actor.hp > actor.maxHp) actor.hp = actor.maxHp;
+          actor.cooldowns['renew'] = 8;
+          log({ text: `${actor.name} heals for ${amount}`, abilityId: 'renew' });
+          playSound('heal');
+        } break;
+        case 'curse': {
+          const rounds = 3;
+          let value = 0.3;
+          if(actor.bolster){ value = 0.5; actor.bolster = false; }
+          const target = state.enemy;
+          target.effects = target.effects || [];
+          target.effects.push({ id: 'curse', name: 'Curse', rounds, value });
+          actor.cooldowns['curse'] = 6;
+          log({ text: `${actor.name} weakens ${target.name} (${rounds} rounds)`, abilityId: 'curse' });
+        } break;
         case 'stun': {
           state.enemy.stunned = (state.enemy.stunned && state.enemy.stunned>0) ? state.enemy.stunned + 1 : 1;
           if(actor.bolster){ state.enemy.stunned += 1; actor.bolster = false; }
@@ -1035,7 +1232,20 @@
   function enemyAct(){
     const actor = state.enemy;
     const avail = state.enemyAbilities.filter(id=>!(actor.cooldowns && actor.cooldowns[id]));
-    const id = avail.length ? avail[Math.floor(Math.random()*avail.length)] : 'attack';
+    const typeMap = { Fluid: 'bubble', Flame: 'scorch', Stone: 'shatter', Storm: 'hurricane', Gleam: 'renew', Gloom: 'curse' };
+    const typeSpecialIds = ['bubble','scorch','shatter','hurricane','renew','curse'];
+    const filtered = avail.filter(i=> i !== 'intervene');
+    const finalAvail = filtered.filter(aid => {
+      if(typeSpecialIds.includes(aid)){
+        if(actor && actor.isBoss) return true;
+        const mapped = actor && actor.type ? typeMap[actor.type] : null;
+        return mapped === aid;
+      }
+      return true;
+    });
+    let id = null;
+    if(finalAvail.length) id = finalAvail[Math.floor(Math.random()*finalAvail.length)];
+    else { const nonType = filtered.filter(aid=> !typeSpecialIds.includes(aid)); id = nonType.length ? nonType[Math.floor(Math.random()*nonType.length)] : 'attack'; }
     const ability = ABILITIES.find(a=>a.id===id);
     log(`${actor.name} prepares ${ability? ability.name : id}...`);
     setTimeout(()=>{
@@ -1088,6 +1298,71 @@
           actor.charged = {type:'heal',id:'charge-heal',value, rounds: 2}; log(`${actor.name} is charging a heal.`);
           actor.cooldowns['charge-heal'] = Math.max(actor.cooldowns['charge-heal'] || 0, 4);
           updateUI(); renderActions();
+        } break;
+        case 'bubble': {
+          const rounds = 3;
+          let value = 15;
+          if(actor.bolster){ value += 10; actor.bolster = false; }
+          actor.effects = actor.effects || [];
+          actor.effects.push({ id: 'bubble', name: 'Bubble', rounds, value });
+          actor.cooldowns['bubble'] = 5;
+          log({ text: `${actor.name} reduces damage taken (${rounds} rounds)`, abilityId: 'bubble' });
+        } break;
+        case 'scorch': {
+          const rounds = 3;
+          const value = 50;
+          const target = state.player;
+          target.effects = target.effects || [];
+          if(actor.bolster) target.effects.push({ id: 'scorch', name: 'Scorch', rounds: rounds + 1, value });
+          else target.effects.push({ id: 'scorch', name: 'Scorch', rounds, value });
+          actor.cooldowns['scorch'] = 5;
+          if(actor.bolster) actor.bolster = false;
+          log({ text: `${actor.name} scorches ${target.name} for ${value} (x${rounds})`, abilityId: 'scorch' });
+          playSound('attack');
+        } break;
+        case 'shatter': {
+          let dmg = 100;
+          let self = 30;
+          if(actor.bolster){ dmg = 125; self = 40; actor.bolster = false; }
+          applyDamage('enemy','player', dmg, 'shatter');
+          actor.hp -= self; if(actor.hp < 0) actor.hp = 0;
+          actor.cooldowns['shatter'] = 4;
+          log({ text: `${actor.name} struck ${state.player.name} for ${dmg} and takes ${self}`, abilityId: 'shatter' });
+          playSound('attack');
+        } break;
+        case 'hurricane': {
+          const rounds = 3;
+          const value = 50;
+          const targets = state.playerTeam && state.playerTeam.length ? state.playerTeam : [state.player];
+          targets.forEach(t => {
+            t.effects = t.effects || [];
+            if(actor.bolster) t.effects.push({ id: 'hurricane', name: 'Hurricane', rounds: rounds + 1, value });
+            else t.effects.push({ id: 'hurricane', name: 'Hurricane', rounds, value });
+          });
+          actor.cooldowns['hurricane'] = 8;
+          if(actor.bolster) actor.bolster = false;
+          log({ text: `${actor.name} struck ${targets.map(x=>x.name).join(', ')} for ${value}`, abilityId: 'hurricane' });
+          playSound('attack');
+        } break;
+        case 'renew': {
+          let amount = 400;
+          if(actor.bolster){ amount = 500; actor.bolster = false; }
+          const curse = (actor.effects||[]).find(e=>e.id==='curse');
+          if(curse && typeof curse.value === 'number') amount = Math.round(amount * (1 - curse.value));
+          actor.hp += amount; if(actor.hp>actor.maxHp) actor.hp = actor.maxHp;
+          actor.cooldowns['renew'] = 8;
+          log({ text: `${actor.name} heals for ${amount}`, abilityId: 'renew' });
+          playSound('heal');
+        } break;
+        case 'curse': {
+          const rounds = 3;
+          let value = 0.3;
+          if(actor.bolster){ value = 0.5; actor.bolster = false; }
+          const target = state.player;
+          target.effects = target.effects || [];
+          target.effects.push({ id: 'curse', name: 'Curse', rounds, value });
+          actor.cooldowns['curse'] = 6;
+          log({ text: `${actor.name} weakens ${target.name} (${rounds} rounds)`, abilityId: 'curse' });
         } break;
         case 'stun': {
           state.player.stunned = (state.player.stunned && state.player.stunned>0) ? state.player.stunned + 2 : 2;
@@ -1194,7 +1469,7 @@
         if($back && !$back.disabled){ $back.click(); }
         return;
       }
-      if(!['1','2','3','4'].includes(k)) return;
+  if(!['1','2','3','4','5','6'].includes(k)) return;
       if($battle && $battle.classList.contains('hidden')) return;
       if(state.turn !== 'player') return;
       const btn = document.querySelector(`#actions button[data-key="${k}"]`);
