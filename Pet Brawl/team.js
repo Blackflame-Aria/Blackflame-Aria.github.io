@@ -1116,26 +1116,27 @@
       if(actor.hp <= 0){
         actor.hp = 0;
         updateUI();
-        log(`${actor.name} was brutally murdered!`);
-        playSound('murder');
-        const playerTeam = state.playerTeam || [];
-        const enemyTeam = state.enemyTeam || [];
-        if(playerTeam.includes(actor)){
+        if(!actor.dead){
           actor.dead = true;
-          if(state.player === actor){
-            const next = playerTeam.find(p=>!p.dead && p !== actor);
-            if(next){ const idx = playerTeam.indexOf(next); const picked = playerTeam.splice(idx,1)[0]; playerTeam.unshift(picked); state.player = playerTeam[0]; log(`${state.player.name} takes the field!`); }
-            else { finishBattle(); return; }
+          log(`${actor.name} was brutally murdered!`);
+          playSound('murder');
+          const playerTeam = state.playerTeam || [];
+          const enemyTeam = state.enemyTeam || [];
+          if(playerTeam.includes(actor)){
+            if(state.player === actor){
+              const next = playerTeam.find(p=>!p.dead && p !== actor);
+              if(next){ const idx = playerTeam.indexOf(next); const picked = playerTeam.splice(idx,1)[0]; playerTeam.unshift(picked); state.player = playerTeam[0]; log(`${state.player.name} will avenge them!`); }
+              else { finishBattle(); return; }
+            }
+          } else if(enemyTeam.includes(actor)){
+            if(state.enemy === actor){
+              const next = enemyTeam.find(p=>!p.dead && p !== actor);
+              if(next){ const idx = enemyTeam.indexOf(next); const picked = enemyTeam.splice(idx,1)[0]; enemyTeam.unshift(picked); state.enemy = enemyTeam[0]; log(`${state.enemy.name} will avenge them!`); }
+              else { finishBattle(); return; }
+            }
+          } else {
+            finishBattle();
           }
-        } else if(enemyTeam.includes(actor)){
-          actor.dead = true;
-          if(state.enemy === actor){
-            const next = enemyTeam.find(p=>!p.dead && p !== actor);
-            if(next){ const idx = enemyTeam.indexOf(next); const picked = enemyTeam.splice(idx,1)[0]; enemyTeam.unshift(picked); state.enemy = enemyTeam[0]; log(`${state.enemy.name} takes the field!`); }
-            else { finishBattle(); return; }
-          }
-        } else {
-          finishBattle();
         }
       }
     }
@@ -1207,33 +1208,28 @@
 
   function applyCharged(actorKey){
     const actor = state[actorKey];
-      if(actor.hp <= 0){
-        actor.hp = 0;
-        updateUI();
-        if(!actor.dead){
-          actor.dead = true;
-          log(`${actor.name} was brutally murdered!`);
-          playSound('murder');
-          const playerTeam = state.playerTeam || [];
-          const enemyTeam = state.enemyTeam || [];
-          if(playerTeam.includes(actor)){
-            if(state.player === actor){
-              const next = playerTeam.find(p=>!p.dead && p !== actor);
-              if(next){ const idx = playerTeam.indexOf(next); const picked = playerTeam.splice(idx,1)[0]; playerTeam.unshift(picked); state.player = playerTeam[0]; log(`${state.player.name} takes the field!`); }
-              else { finishBattle(); return; }
-          } else if(enemyTeam.includes(actor)){
-            if(state.enemy === actor){
-              const next = enemyTeam.find(p=>!p.dead && p !== actor);
-              if(next){ const idx = enemyTeam.indexOf(next); const picked = enemyTeam.splice(idx,1)[0]; enemyTeam.unshift(picked); state.enemy = enemyTeam[0]; log(`${state.enemy.name} takes the field!`); }
-              else { finishBattle(); return; }
-          } else {
-            finishBattle();
-          }
-        }
+    if(!actor) return;
+    if(actor.charged){
+      if(typeof actor.charged.rounds === 'number' && actor.charged.rounds > 1){
+        actor.charged.rounds -= 1;
+        return;
       }
-        if(actor.bolster){ amount += 45; actor.bolster = false; }
-        const curse = (actor.effects||[]).find(e=>e.id==='curse');
-        if(curse && typeof curse.value === 'number') amount = Math.round(amount * (1 - curse.value));
+      if(actor.stunned && actor.stunned > 0){
+        log(`${actor.name}'s charged action was interrupted by stun.`);
+        actor.charged = null;
+        return;
+      }
+      const {type} = actor.charged;
+      let amount = actor.charged.value || 0;
+      if(type === 'attack'){
+        const targetKey = actorKey === 'player' ? 'enemy' : 'player';
+        animateSprite(actorKey, 'attack', 'big');
+        if(actor.bolster){ amount += 50; actor.bolster = false; }
+        playSound('chargeAttack');
+        applyDamage(actorKey, targetKey, amount, 'charged attack');
+      } else if(type === 'heal'){
+        animateSprite(actorKey, 'heal', 'big');
+        if(actor.bolster){ amount += 40; actor.bolster = false; }
         actor.hp += amount; if(actor.hp>actor.maxHp) actor.hp = actor.maxHp;
         log(`${actor.name} received a charged heal of ${amount}.`);
         if(actorKey==='player') flashHeal($playerHpFill); else flashHeal($enemyHpFill);
@@ -1242,7 +1238,7 @@
       }
       actor.charged = null;
     }
-  }
+    }
 
   function animateSprite(actorKey, type, size='small'){
     const selector = actorKey === 'player' ? '.combatant.player .sprite' : '.combatant.enemy .sprite';
@@ -1291,47 +1287,48 @@
     log(`${atk.name} dealt ${dmg} damage to ${def.name}.`);
     if(def.hp<=0){
       def.hp = 0;
-      log(`${def.name} was brutally murdered!`);
-      playSound('murder');
-      const playerTeam = state.playerTeam || [];
-      const enemyTeam = state.enemyTeam || [];
-      const isPlayerPet = playerTeam.includes(def);
-      const isEnemyPet = enemyTeam.includes(def);
-      if(isPlayerPet){
+      if(!def.dead){
         def.dead = true;
-        if(state.player === def){
-          const next = playerTeam.find(p=>!p.dead && p !== def);
-          if(next){
-            const idx = playerTeam.indexOf(next);
-            const picked = playerTeam.splice(idx,1)[0];
-            playerTeam.unshift(picked);
-            state.player = playerTeam[0];
-            log(`${state.player.name} will avenge them!`);
-          } else {
-            finishBattle();
-            updateUI();
-            return;
+        log(`${def.name} was brutally murdered!`);
+        playSound('murder');
+        const playerTeam = state.playerTeam || [];
+        const enemyTeam = state.enemyTeam || [];
+        const isPlayerPet = playerTeam.includes(def);
+        const isEnemyPet = enemyTeam.includes(def);
+        if(isPlayerPet){
+          if(state.player === def){
+            const next = playerTeam.find(p=>!p.dead && p !== def);
+            if(next){
+              const idx = playerTeam.indexOf(next);
+              const picked = playerTeam.splice(idx,1)[0];
+              playerTeam.unshift(picked);
+              state.player = playerTeam[0];
+              log(`${state.player.name} will avenge them!`);
+            } else {
+              finishBattle();
+              updateUI();
+              return;
+            }
           }
-        }
-      } else if(isEnemyPet){
-        def.dead = true;
-        if(state.enemy === def){
-          const next = enemyTeam.find(p=>!p.dead && p !== def);
-          if(next){
-            const idx = enemyTeam.indexOf(next);
-            const picked = enemyTeam.splice(idx,1)[0];
-            enemyTeam.unshift(picked);
-            state.enemy = enemyTeam[0];
-            log(`${state.enemy.name} will avenge them!`);
-          } else {
-            state.enemy = def;
-            finishBattle();
-            updateUI();
-            return;
+        } else if(isEnemyPet){
+          if(state.enemy === def){
+            const next = enemyTeam.find(p=>!p.dead && p !== def);
+            if(next){
+              const idx = enemyTeam.indexOf(next);
+              const picked = enemyTeam.splice(idx,1)[0];
+              enemyTeam.unshift(picked);
+              state.enemy = enemyTeam[0];
+              log(`${state.enemy.name} will avenge them!`);
+            } else {
+              state.enemy = def;
+              finishBattle();
+              updateUI();
+              return;
+            }
           }
+        } else {
+          finishBattle();
         }
-      } else {
-        finishBattle();
       }
     }
     updateUI();
@@ -1465,7 +1462,8 @@
         case 'hurricane': {
           const rounds = 3;
           const value = 50;
-          const targets = state.enemyTeam && state.enemyTeam.length ? state.enemyTeam : [state.enemy];
+          const rawTargets = state.enemyTeam && state.enemyTeam.length ? state.enemyTeam : [state.enemy];
+          const targets = (rawTargets || []).filter(t => t && !t.dead && t.hp > 0);
           targets.forEach(t => {
             t.effects = t.effects || [];
             if(actor.bolster) t.effects.push({ id: 'hurricane', name: 'Hurricane', rounds: rounds + 1, value });
@@ -1473,8 +1471,7 @@
           });
           actor.cooldowns['hurricane'] = 7;
           if(actor.bolster) actor.bolster = false;
-          log({ text: `${actor.name} struck ${targets.map(x=>x.name).join(', ')} for ${value}`, abilityId: 'hurricane' });
-          playSound('attack');
+          if(targets.length){ log({ text: `${actor.name} struck ${targets.map(x=>x.name).join(', ')} for ${value} damage`, abilityId: 'hurricane' }); playSound('attack'); }
         } break;
         case 'renew': {
           let amount = 400;
@@ -1537,6 +1534,7 @@
           const enemies = state.enemyTeam && state.enemyTeam.length ? state.enemyTeam : [state.enemy];
           const boostAtk = actor.bolster ? 30 : 0;
           enemies.forEach(en=>{
+            if(!en || en.dead || en.hp <= 0) return;
             let dmg = Math.round((actor.power || 0) * 6 + randInt(0,5));
             if(boostAtk) dmg += boostAtk;
             en.hp -= dmg;
@@ -1633,7 +1631,7 @@
     const typeSpecialIds = ['bubble','scorch','shatter','hurricane','renew','curse'];
     const finalAvail = filteredAvail.filter(aid => {
       if(typeSpecialIds.includes(aid)){
-        if(actor && actor.isBoss) return true;
+        if(actor && actor.isBoss) return aid !== 'renew';
         const mapped = actor && actor.type ? typeMap[actor.type] : null;
         return mapped === aid;
       }
@@ -1717,7 +1715,8 @@
           if(actor.isBoss) actor.cooldowns['bolster'] += 3;
         } break;
         case 'team-attack': {
-          const targets = state.playerTeam && state.playerTeam.length ? state.playerTeam : [state.player];
+          const rawTargets = state.playerTeam && state.playerTeam.length ? state.playerTeam : [state.player];
+          const targets = (rawTargets || []).filter(t => t && !t.dead && t.hp > 0);
           const boostAtk = actor.bolster ? 30 : 0;
           animateSprite('enemy','team-attack','big');
           targets.forEach(t=>{
@@ -1733,7 +1732,7 @@
           const playerTeam = state.playerTeam || [];
           if(playerTeam.length){
             playerTeam.forEach((p, idx)=>{
-              if(p.hp <= 0 && !p.dead){ p.dead = true; log(`${p.name} was brutally murdered!`); playSound('murder'); if(state.player === p){ const next = playerTeam.find(x=>!x.dead && x !== p); if(next){ const i = playerTeam.indexOf(next); const picked = playerTeam.splice(i,1)[0]; playerTeam.unshift(picked); state.player = playerTeam[0]; log(`${state.player.name} takes the field!`); } } }
+              if(p.hp <= 0 && !p.dead){ p.dead = true; log(`${p.name} was brutally murdered!`); playSound('murder'); if(state.player === p){ const next = playerTeam.find(x=>!x.dead && x !== p); if(next){ const i = playerTeam.indexOf(next); const picked = playerTeam.splice(i,1)[0]; playerTeam.unshift(picked); state.player = playerTeam[0]; log(`${state.player.name} will avenge them!`); } } }
             });
             const anyAlive = playerTeam.some(p=>!p.dead && p.hp>0);
             if(!anyAlive) finishBattle();
@@ -1773,7 +1772,7 @@
           else target.effects.push({ id: 'scorch', name: 'Scorch', rounds, value });
           actor.cooldowns['scorch'] = 5;
           if(actor.bolster) actor.bolster = false;
-          log({ text: `${actor.name} scorches ${target.name} for ${value} (x${rounds})`, abilityId: 'scorch' });
+          log({ text: `${actor.name} scorches ${target.name} for ${value} (${rounds} rounds)`, abilityId: 'scorch' });
           playSound('attack');
         } break;
         case 'shatter': {
@@ -1789,7 +1788,8 @@
         case 'hurricane': {
           const rounds = 3;
           const value = 50;
-          const targets = state.playerTeam && state.playerTeam.length ? state.playerTeam : [state.player];
+          const rawTargets = state.playerTeam && state.playerTeam.length ? state.playerTeam : [state.player];
+          const targets = (rawTargets || []).filter(t => t && !t.dead && t.hp > 0);
           targets.forEach(t => {
             t.effects = t.effects || [];
             if(actor.bolster) t.effects.push({ id: 'hurricane', name: 'Hurricane', rounds: rounds + 1, value });
@@ -1797,8 +1797,7 @@
           });
           actor.cooldowns['hurricane'] = 8;
           if(actor.bolster) actor.bolster = false;
-          log({ text: `${actor.name} struck ${targets.map(x=>x.name).join(', ')} for ${value}`, abilityId: 'hurricane' });
-          playSound('attack');
+          if(targets.length){ log({ text: `${actor.name} struck ${targets.map(x=>x.name).join(', ')} for ${value} damage.`, abilityId: 'hurricane' }); playSound('attack'); }
         } break;
         case 'renew': {
           let amount = 400;

@@ -904,9 +904,12 @@
       if(actor.hp <= 0){
         actor.hp = 0;
         updateUI();
-        log(`${actor.name} was brutally murdered!`);
-        playSound('murder');
-        finishBattle();
+        if(!actor.dead){
+          actor.dead = true;
+          log(`${actor.name} was brutally murdered!`);
+          playSound('murder');
+          finishBattle();
+        }
       }
     }
 
@@ -1043,7 +1046,7 @@
     def.hp -= dmg;
     if(!(label && /charged/i.test(label))){ playSound('attack'); }
     log(`${atk.name} dealt ${dmg} damage to ${def.name}.`);
-  if(def.hp<=0){ def.hp=0; log(`${def.name} was brutally murdered!`); playSound('murder'); finishBattle(); }
+  if(def.hp<=0){ def.hp=0; if(!def.dead){ def.dead = true; log(`${def.name} was brutally murdered!`); playSound('murder'); finishBattle(); } }
   updateUI();
     if(toKey === 'player') flashHit($playerHpFill); else flashHit($enemyHpFill);
   }
@@ -1173,7 +1176,8 @@
         case 'hurricane': {
           const rounds = 3;
           const value = 50;
-          const targets = state.enemyTeam && state.enemyTeam.length ? state.enemyTeam : [state.enemy];
+          const rawTargets = state.enemyTeam && state.enemyTeam.length ? state.enemyTeam : [state.enemy];
+          const targets = (rawTargets || []).filter(t => t && !t.dead && t.hp > 0);
           targets.forEach(t => {
             t.effects = t.effects || [];
             if(actor.bolster) t.effects.push({ id: 'hurricane', name: 'Hurricane', rounds: rounds + 1, value });
@@ -1181,8 +1185,7 @@
           });
           actor.cooldowns['hurricane'] = 8;
           if(actor.bolster) actor.bolster = false;
-          log({ text: `${actor.name} struck ${targets.map(x=>x.name).join(', ')} for ${value}`, abilityId: 'hurricane' });
-          playSound('attack');
+          if(targets.length){ log({ text: `${actor.name} struck ${targets.map(x=>x.name).join(', ')} for ${value}`, abilityId: 'hurricane' }); playSound('attack'); }
         } break;
         case 'renew': {
           let amount = 400;
@@ -1237,7 +1240,7 @@
     const filtered = avail.filter(i=> i !== 'intervene');
     const finalAvail = filtered.filter(aid => {
       if(typeSpecialIds.includes(aid)){
-        if(actor && actor.isBoss) return true;
+        if(actor && actor.isBoss) return aid !== 'renew';
         const mapped = actor && actor.type ? typeMap[actor.type] : null;
         return mapped === aid;
       }
@@ -1333,7 +1336,8 @@
         case 'hurricane': {
           const rounds = 3;
           const value = 50;
-          const targets = state.playerTeam && state.playerTeam.length ? state.playerTeam : [state.player];
+          const rawTargets = state.playerTeam && state.playerTeam.length ? state.playerTeam : [state.player];
+          const targets = (rawTargets || []).filter(t => t && !t.dead && t.hp > 0);
           targets.forEach(t => {
             t.effects = t.effects || [];
             if(actor.bolster) t.effects.push({ id: 'hurricane', name: 'Hurricane', rounds: rounds + 1, value });
@@ -1341,8 +1345,7 @@
           });
           actor.cooldowns['hurricane'] = 8;
           if(actor.bolster) actor.bolster = false;
-          log({ text: `${actor.name} struck ${targets.map(x=>x.name).join(', ')} for ${value}`, abilityId: 'hurricane' });
-          playSound('attack');
+          if(targets.length){ log({ text: `${actor.name} struck ${targets.map(x=>x.name).join(', ')} for ${value}`, abilityId: 'hurricane' }); playSound('attack'); }
         } break;
         case 'renew': {
           let amount = 400;

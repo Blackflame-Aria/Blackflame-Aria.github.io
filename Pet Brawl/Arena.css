@@ -367,7 +367,7 @@ h1 {
 }
 
 .type.stone { 
-	color: #777; 
+	color: #999; 
 }
 
 .type.storm { 
@@ -447,10 +447,10 @@ button[disabled] {
 }
 
 #start-btn.ready {
-	background: linear-gradient(90deg, rgba(0,255,136,0.12), rgba(255, 0, 255,0.06));
+	background: linear-gradient(90deg, rgba(255,0,136,0.12), rgba(255, 0, 255,0.06));
 	color: #f0f;
 	border-color: #f0f;
-	box-shadow: 0 0 18px rgba(0,255,136,0.16);
+	box-shadow: 0 0 18px rgba(255,0,136,0.16);
 	margin-bottom: -5px;
 }
 
@@ -464,7 +464,7 @@ button[disabled] {
 	font-family: share tech mono, monospace;
 	color: #f0f;
 	border-color: #f0f;
-	box-shadow: 0 0 18px rgba(0,255,136,0.16);
+	box-shadow: 0 0 18px rgba(255,0,136,0.16);
 	margin-bottom: 10px;
 }
 
