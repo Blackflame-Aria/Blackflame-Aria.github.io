@@ -155,7 +155,7 @@
       name:'Vala', 
       type:'Gleam', 
       maxHp:600, 
-      power:5, 
+      power:5.5, 
       healing:5, 
       hpBars:2, 
       powerBars:1, 
@@ -455,7 +455,10 @@
         p.appendChild(lbl);
       }
     }
+    p.classList.add('enter');
     $log.prepend(p);
+    try{ void p.offsetWidth; }catch(e){}
+    try{ requestAnimationFrame(()=>{ p.classList.remove('enter'); }); }catch(e){}
   }
 
   function renderPets(){
@@ -655,7 +658,7 @@
       id: 'boss-ancient',
       name: 'Eggling',
       type: 'Boss',
-      maxHp: 2000,
+      maxHp: 1800,
       power: 6.5,
       healing: 5,
       hpBars: 12,
@@ -1046,7 +1049,9 @@
     }
     def.hp -= dmg;
     if(!(label && /charged/i.test(label))){ playSound('attack'); }
-    log(`${atk.name} dealt ${dmg} damage to ${def.name}.`);
+    if(!(label && /suppress/i.test(label))){
+      log(`${atk.name} dealt ${dmg} damage to ${def.name}.`);
+    }
   if(def.hp<=0){ def.hp=0; if(!def.dead){ def.dead = true; log(`${def.name} was brutally murdered!`); playSound('murder'); try{ if(def.isBoss){ const es = document.getElementById('enemy-sprite'); if(es) es.src = 'Sprites/Sick2.gif'; } }catch(e){} finishBattle(); } }
   updateUI();
     if(toKey === 'player') flashHit($playerHpFill); else flashHit($enemyHpFill);
@@ -1095,11 +1100,12 @@
       switch(id){
         case 'attack': {
           animateSprite('player','attack');
-          let atkAmount = (actor.power || 0) * 10 + randInt(0,9);
+          let atkAmount = (actor.power || 0) * 12 + randInt(0,9);
           if(actor.bolster){ atkAmount += 30; actor.bolster = false; }
           applyDamage('player','enemy', atkAmount, 'attacks,');
         } break;
         case 'heal': {
+          animateSprite('player','heal');
           let amount = Math.round((actor.healing || 0) * 25 + randInt(0,9));
           if(actor.bolster){ amount += 30; actor.bolster = false; }
           actor.hp += amount; if(actor.hp>actor.maxHp) actor.hp=actor.maxHp; log(`${actor.name} healed ${amount} HP.`);
@@ -1123,7 +1129,7 @@
         } break;
         case 'hot': {
           animateSprite('player','heal');
-          let value = Math.round((actor.healing || 0) * 12 + randInt(0,9));
+          let value = Math.round((actor.healing || 0) * 15 + randInt(0,9));
           if(actor.bolster){ value += 18; actor.bolster = false; }
           actor.effects.push({id:'hot',name:'Regen',rounds:3,value}); log(`${actor.name} applied Regenerate (${value}/round).`);
           playSound('regenerate');
@@ -1145,36 +1151,39 @@
         } break;
         case 'bubble': {
           const rounds = 3;
-          let value = 15;
-          if(actor.bolster){ value += 10; actor.bolster = false; }
+          let value = 20;
+          if(actor.bolster){ value += 15; actor.bolster = false; }
           actor.effects = actor.effects || [];
           actor.effects.push({ id: 'bubble', name: 'Bubble', rounds, value });
           actor.cooldowns['bubble'] = 5;
-          log({ text: `${actor.name} reduces damage taken (${rounds} rounds)`, abilityId: 'bubble' });
+          log({ text: `${actor.name} reduces damage taken (${rounds} rounds).`, abilityId: 'bubble' });
         } break;
         case 'scorch': {
+          animateSprite('player','attack');
           const rounds = 3;
           const value = 50;
           const target = state.enemy;
           target.effects = target.effects || [];
-          if(actor.bolster) target.effects.push({ id: 'scorch', name: 'Scorch', rounds: rounds + 1, value });
+          if(actor.bolster) target.effects.push({ id: 'scorch', name: 'Scorch', rounds: rounds + 2, value });
           else target.effects.push({ id: 'scorch', name: 'Scorch', rounds, value });
           actor.cooldowns['scorch'] = 5;
           if(actor.bolster) actor.bolster = false;
-          log({ text: `${actor.name} scorches ${target.name} for ${value} (x${rounds})`, abilityId: 'scorch' });
+          log({ text: `${actor.name} scorches ${target.name} for ${value} damage (${rounds} rounds).`, abilityId: 'scorch' });
           playSound('attack');
         } break;
         case 'shatter': {
+          animateSprite('player','attack');
           let dmg = 100;
           let self = 30;
-          if(actor.bolster){ dmg = 125; self = 40; actor.bolster = false; }
-          applyDamage('player','enemy', dmg, 'shatter');
+          if(actor.bolster){ dmg = 150; self = 45; actor.bolster = false; }
+          applyDamage('player','enemy', dmg, 'shatter-suppress');
           actor.hp -= self; if(actor.hp < 0) actor.hp = 0;
           actor.cooldowns['shatter'] = 4;
-          log({ text: `${actor.name} struck ${state.enemy.name} for ${dmg} and takes ${self}`, abilityId: 'shatter' });
+          log({ text: `${actor.name} struck ${state.enemy.name} for ${dmg} damage and takes ${self}.`, abilityId: 'shatter' });
           playSound('attack');
         } break;
         case 'hurricane': {
+          animateSprite('player','attack');
           const rounds = 3;
           const value = 50;
           const rawTargets = state.enemyTeam && state.enemyTeam.length ? state.enemyTeam : [state.enemy];
@@ -1186,19 +1195,21 @@
           });
           actor.cooldowns['hurricane'] = 8;
           if(actor.bolster) actor.bolster = false;
-          if(targets.length){ log({ text: `${actor.name} struck ${targets.map(x=>x.name).join(', ')} for ${value}`, abilityId: 'hurricane' }); playSound('attack'); }
+          if(targets.length){ log({ text: `${actor.name} struck ${targets.map(x=>x.name).join(', ')} for ${value} damage.`, abilityId: 'hurricane' }); playSound('attack'); }
         } break;
         case 'renew': {
+          animateSprite('player','heal');
           let amount = 400;
           if(actor.bolster){ amount = 500; actor.bolster = false; }
           const curse = (actor.effects||[]).find(e=>e.id==='curse');
           if(curse && typeof curse.value === 'number') amount = Math.round(amount * (1 - curse.value));
           actor.hp += amount; if(actor.hp > actor.maxHp) actor.hp = actor.maxHp;
           actor.cooldowns['renew'] = 8;
-          log({ text: `${actor.name} heals for ${amount}`, abilityId: 'renew' });
+          log({ text: `${actor.name} heals for ${amount} HP.`, abilityId: 'renew' });
           playSound('heal');
         } break;
         case 'curse': {
+          animateSprite('player','attack');
           const rounds = 3;
           let value = 0.3;
           if(actor.bolster){ value = 0.5; actor.bolster = false; }
@@ -1206,9 +1217,10 @@
           target.effects = target.effects || [];
           target.effects.push({ id: 'curse', name: 'Curse', rounds, value });
           actor.cooldowns['curse'] = 6;
-          log({ text: `${actor.name} weakens ${target.name} (${rounds} rounds)`, abilityId: 'curse' });
+          log({ text: `${actor.name} weakens ${target.name} (${rounds} rounds).`, abilityId: 'curse' });
         } break;
         case 'stun': {
+          animateSprite('player','attack');
           state.enemy.stunned = (state.enemy.stunned && state.enemy.stunned>0) ? state.enemy.stunned + 1 : 1;
           if(actor.bolster){ state.enemy.stunned += 1; actor.bolster = false; }
           actor.cooldowns['stun'] = 5; 
@@ -1216,6 +1228,7 @@
           playSound('stun');
         } break;
         case 'bolster': {
+          animateSprite('player','heal');
           actor.bolster = true;
           log(`${actor.name} bolstered their next ability.`);
           playSound('bolster');
@@ -1261,6 +1274,7 @@
           applyDamage('enemy','player', enemyAtk, 'attacks,');
         } break;
         case 'heal': {
+          animateSprite('enemy','heal');
           let amount = Math.round((actor.healing || 0) * 20 + randInt(0,9));
           if(actor.bolster){ amount += 30; actor.bolster = false; }
           actor.hp += amount; if(actor.hp>actor.maxHp) actor.hp=actor.maxHp; log(`${actor.name} healed ${amount} HP.`);
@@ -1304,37 +1318,41 @@
           updateUI(); renderActions();
         } break;
         case 'bubble': {
+          animateSprite('player','heal');
           const rounds = 3;
           let value = 15;
           if(actor.bolster){ value += 10; actor.bolster = false; }
           actor.effects = actor.effects || [];
           actor.effects.push({ id: 'bubble', name: 'Bubble', rounds, value });
           actor.cooldowns['bubble'] = 5;
-          log({ text: `${actor.name} reduces damage taken (${rounds} rounds)`, abilityId: 'bubble' });
+          log({ text: `${actor.name} reduces damage taken (${rounds} rounds).`, abilityId: 'bubble' });
         } break;
         case 'scorch': {
+          animateSprite('enemy','attack');
           const rounds = 3;
           const value = 50;
           const target = state.player;
           target.effects = target.effects || [];
-          if(actor.bolster) target.effects.push({ id: 'scorch', name: 'Scorch', rounds: rounds + 1, value });
+          if(actor.bolster) target.effects.push({ id: 'scorch', name: 'Scorch', rounds: rounds + 2, value });
           else target.effects.push({ id: 'scorch', name: 'Scorch', rounds, value });
           actor.cooldowns['scorch'] = 5;
           if(actor.bolster) actor.bolster = false;
-          log({ text: `${actor.name} scorches ${target.name} for ${value} (x${rounds})`, abilityId: 'scorch' });
+          log({ text: `${actor.name} scorches ${target.name} for ${value} damage (${rounds} rounds).`, abilityId: 'scorch' });
           playSound('attack');
         } break;
         case 'shatter': {
+          animateSprite('enemy','attack');
           let dmg = 100;
           let self = 30;
           if(actor.bolster){ dmg = 125; self = 40; actor.bolster = false; }
-          applyDamage('enemy','player', dmg, 'shatter');
+          applyDamage('enemy','player', dmg, 'shatter-suppress');
           actor.hp -= self; if(actor.hp < 0) actor.hp = 0;
           actor.cooldowns['shatter'] = 4;
-          log({ text: `${actor.name} struck ${state.player.name} for ${dmg} and takes ${self}`, abilityId: 'shatter' });
+          log({ text: `${actor.name} struck ${state.player.name} for ${dmg} damage and takes ${self}.`, abilityId: 'shatter' });
           playSound('attack');
         } break;
         case 'hurricane': {
+          animateSprite('enemy','attack');
           const rounds = 3;
           const value = 50;
           const rawTargets = state.playerTeam && state.playerTeam.length ? state.playerTeam : [state.player];
@@ -1346,19 +1364,21 @@
           });
           actor.cooldowns['hurricane'] = 8;
           if(actor.bolster) actor.bolster = false;
-          if(targets.length){ log({ text: `${actor.name} struck ${targets.map(x=>x.name).join(', ')} for ${value}`, abilityId: 'hurricane' }); playSound('attack'); }
+          if(targets.length){ log({ text: `${actor.name} struck ${targets.map(x=>x.name).join(', ')} for ${value} damage.`, abilityId: 'hurricane' }); playSound('attack'); }
         } break;
         case 'renew': {
+          animateSprite('enemy','heal');
           let amount = 400;
           if(actor.bolster){ amount = 500; actor.bolster = false; }
           const curse = (actor.effects||[]).find(e=>e.id==='curse');
           if(curse && typeof curse.value === 'number') amount = Math.round(amount * (1 - curse.value));
           actor.hp += amount; if(actor.hp>actor.maxHp) actor.hp = actor.maxHp;
           actor.cooldowns['renew'] = 8;
-          log({ text: `${actor.name} heals for ${amount}`, abilityId: 'renew' });
+          log({ text: `${actor.name} heals for ${amount} HP.`, abilityId: 'renew' });
           playSound('heal');
         } break;
         case 'curse': {
+          animateSprite('enemy','attack');
           const rounds = 3;
           let value = 0.3;
           if(actor.bolster){ value = 0.5; actor.bolster = false; }
@@ -1366,9 +1386,10 @@
           target.effects = target.effects || [];
           target.effects.push({ id: 'curse', name: 'Curse', rounds, value });
           actor.cooldowns['curse'] = 6;
-          log({ text: `${actor.name} weakens ${target.name} (${rounds} rounds)`, abilityId: 'curse' });
+          log({ text: `${actor.name} weakens ${target.name} (${rounds} rounds).`, abilityId: 'curse' });
         } break;
         case 'stun': {
+          animateSprite('enemy','attack');
           state.player.stunned = (state.player.stunned && state.player.stunned>0) ? state.player.stunned + 2 : 2;
           if(actor.bolster){ state.player.stunned += 1; actor.bolster = false; }
           actor.cooldowns['stun'] = 3;
@@ -1376,6 +1397,7 @@
           log(`${actor.name} stunned ${state.player.name}!`); playSound('stun');
         } break;
         case 'bolster': {
+          animateSprite('enemy','heal');
           actor.bolster = true;
           log(`${actor.name} bolstered their next ability.`);
           playSound('bolster');
