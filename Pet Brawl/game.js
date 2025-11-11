@@ -1147,7 +1147,7 @@
         } break;
         case 'heal': {
           animateSprite('player','heal');
-          let amount = Math.round((actor.healing || 0) * 25 + randInt(0,9));
+          let amount = Math.round((actor.healing || 0) * 25 + randInt(0,12));
           if(actor.bolster){ amount += 30; actor.bolster = false; }
           const curse = (actor.effects||[]).find(e=>e.id==='curse');
           if(curse && typeof curse.value === 'number') amount = Math.round(amount * (1 - curse.value));
@@ -1172,7 +1172,7 @@
         } break;
         case 'hot': {
           animateSprite('player','heal');
-          let value = Math.round((actor.healing || 0) * 15 + randInt(0,9));
+          let value = Math.round((actor.healing || 0) * 15 + randInt(0,12));
           if(actor.bolster){ value += 18; actor.bolster = false; }
           const curse = (actor.effects||[]).find(e=>e.id==='curse');
           if(curse && typeof curse.value === 'number') value = Math.round(value * (1 - curse.value));
@@ -1181,14 +1181,14 @@
           actor.cooldowns['hot'] = 2;
         } break;
         case 'charge-attack': {
-          const value = Math.round((actor.power || 0) * 22 + randInt(0,9));
+          const value = Math.round((actor.power || 0) * 22 + randInt(0,15));
           actor.charged = {type:'attack',id:'charge-attack',value, rounds: 1};
           log(`${actor.name} begins charging an attack.`);
           actor.cooldowns['charge-attack'] = Math.max(actor.cooldowns['charge-attack'] || 0, 4);
           updateUI(); renderActions();
         } break;
         case 'charge-heal': {
-          const value = Math.round((actor.healing || 0) * 55 + randInt(0,9));
+          const value = Math.round((actor.healing || 0) * 60 + randInt(0,15));
           actor.charged = {type:'heal',id:'charge-heal',value, rounds: 1};
           log(`${actor.name} is charging a heal.`);
           actor.cooldowns['charge-heal'] = Math.max(actor.cooldowns['charge-heal'] || 0, 4);
@@ -1299,7 +1299,7 @@
     const filtered = avail.filter(i=> i !== 'intervene');
     const finalAvail = filtered.filter(aid => {
       if(typeSpecialIds.includes(aid)){
-        if(actor && actor.isBoss) return aid !== 'renew';
+        if(actor && actor.isBoss) return aid !== 'renew' && aid !== 'stun';
         const mapped = actor && actor.type ? typeMap[actor.type] : null;
         return mapped === aid;
       }
@@ -1351,13 +1351,13 @@
           actor.cooldowns['hot'] = 2;
         } break;
         case 'charge-attack': {
-          const value = Math.round((actor.power || 0) * 22 + randInt(0,9));
+          const value = Math.round((actor.power || 0) * 22 + randInt(0,15));
           actor.charged = {type:'attack',id:'charge-attack',value, rounds: 1}; log(`${actor.name} begins charging an attack.`);
           actor.cooldowns['charge-attack'] = Math.max(actor.cooldowns['charge-attack'] || 0, 4);
           updateUI(); renderActions();
         } break;
         case 'charge-heal': {
-          const value = Math.round((actor.healing || 0) * 50 + randInt(0,9));
+          const value = Math.round((actor.healing || 0) * 60 + randInt(0,15));
           actor.charged = {type:'heal',id:'charge-heal',value, rounds: 2}; log(`${actor.name} is charging a heal.`);
           actor.cooldowns['charge-heal'] = Math.max(actor.cooldowns['charge-heal'] || 0, 4);
           updateUI(); renderActions();
@@ -1365,8 +1365,8 @@
         case 'bubble': {
           animateSprite('player','heal');
           const rounds = 3;
-          let value = 15;
-          if(actor.bolster){ value += 10; actor.bolster = false; }
+          let value = 20;
+          if(actor.bolster){ value += 15; actor.bolster = false; }
           actor.effects = actor.effects || [];
           actor.effects.push({ id: 'bubble', name: 'Bubble', rounds, value });
           actor.cooldowns['bubble'] = 5;
