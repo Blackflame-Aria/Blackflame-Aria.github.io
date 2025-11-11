@@ -738,8 +738,8 @@
       id: 'boss-ancient',
       name: 'Eggling',
       type: 'Boss',
-      maxHp: 3000,
-      power: 7.5,
+      maxHp: 2500,
+      power: 8,
       healing: 5,
       hpBars: 12,
       powerBars: 6,
@@ -749,7 +749,7 @@
     state.enemy = JSON.parse(JSON.stringify(boss));
     state.enemy.isBoss = true;
     const healingIds = ['heal','hot','charge-heal','team-heal'];
-    state.enemyAbilities = ABILITIES.filter(a => !healingIds.includes(a.id) && a.id !== 'intervene').map(a=>a.id);
+    state.enemyAbilities = ABILITIES.filter(a => !healingIds.includes(a.id) && a.id !== 'intervene' && a.id !== 'renew').map(a=>a.id);
   }
 
   function chooseEnemy(){
@@ -1207,29 +1207,30 @@
 
   function applyCharged(actorKey){
     const actor = state[actorKey];
-    if(actor.charged){
-      console.log('applyCharged called for', actorKey, 'charged=', actor.charged);
-      if(typeof actor.charged.rounds === 'number' && actor.charged.rounds > 1){
-        actor.charged.rounds -= 1;
-        console.log('applyCharged: decremented rounds ->', actor.charged.rounds);
-        return;
+      if(actor.hp <= 0){
+        actor.hp = 0;
+        updateUI();
+        if(!actor.dead){
+          actor.dead = true;
+          log(`${actor.name} was brutally murdered!`);
+          playSound('murder');
+          const playerTeam = state.playerTeam || [];
+          const enemyTeam = state.enemyTeam || [];
+          if(playerTeam.includes(actor)){
+            if(state.player === actor){
+              const next = playerTeam.find(p=>!p.dead && p !== actor);
+              if(next){ const idx = playerTeam.indexOf(next); const picked = playerTeam.splice(idx,1)[0]; playerTeam.unshift(picked); state.player = playerTeam[0]; log(`${state.player.name} takes the field!`); }
+              else { finishBattle(); return; }
+          } else if(enemyTeam.includes(actor)){
+            if(state.enemy === actor){
+              const next = enemyTeam.find(p=>!p.dead && p !== actor);
+              if(next){ const idx = enemyTeam.indexOf(next); const picked = enemyTeam.splice(idx,1)[0]; enemyTeam.unshift(picked); state.enemy = enemyTeam[0]; log(`${state.enemy.name} takes the field!`); }
+              else { finishBattle(); return; }
+          } else {
+            finishBattle();
+          }
+        }
       }
-      if(actor.stunned && actor.stunned > 0){
-        log(`${actor.name}'s charged action was interrupted by stun.`);
-        actor.charged = null;
-        return;
-      }
-      const {type, id} = actor.charged;
-      let amount = actor.charged.value;
-      if(type==='attack'){
-        const targetKey = actorKey==='player' ? 'enemy' : 'player';
-        console.log('applyCharged: executing charged attack for', actorKey, 'amount=', amount);
-        animateSprite(actorKey, 'attack', 'big');
-        if(actor.bolster){ amount += 50; actor.bolster = false; }
-        playSound('chargeAttack');
-        applyDamage(actorKey, targetKey, amount, 'charged attack');
-      } else if(type==='heal'){
-        animateSprite(actorKey, 'heal', 'big');
         if(actor.bolster){ amount += 45; actor.bolster = false; }
         const curse = (actor.effects||[]).find(e=>e.id==='curse');
         if(curse && typeof curse.value === 'number') amount = Math.round(amount * (1 - curse.value));
