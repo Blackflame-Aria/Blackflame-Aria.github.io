@@ -1108,13 +1108,17 @@
       const remaining = [];
       (actor.effects || []).forEach(eff=>{
         if(eff.id==='dot'){
-          // dot is damage over time; allow defend to reduce this damage
           let dmg = eff.value;
           if(actor.defend){
             const strength = (typeof actor.defend === 'number') ? actor.defend : 1;
             dmg = Math.round(strength >= 2 ? dmg * 0.25 : dmg * 0.5);
             actor.defend = false;
           }
+          if(actor && Array.isArray(actor.effects)){
+            const bubble = actor.effects.find(e=>e.id === 'bubble');
+            if(bubble && typeof bubble.value === 'number') dmg -= bubble.value;
+          }
+          dmg = Math.max(0, dmg);
           actor.hp -= dmg; total -= dmg; playSound('poison');
         }
         if(eff.id==='hot'){ actor.hp += eff.value; total += eff.value; if(actor.hp>actor.maxHp) actor.hp=actor.maxHp; playSound('regenerate'); }
@@ -1125,6 +1129,11 @@
             dmg = Math.round(strength >= 2 ? dmg * 0.25 : dmg * 0.5);
             actor.defend = false;
           }
+          if(actor && Array.isArray(actor.effects)){
+            const bubble = actor.effects.find(e=>e.id === 'bubble');
+            if(bubble && typeof bubble.value === 'number') dmg -= bubble.value;
+          }
+          dmg = Math.max(0, dmg);
           actor.hp -= dmg; total -= dmg; playSound('attack');
         }
         if(eff.id==='hurricane'){
@@ -1134,6 +1143,11 @@
             dmg = Math.round(strength >= 2 ? dmg * 0.25 : dmg * 0.5);
             actor.defend = false;
           }
+          if(actor && Array.isArray(actor.effects)){
+            const bubble = actor.effects.find(e=>e.id === 'bubble');
+            if(bubble && typeof bubble.value === 'number') dmg -= bubble.value;
+          }
+          dmg = Math.max(0, dmg);
           actor.hp -= dmg; total -= dmg; playSound('attack');
         }
         eff.rounds -= 1;
@@ -1316,6 +1330,7 @@
         dmg -= bubble.value;
       }
     }
+    dmg = Math.max(0, dmg);
     def.hp -= dmg;
     if(!(label && /charged/i.test(label))){ playSound('attack'); }
     if(!(label && /suppress/i.test(label))){
@@ -1371,6 +1386,7 @@
     updateUI();
     try{ updateBattleSprites(); }catch(e){}
     if(toKey === 'player') flashHit($playerHpFill); else flashHit($enemyHpFill);
+    return dmg;
   }
 
   function dealDamage(fromKey, toKey, base, label){
@@ -1418,7 +1434,7 @@
           animateSprite('player','attack');
           let atkAmount = (actor.power || 0) * 12 + randInt(0,9);
           if(actor.bolster){ atkAmount += 30; actor.bolster = false; }
-          applyDamage('player','enemy', dmg, 'shatter-suppress');
+          applyDamage('player','enemy', atkAmount, 'attacks,');
         } break;
         case 'heal': {
           let amount = Math.round((actor.healing || 0) * 25 + randInt(0,9));
@@ -1490,10 +1506,10 @@
           let dmg = 100;
           let self = 30;
           if(actor.bolster){ dmg = 150; self = 45; actor.bolster = false; }
-          applyDamage('player','enemy', dmg, 'shatter-suppress');
+          const applied = applyDamage('player','enemy', dmg, 'shatter-suppress');
           actor.hp -= self; if(actor.hp < 0) actor.hp = 0;
           actor.cooldowns['shatter'] = 4;
-          log({ text: `${actor.name} struck ${state.enemy.name} for ${dmg} damage and takes ${self}.`, abilityId: 'shatter' });
+          log({ text: `${actor.name} struck ${state.enemy.name} for ${applied} damage and takes ${self}.`, abilityId: 'shatter' });
           playSound('attack');
         } break;
         case 'hurricane': {
@@ -1572,10 +1588,28 @@
           const boostAtk = actor.bolster ? 30 : 0;
           enemies.forEach(en=>{
             if(!en || en.dead || en.hp <= 0) return;
-            let dmg = Math.round((actor.power || 0) * 6 + randInt(0,5));
-            if(boostAtk) dmg += boostAtk;
-            en.hp -= dmg;
-            log(`${actor.name} struck ${en.name} for ${dmg} damage.`);
+            let baseDmg = Math.round((actor.power || 0) * 6 + randInt(0,5));
+            if(boostAtk) baseDmg += boostAtk;
+            let actual = baseDmg;
+            if(actor && Array.isArray(actor.effects)){
+              const curse = actor.effects.find(e=>e.id === 'curse');
+              if(curse && typeof curse.value === 'number'){
+                const factor = Math.max(0, 1 - curse.value);
+                actual = Math.round(actual * factor);
+              }
+            }
+            if(en.defend){
+              const strength = (typeof en.defend === 'number') ? en.defend : 1;
+              actual = Math.round(strength >= 2 ? actual * 0.25 : actual * 0.5);
+              en.defend = false;
+            }
+            if(en && Array.isArray(en.effects)){
+              const bubble = en.effects.find(e=>e.id === 'bubble');
+              if(bubble && typeof bubble.value === 'number') actual -= bubble.value;
+            }
+            if(actual < 0) actual = 0;
+            en.hp -= actual;
+            log(`${actor.name} struck ${en.name} for ${actual} damage.`);
             if(en.hp<=0) en.hp = 0;
           });
           if(actor.bolster) actor.bolster = false;
@@ -1765,10 +1799,28 @@
           const boostAtk = actor.bolster ? 30 : 0;
           animateSprite('enemy','team-attack','big');
           targets.forEach(t=>{
-            let dmg = Math.round((actor.power || 0) * 6 + randInt(0,5));
-            if(boostAtk) dmg += boostAtk;
-            t.hp -= dmg;
-            log(`${actor.name} struck ${t.name} for ${dmg} damage.`);
+            let baseDmg = Math.round((actor.power || 0) * 6 + randInt(0,5));
+            if(boostAtk) baseDmg += boostAtk;
+            let actual = baseDmg;
+            if(actor && Array.isArray(actor.effects)){
+              const curse = actor.effects.find(e=>e.id === 'curse');
+              if(curse && typeof curse.value === 'number'){
+                const factor = Math.max(0, 1 - curse.value);
+                actual = Math.round(actual * factor);
+              }
+            }
+            if(t.defend){
+              const strength = (typeof t.defend === 'number') ? t.defend : 1;
+              actual = Math.round(strength >= 2 ? actual * 0.25 : actual * 0.5);
+              t.defend = false;
+            }
+            if(t && Array.isArray(t.effects)){
+              const bubble = t.effects.find(e=>e.id === 'bubble');
+              if(bubble && typeof bubble.value === 'number') actual -= bubble.value;
+            }
+            if(actual < 0) actual = 0;
+            t.hp -= actual;
+            log(`${actor.name} struck ${t.name} for ${actual} damage.`);
             if(t.hp<=0) t.hp = 0;
           });
           if(actor.bolster) actor.bolster = false;
@@ -1824,10 +1876,10 @@
           let dmg = 100;
           let self = 30;
           if(actor.bolster){ dmg = 150; self = 45; actor.bolster = false; }
-          applyDamage('enemy','player', dmg, 'shatter');
+          const applied = applyDamage('enemy','player', dmg, 'shatter-suppress');
           actor.hp -= self; if(actor.hp < 0) actor.hp = 0;
           actor.cooldowns['shatter'] = 4;
-          log({ text: `${actor.name} struck ${state.player.name} for ${dmg} damage and takes ${self}.`, abilityId: 'shatter' });
+          log({ text: `${actor.name} struck ${state.player.name} for ${applied} damage and takes ${self}.`, abilityId: 'shatter' });
           playSound('attack');
         } break;
         case 'hurricane': {

@@ -897,6 +897,11 @@
             dmg = Math.round(strength >= 2 ? dmg * 0.25 : dmg * 0.5);
             actor.defend = false;
           }
+          if(actor && Array.isArray(actor.effects)){
+            const bubble = actor.effects.find(e=>e.id === 'bubble');
+            if(bubble && typeof bubble.value === 'number') dmg -= bubble.value;
+          }
+          dmg = Math.max(0, dmg);
           actor.hp -= dmg; total -= dmg; playSound('poison');
         }
         if(eff.id==='hot'){ actor.hp += eff.value; total += eff.value; if(actor.hp>actor.maxHp) actor.hp=actor.maxHp; playSound('regenerate'); }
@@ -907,6 +912,11 @@
             dmg = Math.round(strength >= 2 ? dmg * 0.25 : dmg * 0.5);
             actor.defend = false;
           }
+          if(actor && Array.isArray(actor.effects)){
+            const bubble = actor.effects.find(e=>e.id === 'bubble');
+            if(bubble && typeof bubble.value === 'number') dmg -= bubble.value;
+          }
+          dmg = Math.max(0, dmg);
           actor.hp -= dmg; total -= dmg; playSound('attack');
         }
         if(eff.id==='hurricane'){
@@ -916,6 +926,11 @@
             dmg = Math.round(strength >= 2 ? dmg * 0.25 : dmg * 0.5);
             actor.defend = false;
           }
+          if(actor && Array.isArray(actor.effects)){
+            const bubble = actor.effects.find(e=>e.id === 'bubble');
+            if(bubble && typeof bubble.value === 'number') dmg -= bubble.value;
+          }
+          dmg = Math.max(0, dmg);
           actor.hp -= dmg; total -= dmg; playSound('attack');
         }
         eff.rounds -= 1;
@@ -1071,6 +1086,7 @@
       const bubble = def.effects.find(e=>e.id === 'bubble');
       if(bubble && typeof bubble.value === 'number') dmg -= bubble.value;
     }
+    dmg = Math.max(0, dmg);
     def.hp -= dmg;
     if(!(label && /charged/i.test(label))){ playSound('attack'); }
     if(!(label && /suppress/i.test(label))){
@@ -1079,6 +1095,7 @@
   if(def.hp<=0){ def.hp=0; if(!def.dead){ def.dead = true; log(`${def.name} was brutally murdered!`); playSound('murder'); try{ if(def.isBoss){ const es = document.getElementById('enemy-sprite'); if(es) es.src = 'Sprites/Sick2.gif'; } }catch(e){} finishBattle(); } }
   updateUI();
     if(toKey === 'player') flashHit($playerHpFill); else flashHit($enemyHpFill);
+    return dmg;
   }
 
   function dealDamage(fromKey, toKey, base, label){
@@ -1132,6 +1149,8 @@
           animateSprite('player','heal');
           let amount = Math.round((actor.healing || 0) * 25 + randInt(0,9));
           if(actor.bolster){ amount += 30; actor.bolster = false; }
+          const curse = (actor.effects||[]).find(e=>e.id==='curse');
+          if(curse && typeof curse.value === 'number') amount = Math.round(amount * (1 - curse.value));
           actor.hp += amount; if(actor.hp>actor.maxHp) actor.hp=actor.maxHp; log(`${actor.name} healed ${amount} HP.`);
           actor.cooldowns['heal'] = 2;
           playSound('heal');
@@ -1155,6 +1174,8 @@
           animateSprite('player','heal');
           let value = Math.round((actor.healing || 0) * 15 + randInt(0,9));
           if(actor.bolster){ value += 18; actor.bolster = false; }
+          const curse = (actor.effects||[]).find(e=>e.id==='curse');
+          if(curse && typeof curse.value === 'number') value = Math.round(value * (1 - curse.value));
           actor.effects.push({id:'hot',name:'Regen',rounds:3,value}); log(`${actor.name} applied Regenerate (${value}/round).`);
           playSound('regenerate');
           actor.cooldowns['hot'] = 2;
@@ -1200,10 +1221,10 @@
           let dmg = 100;
           let self = 30;
           if(actor.bolster){ dmg = 150; self = 45; actor.bolster = false; }
-          applyDamage('player','enemy', dmg, 'shatter-suppress');
+          const applied = applyDamage('player','enemy', dmg, 'shatter-suppress');
           actor.hp -= self; if(actor.hp < 0) actor.hp = 0;
           actor.cooldowns['shatter'] = 4;
-          log({ text: `${actor.name} struck ${state.enemy.name} for ${dmg} damage and takes ${self}.`, abilityId: 'shatter' });
+          log({ text: `${actor.name} struck ${state.enemy.name} for ${applied} damage and takes ${self}.`, abilityId: 'shatter' });
           playSound('attack');
         } break;
         case 'hurricane': {
@@ -1369,10 +1390,10 @@
           let dmg = 100;
           let self = 30;
           if(actor.bolster){ dmg = 125; self = 40; actor.bolster = false; }
-          applyDamage('enemy','player', dmg, 'shatter-suppress');
+          const applied = applyDamage('enemy','player', dmg, 'shatter-suppress');
           actor.hp -= self; if(actor.hp < 0) actor.hp = 0;
           actor.cooldowns['shatter'] = 4;
-          log({ text: `${actor.name} struck ${state.player.name} for ${dmg} damage and takes ${self}.`, abilityId: 'shatter' });
+          log({ text: `${actor.name} struck ${state.player.name} for ${applied} damage and takes ${self}.`, abilityId: 'shatter' });
           playSound('attack');
         } break;
         case 'hurricane': {
