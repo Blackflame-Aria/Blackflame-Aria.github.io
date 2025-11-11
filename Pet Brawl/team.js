@@ -1107,10 +1107,35 @@
       let total = 0;
       const remaining = [];
       (actor.effects || []).forEach(eff=>{
-        if(eff.id==='dot'){ actor.hp -= eff.value; total -= eff.value; playSound('poison'); }
+        if(eff.id==='dot'){
+          // dot is damage over time; allow defend to reduce this damage
+          let dmg = eff.value;
+          if(actor.defend){
+            const strength = (typeof actor.defend === 'number') ? actor.defend : 1;
+            dmg = Math.round(strength >= 2 ? dmg * 0.25 : dmg * 0.5);
+            actor.defend = false;
+          }
+          actor.hp -= dmg; total -= dmg; playSound('poison');
+        }
         if(eff.id==='hot'){ actor.hp += eff.value; total += eff.value; if(actor.hp>actor.maxHp) actor.hp=actor.maxHp; playSound('regenerate'); }
-        if(eff.id==='scorch'){ actor.hp -= eff.value; total -= eff.value; playSound('attack'); }
-        if(eff.id==='hurricane'){ actor.hp -= eff.value; total -= eff.value; playSound('attack'); }
+        if(eff.id==='scorch'){
+          let dmg = eff.value;
+          if(actor.defend){
+            const strength = (typeof actor.defend === 'number') ? actor.defend : 1;
+            dmg = Math.round(strength >= 2 ? dmg * 0.25 : dmg * 0.5);
+            actor.defend = false;
+          }
+          actor.hp -= dmg; total -= dmg; playSound('attack');
+        }
+        if(eff.id==='hurricane'){
+          let dmg = eff.value;
+          if(actor.defend){
+            const strength = (typeof actor.defend === 'number') ? actor.defend : 1;
+            dmg = Math.round(strength >= 2 ? dmg * 0.25 : dmg * 0.5);
+            actor.defend = false;
+          }
+          actor.hp -= dmg; total -= dmg; playSound('attack');
+        }
         eff.rounds -= 1;
         if(eff.rounds>0) remaining.push(eff);
       });
@@ -1458,7 +1483,7 @@
             target.effects.push({ id: 'scorch', name: 'Scorch', rounds, value });
           }
           actor.cooldowns['scorch'] = 5;
-          log({ text: `${actor.name} scorches ${target.name} for ${value} damage (${rounds} rounds).`, abilityId: 'scorch' });
+          log({ text: `${actor.name} scorches ${target.name} for ${value} damage.`, abilityId: 'scorch' });
           playSound('attack');
         } break;
         case 'shatter': {
