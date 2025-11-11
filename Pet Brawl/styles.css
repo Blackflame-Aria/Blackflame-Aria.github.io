@@ -372,7 +372,7 @@ h1 {
 }
 
 .type.stone { 
-	color: #999; 
+	color: #bbb; 
 }
 
 .type.storm { 
@@ -1080,7 +1080,7 @@ right: 12%;
 button.ability-btn { font-family: 'Share Tech Mono', monospace; }
 
 button.ability-btn.blue { border-color: #00f; color: #00f; }
-button.ability-btn.gray { border-color: #999; color: #999; }
+button.ability-btn.gray { border-color: #bbb; color: #bbb; }
 button.ability-btn.yellow { border-color: #ffd700; color: #ffd700; }
 button.ability-btn.purple { border-color: #90f; color: #90f; }
 
@@ -1296,8 +1296,9 @@ button.ability-btn.white:hover {
 		margin-top: 15px;
         padding: 20px; 
     }
-	.controls { 
+	 #back-btn, #home-btn { 
 		justify-content: flex-end;
+		font-family: Share Tech Mono, monospace;
 	}
 
 	.combatants {

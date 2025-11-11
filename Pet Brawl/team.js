@@ -182,7 +182,7 @@
     },
 
     { id:'p4', 
-      name:'Tuli', 
+      name:'Tuuli', 
       type:'Storm', 
       maxHp:900, 
       power:7, 
@@ -1120,6 +1120,7 @@
           actor.dead = true;
           log(`${actor.name} was brutally murdered!`);
           playSound('murder');
+          try{ if(actor.isBoss){ const es = document.getElementById('enemy-sprite'); if(es) es.src = 'Sprites/Sick2.gif'; } }catch(e){}
           const playerTeam = state.playerTeam || [];
           const enemyTeam = state.enemyTeam || [];
           if(playerTeam.includes(actor)){
@@ -1291,6 +1292,7 @@
         def.dead = true;
         log(`${def.name} was brutally murdered!`);
         playSound('murder');
+        try{ if(def.isBoss){ const es = document.getElementById('enemy-sprite'); if(es) es.src = 'Sprites/Sick2.gif'; } }catch(e){}
         const playerTeam = state.playerTeam || [];
         const enemyTeam = state.enemyTeam || [];
         const isPlayerPet = playerTeam.includes(def);
@@ -1548,7 +1550,10 @@
           if(enemyTeam.length){
             enemyTeam.forEach((en, idx)=>{
               if(en.hp <= 0 && !en.dead){
-                en.dead = true; log(`${en.name} was brutally murdered!`); playSound('murder');
+                en.dead = true;
+                log(`${en.name} was brutally murdered!`);
+                playSound('murder');
+                try{ if(en.isBoss){ const es = document.getElementById('enemy-sprite'); if(es) es.src = 'Sprites/Sick2.gif'; } }catch(e){}
                 if(state.enemy === en){
                   const next = enemyTeam.find(p=>!p.dead && p !== en);
                   if(next){ const i = enemyTeam.indexOf(next); const picked = enemyTeam.splice(i,1)[0]; enemyTeam.unshift(picked); state.enemy = enemyTeam[0]; log(`${state.enemy.name} will avenge them!`); }
