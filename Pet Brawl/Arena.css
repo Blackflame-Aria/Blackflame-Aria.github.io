@@ -1131,8 +1131,8 @@ button:active {
 	color: #fff; border-left-color: #fff; 
 }
 .log-msg.damage {
-	color: #ff6b6b;
-	border-left-color: #ff6b6b;
+	color: #f00;
+	border-left-color: #f00;
 }
 .log-msg.heal {
 	color: #7cffb2;
@@ -1178,8 +1178,8 @@ button:active {
 }
 
 .log-msg.brutally {
-	color: #f0f;
-	border-left-color: #f0f;
+	color: #f0a;
+	border-left-color: #f0a;
 }
 
 .ability-label {
