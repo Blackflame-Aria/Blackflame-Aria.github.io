@@ -1213,7 +1213,7 @@
           else target.effects.push({ id: 'scorch', name: 'Scorch', rounds, value });
           actor.cooldowns['scorch'] = 5;
           if(actor.bolster) actor.bolster = false;
-          log({ text: `${actor.name} scorches ${target.name} for ${dmg} damage.`, abilityId: 'scorch' });
+          log({ text: `${actor.name} scorches ${target.name} for ${value} damage.`, abilityId: 'scorch' });
           playSound('attack');
         } break;
         case 'shatter': {
