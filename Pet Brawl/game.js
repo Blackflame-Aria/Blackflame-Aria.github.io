@@ -108,8 +108,8 @@
       name:'Vesi', 
       type:'Fluid', 
       maxHp:700, 
-      power:7, 
-      healing:3, 
+      power:8, 
+      healing:4, 
       hpBars:3, 
       powerBars:3, 
       healingBars:3, 
@@ -119,8 +119,8 @@
       name:'Palo', 
       type:'Flame', 
       maxHp:500, 
-      power:10, 
-      healing:2, 
+      power:11, 
+      healing:3, 
       hpBars:1, 
       powerBars:6, 
       healingBars:2, 
@@ -131,8 +131,8 @@
       name:'Kivi', 
       type:'Stone', 
       maxHp:1000, 
-      power:6.5, 
-      healing:1.5, 
+      power:7.5, 
+      healing:2.5, 
       hpBars:6, 
       powerBars:2, 
       healingBars:1, 
@@ -143,8 +143,8 @@
       name:'Tuuli', 
       type:'Storm', 
       maxHp:900, 
-      power:7, 
-      healing:1.5, 
+      power:8, 
+      healing:2.5, 
       hpBars:5, 
       powerBars:3, 
       healingBars:1, 
@@ -155,8 +155,8 @@
       name:'Vala', 
       type:'Gleam', 
       maxHp:600, 
-      power:5.5, 
-      healing:5, 
+      power:6.5, 
+      healing:6, 
       hpBars:2, 
       powerBars:1, 
       healingBars:6, 
@@ -167,8 +167,8 @@
       name:'Vika', 
       type:'Gloom', 
       maxHp:800, 
-      power:8, 
-      healing:1, 
+      power:9, 
+      healing:2, 
       hpBars:4, 
       powerBars:4, 
       healingBars:1,  
@@ -659,7 +659,7 @@
       name: 'Eggling',
       type: 'Boss',
       maxHp: 1800,
-      power: 6.5,
+      power: 6,
       healing: 5,
       hpBars: 12,
       powerBars: 6,
@@ -1188,7 +1188,7 @@
           updateUI(); renderActions();
         } break;
         case 'charge-heal': {
-          const value = Math.round((actor.healing || 0) * 60 + randInt(0,15));
+          const value = Math.round((actor.healing || 0) * 70 + randInt(0,15));
           actor.charged = {type:'heal',id:'charge-heal',value, rounds: 1};
           log(`${actor.name} is charging a heal.`);
           actor.cooldowns['charge-heal'] = Math.max(actor.cooldowns['charge-heal'] || 0, 4);
@@ -1213,7 +1213,7 @@
           else target.effects.push({ id: 'scorch', name: 'Scorch', rounds, value });
           actor.cooldowns['scorch'] = 5;
           if(actor.bolster) actor.bolster = false;
-          log({ text: `${actor.name} scorches ${target.name} for ${value} damage.`, abilityId: 'scorch' });
+          log({ text: `${actor.name} scorches ${target.name} for ${dmg} damage.`, abilityId: 'scorch' });
           playSound('attack');
         } break;
         case 'shatter': {
@@ -1298,8 +1298,9 @@
     const typeSpecialIds = ['bubble','scorch','shatter','hurricane','renew','curse'];
     const filtered = avail.filter(i=> i !== 'intervene');
     const finalAvail = filtered.filter(aid => {
+      if(actor && actor.isBoss && aid === 'stun') return false;
       if(typeSpecialIds.includes(aid)){
-        if(actor && actor.isBoss) return aid !== 'renew' && aid !== 'stun';
+        if(actor && actor.isBoss) return aid !== 'renew';
         const mapped = actor && actor.type ? typeMap[actor.type] : null;
         return mapped === aid;
       }

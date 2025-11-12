@@ -150,8 +150,8 @@
       name:'Vesi', 
       type:'Fluid', 
       maxHp:700, 
-      power:7, 
-      healing:3, 
+      power:7.5, 
+      healing:3.5, 
       hpBars:3, 
       powerBars:3, 
       healingBars:3, 
@@ -161,8 +161,8 @@
       name:'Palo', 
       type:'Flame', 
       maxHp:500, 
-      power:10, 
-      healing:2, 
+      power:10.5, 
+      healing:2.5, 
       hpBars:1, 
       powerBars:6, 
       healingBars:2, 
@@ -173,8 +173,8 @@
       name:'Kivi', 
       type:'Stone', 
       maxHp:1000, 
-      power:6.5, 
-      healing:1.5, 
+      power:7, 
+      healing:2, 
       hpBars:6, 
       powerBars:2, 
       healingBars:1, 
@@ -185,8 +185,8 @@
       name:'Tuuli', 
       type:'Storm', 
       maxHp:900, 
-      power:7, 
-      healing:1.5, 
+      power:7.5, 
+      healing:2, 
       hpBars:5, 
       powerBars:3, 
       healingBars:1, 
@@ -197,8 +197,8 @@
       name:'Vala', 
       type:'Gleam', 
       maxHp:600, 
-      power:5.5, 
-      healing:5, 
+      power:6, 
+      healing:5.5, 
       hpBars:2, 
       powerBars:1, 
       healingBars:6, 
@@ -209,8 +209,8 @@
       name:'Vika', 
       type:'Gloom', 
       maxHp:800, 
-      power:8, 
-      healing:1, 
+      power:8.5, 
+      healing:1.5, 
       hpBars:4, 
       powerBars:4, 
       healingBars:1,  
@@ -742,7 +742,7 @@
       name: 'Eggling',
       type: 'Boss',
       maxHp: 2500,
-      power: 8,
+      power: 7.5,
       healing: 5,
       hpBars: 12,
       powerBars: 6,
@@ -1437,6 +1437,7 @@
           applyDamage('player','enemy', atkAmount, 'attacks,');
         } break;
         case 'heal': {
+          animateSprite('player','heal');
           let amount = Math.round((actor.healing || 0) * 25 + randInt(0,9));
           if(actor.bolster){ amount += 30; actor.bolster = false; }
           const curse = (actor.effects||[]).find(e=>e.id==='curse');
@@ -1446,6 +1447,7 @@
           playSound('heal');
         } break;
         case 'defend': { 
+          animateSprite('player','heal');
           actor.defend = 1;
           if(actor.bolster){ actor.defend = 2; actor.bolster = false; }
           log(`${actor.name} braced for incoming damage.`);
@@ -1478,6 +1480,7 @@
           updateUI(); renderActions();
         } break;
         case 'bubble': {
+          animateSprite('player','heal');
           const rounds = 3;
           let value = 20;
           if(actor.bolster){ value += 15; actor.bolster = false; }
@@ -1488,6 +1491,7 @@
           playSound('defend');
         } break;
         case 'scorch': {
+          animateSprite('player','attack');
           const rounds = 3;
           const value = 50;
           const target = state.enemy;
@@ -1499,10 +1503,11 @@
             target.effects.push({ id: 'scorch', name: 'Scorch', rounds, value });
           }
           actor.cooldowns['scorch'] = 5;
-          log({ text: `${actor.name} scorches ${target.name} for ${value} damage.`, abilityId: 'scorch' });
+          log({ text: `${actor.name} scorches ${target.name} for ${dmg} damage.`, abilityId: 'scorch' });
           playSound('attack');
         } break;
         case 'shatter': {
+          animateSprite('player','attack');
           let dmg = 100;
           let self = 30;
           if(actor.bolster){ dmg = 150; self = 45; actor.bolster = false; }
@@ -1513,6 +1518,7 @@
           playSound('attack');
         } break;
         case 'hurricane': {
+          animateSprite('player','attack');
           const rounds = 3;
           const value = 50;
           const rawTargets = state.enemyTeam && state.enemyTeam.length ? state.enemyTeam : [state.enemy];
@@ -1527,6 +1533,7 @@
           if(targets.length){ log({ text: `${actor.name} struck ${targets.map(x=>x.name).join(', ')} for ${value} damage.`, abilityId: 'hurricane' }); playSound('attack'); }
         } break;
         case 'renew': {
+          animateSprite('player','heal');
           let amount = 400;
           if(actor.bolster){ amount = 500; actor.bolster = false; }
           const curse = (actor.effects||[]).find(e=>e.id==='curse');
@@ -1538,6 +1545,7 @@
           playSound('heal');
         } break;
         case 'curse': {
+          animateSprite('player','attack');
           const rounds = 3;
           let value = 0.3;
           if(actor.bolster){ value = 0.5; actor.bolster = false; }
@@ -1549,13 +1557,14 @@
           playSound('Poison');
         } break;
         case 'charge-heal': {
-          const value = Math.round((actor.healing || 0) * 55 + randInt(0,12));
+          const value = Math.round((actor.healing || 0) * 70 + randInt(0,15));
           actor.charged = {type:'heal',id:'charge-heal',value, rounds: 1};
           log(`${actor.name} is charging a heal.`);
           actor.cooldowns['charge-heal'] = Math.max(actor.cooldowns['charge-heal'] || 0, 4);
           updateUI(); renderActions();
         } break;
         case 'stun': {
+          animateSprite('player','attack');
           state.enemy.stunned = (state.enemy.stunned && state.enemy.stunned>0) ? state.enemy.stunned + 1 : 1;
           if(actor.bolster){ state.enemy.stunned += 1; actor.bolster = false; }
           actor.cooldowns['stun'] = 5; 
@@ -1563,12 +1572,14 @@
           playSound('stun');
         } break;
         case 'bolster': {
+          animateSprite('player','heal');
           actor.bolster = true;
           log(`${actor.name} bolstered their next ability.`);
           playSound('bolster');
           actor.cooldowns['bolster'] = 4;
         } break;
         case 'team-heal': {
+          animateSprite('player','team-heal','big');
           const team = state.playerTeam && state.playerTeam.length ? state.playerTeam : [state.player];
           const boost = actor.bolster ? 30 : 0;
           team.forEach(p=>{
@@ -1584,6 +1595,7 @@
           playSound('heal');
         } break;
         case 'team-attack': {
+          animateSprite('player','team-attack','big');
           const enemies = state.enemyTeam && state.enemyTeam.length ? state.enemyTeam : [state.enemy];
           const boostAtk = actor.bolster ? 30 : 0;
           enemies.forEach(en=>{
