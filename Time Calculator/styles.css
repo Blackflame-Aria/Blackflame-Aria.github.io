@@ -278,3 +278,11 @@ h1:hover, #result:hover, .instructions h3:hover {
         font-size: 0.9rem;
     }
 }
+
+/* Disable text selection across the project */
+html, body, * {
+    -webkit-user-select: none;
+    -moz-user-select: none;
+    -ms-user-select: none;
+    user-select: none;
+}

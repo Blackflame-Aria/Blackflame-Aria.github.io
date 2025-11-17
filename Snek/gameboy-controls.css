@@ -179,3 +179,11 @@
     max-width: 140px;
   }
 }
+
+/* Disable text selection across the project */
+html, body, * {
+  -webkit-user-select: none;
+  -moz-user-select: none;
+  -ms-user-select: none;
+  user-select: none;
+}

@@ -272,6 +272,14 @@ button:disabled {
     animation: fadeIn 0.3s ease-in;
 }
 
+/* Disable text selection across the project */
+html, body, * {
+    -webkit-user-select: none;
+    -moz-user-select: none;
+    -ms-user-select: none;
+    user-select: none;
+}
+
 .modal.active {
     display: flex;
     justify-content: center;

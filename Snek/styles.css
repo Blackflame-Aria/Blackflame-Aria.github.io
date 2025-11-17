@@ -444,3 +444,11 @@ button:hover {
     font-size: 1.2em;
   }
 }
+
+/* Disable text selection across the project */
+html, body, * {
+  -webkit-user-select: none;
+  -moz-user-select: none;
+  -ms-user-select: none;
+  user-select: none;
+}

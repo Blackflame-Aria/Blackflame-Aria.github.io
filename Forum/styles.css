@@ -455,3 +455,11 @@ button:hover {
 .post-content.darkus .nickname {
     color: #6f008b; 
 }
+
+/* Disable text selection across the project */
+html, body, * {
+    -webkit-user-select: none;
+    -moz-user-select: none;
+    -ms-user-select: none;
+    user-select: none;
+}

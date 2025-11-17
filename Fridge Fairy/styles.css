@@ -192,3 +192,11 @@ button:hover {
         width: 100%;
     }
 }
+
+/* Disable text selection across the project */
+html, body, * {
+    -webkit-user-select: none;
+    -moz-user-select: none;
+    -ms-user-select: none;
+    user-select: none;
+}
