@@ -175,7 +175,7 @@
       type:'Gleam',
       maxHp:600,
       power:6.5,
-      healing:6,
+      healing:5.75,
       hpBars:2,
       powerBars:1,
       healingBars:6,
@@ -209,7 +209,7 @@
         name: 'Haju',
         type: 'Blight',
         maxHp:700,
-        power:11,
+        power:10.5,
         healing:0.5,
         hpBars:3,
         powerBars:6,
@@ -810,13 +810,15 @@
       id: 'boss-ancient',
       name: 'Eggling',
       type: 'Boss',
-      maxHp: 1800,
-      power: 6,
+      maxHp: 1500,
+      power: 7,
       healing: 5,
       hpBars: 12,
       powerBars: 6,
       healingBars: 6,
       image: 'Sprites/Adult2 (1).gif'
+      ,
+      sickImage: 'Sprites/Sick2.gif'
     };
     state.enemy = JSON.parse(JSON.stringify(boss));
     state.enemy.isBoss = true;
@@ -829,14 +831,14 @@
       id: 'boss-experiment',
       name: '137-B',
       type: 'Boss',
-      maxHp: 2200,
+      maxHp: 2500,
       power: 5,
       healing: 0,
       hpBars: 6,
       powerBars: 3,
       healingBars: 0,
       image: 'Sprites/Adult (1).gif',
-      sickImage: 'Sprites/sick.gif'
+      sickImage: 'Sprites/Sick.gif'
     };
     state.enemy = JSON.parse(JSON.stringify(boss));
     state.enemy.isBoss = true;
@@ -1200,11 +1202,9 @@
         if(eff.id==='decay'){
           const stacks = (typeof eff.stacks === 'number') ? eff.stacks : 1;
           let dmg = (eff.value || 5) * stacks;
-          const srcKey = eff.source || null;
-          const src = srcKey ? state[srcKey] : null;
-          if(src && Array.isArray(src.effects)){
-            const curse = src.effects.find(e=>e.id === 'curse');
-            if(curse && typeof curse.value === 'number') dmg = Math.round(dmg * Math.max(0, 1 - curse.value));
+          if(actor && Array.isArray(actor.effects)){
+            const curse = actor.effects.find(e=>e.id === 'curse');
+            if(curse && typeof curse.value === 'number') dmg = Math.round(dmg * (1 + curse.value));
           }
           if(actor.defend){
             const strength = (typeof actor.defend === 'number') ? actor.defend : 1;
@@ -1245,7 +1245,7 @@
                   reflected = Math.max(0, reflected);
                   src.hp -= reflected;
                   log(`${actor.name}'s Vines returned ${reflected} damage to ${src.name}.`);
-                  if(src.hp <= 0){ src.hp = 0; if(!src.dead){ src.dead = true; log(`${src.name} was brutally murdered!`); playSound('murder'); try{ if(src.isBoss){ const es = document.getElementById('enemy-sprite'); if(es) es.src = (src.sickImage || 'Sprites/sick.gif'); } }catch(e){} finishBattle(); } }
+                  if(src.hp <= 0){ src.hp = 0; if(!src.dead){ src.dead = true; log(`${src.name} was brutally murdered!`); playSound('murder'); try{ if(src.isBoss){ const es = document.getElementById('enemy-sprite'); if(es) es.src = (src.sickImage || es.src); } }catch(e){} finishBattle(); } }
                 }
               }
             }
@@ -1299,7 +1299,7 @@
           actor.dead = true;
           log(`${actor.name} was brutally murdered!`);
           playSound('murder');
-          try{ if(actor.isBoss){ const es = document.getElementById('enemy-sprite'); if(es) es.src = 'Sprites/Sick2.gif'; } }catch(e){}
+          try{ if(actor.isBoss){ const es = document.getElementById('enemy-sprite'); if(es) es.src = (actor.sickImage || es.src); } }catch(e){}
           finishBattle();
         }
       }
@@ -1411,8 +1411,8 @@
       else if(type === 'toxin'){
         const targetKey = actorKey === 'player' ? 'enemy' : 'player';
         let exec = Math.round(275 + randInt(0,25));
-        let rot = 25;
-        if(actor.bolster){ exec = Math.round(exec * 1.15); rot = 35; actor.bolster = false; }
+        let rot = 30;
+        if(actor.bolster){ exec = Math.round(exec * 1.15); rot = 40; actor.bolster = false; }
         animateSprite(actorKey, 'attack', 'big');
         playSound('attack');
         const applied = applyDamage(actorKey, targetKey, exec, 'toxin-execute');
@@ -1458,9 +1458,9 @@
     const def = state[toKey];
     let dmg = Math.round(rawAmount);
     if(atk && Array.isArray(atk.effects)){
-      const curse = atk.effects.find(e=>e.id === 'curse');
-      if(curse && typeof curse.value === 'number'){
-        const factor = Math.max(0, 1 - curse.value);
+      const curseAtt = atk.effects.find(e=>e.id === 'curse');
+      if(curseAtt && typeof curseAtt.value === 'number'){
+        const factor = Math.max(0, 1 - curseAtt.value);
         dmg = Math.round(dmg * factor);
       }
     }
@@ -1474,6 +1474,12 @@
     if(def && Array.isArray(def.effects)){
       const bubble = def.effects.find(e=>e.id === 'bubble');
       if(bubble && typeof bubble.value === 'number') dmg -= bubble.value;
+    }
+    if(def && Array.isArray(def.effects)){
+      const curseDef = def.effects.find(e=>e.id === 'curse');
+      if(curseDef && typeof curseDef.value === 'number'){
+        dmg = Math.round(dmg * (1 + curseDef.value));
+      }
     }
     dmg = Math.max(0, dmg);
     def.hp -= dmg;
@@ -1495,7 +1501,7 @@
     if(!(label && /suppress/i.test(label))){
       log(`${atk.name} dealt ${dmg} damage to ${def.name}.`);
     }
-  if(def.hp<=0){ def.hp=0; if(!def.dead){ def.dead = true; log(`${def.name} was brutally murdered!`); playSound('murder'); try{ if(def.isBoss){ const es = document.getElementById('enemy-sprite'); if(es) es.src = 'Sprites/Sick2.gif'; } }catch(e){} finishBattle(); } }
+  if(def.hp<=0){ def.hp=0; if(!def.dead){ def.dead = true; log(`${def.name} was brutally murdered!`); playSound('murder'); try{ if(def.isBoss){ const es = document.getElementById('enemy-sprite'); if(es) es.src = (def.sickImage || es.src); } }catch(e){} finishBattle(); } }
   updateUI();
     if(toKey === 'player') flashHit($playerHpFill); else flashHit($enemyHpFill);
     return dmg;
@@ -1529,7 +1535,7 @@
         attacker.hp -= reflected;
         log(`${defender.name}'s Vines returned ${reflected} damage to ${attacker.name}.`);
         playSound('defend');
-        if(attacker.hp <= 0){ attacker.hp = 0; if(!attacker.dead){ attacker.dead = true; log(`${attacker.name} was brutally murdered!`); playSound('murder'); try{ if(attacker.isBoss){ const es = document.getElementById('enemy-sprite'); if(es) es.src = (attacker.sickImage || 'Sprites/sick.gif'); } }catch(e){} finishBattle(); } }
+        if(attacker.hp <= 0){ attacker.hp = 0; if(!attacker.dead){ attacker.dead = true; log(`${attacker.name} was brutally murdered!`); playSound('murder'); try{ if(attacker.isBoss){ const es = document.getElementById('enemy-sprite'); if(es) es.src = (attacker.sickImage || es.src); } }catch(e){} finishBattle(); } }
       }
     }catch(e){}
   }
@@ -1639,10 +1645,10 @@
           actor.cooldowns['hot'] = 2;
         } break;
         case 'charge-attack': {
-          const value = Math.round((actor.power || 0) * 22 + randInt(0,15));
+          const value = Math.round((actor.power || 0) * 25 + randInt(0,15));
           actor.charged = {type:'attack',id:'charge-attack',value, rounds: 1};
           log(`${actor.name} begins charging an attack.`);
-          actor.cooldowns['charge-attack'] = Math.max(actor.cooldowns['charge-attack'] || 0, 4);
+          actor.cooldowns['charge-attack'] = Math.max(actor.cooldowns['charge-attack'] || 0, 3);
           updateUI(); renderActions();
         } break;
         case 'charge-heal': {
@@ -1707,7 +1713,7 @@
             if(actor.bolster) t.effects.push({ id: 'hurricane', name: 'Hurricane', rounds: rounds + 1, value });
             else t.effects.push({ id: 'hurricane', name: 'Hurricane', rounds, value });
           });
-          actor.cooldowns['hurricane'] = 8;
+          actor.cooldowns['hurricane'] = 5;
           if(actor.bolster) actor.bolster = false;
           if(targets.length){ log({ text: `${actor.name} struck ${targets.map(x=>x.name).join(', ')} for ${value} damage.`, abilityId: 'hurricane' }); playSound('attack'); }
         } break;
@@ -1725,19 +1731,19 @@
         case 'curse': {
           animateSprite('player','attack');
           const rounds = 3;
-          let value = 0.3;
-          if(actor.bolster){ value = 0.5; actor.bolster = false; }
+          let value = 0.15;
+          if(actor.bolster){ value = 0.25; actor.bolster = false; }
           const target = state.enemy;
           target.effects = target.effects || [];
           target.effects.push({ id: 'curse', name: 'Curse', rounds, value });
-          actor.cooldowns['curse'] = 6;
+          actor.cooldowns['curse'] = 5;
           log({ text: `${actor.name} weakens ${target.name} (${rounds} rounds).`, abilityId: 'curse' });
           playSound('defend');
         } break;
         case 'toxin': {
           animateSprite('player','attack');
           actor.charged = { type: 'toxin', id: 'toxin', rounds: 3 };
-          actor.cooldowns['toxin'] = 12;
+          actor.cooldowns['toxin'] = 11;
           log(`${actor.name} injects a delayed toxin (3 rounds).`);
           playSound('defend');
         } break;
@@ -1841,9 +1847,9 @@
           actor.cooldowns['dot'] = 1;
         } break;
         case 'decay': {
-          animateSprite('player','attack','small');
+          animateSprite('enemy','attack','small');
           const rounds = 99;
-          const value = 5;
+          const value = 6;
           const target = state.player;
           target.effects = target.effects || [];
           const existing = target.effects.find(e=>e.id === 'decay');
@@ -1862,7 +1868,7 @@
         case 'charge-attack': {
           const value = Math.round((actor.power || 0) * 22 + randInt(0,15));
           actor.charged = {type:'attack',id:'charge-attack',value, rounds: 1}; log(`${actor.name} begins charging an attack.`);
-          actor.cooldowns['charge-attack'] = Math.max(actor.cooldowns['charge-attack'] || 0, 4);
+          actor.cooldowns['charge-attack'] = Math.max(actor.cooldowns['charge-attack'] || 0, 3);
           updateUI(); renderActions();
         } break;
         case 'charge-heal': {
@@ -1916,14 +1922,14 @@
             if(actor.bolster) t.effects.push({ id: 'hurricane', name: 'Hurricane', rounds: rounds + 1, value });
             else t.effects.push({ id: 'hurricane', name: 'Hurricane', rounds, value });
           });
-          actor.cooldowns['hurricane'] = 8;
+          actor.cooldowns['hurricane'] = 5;
           if(actor.bolster) actor.bolster = false;
           if(targets.length){ log({ text: `${actor.name} struck ${targets.map(x=>x.name).join(', ')} for ${value} damage.`, abilityId: 'hurricane' }); playSound('attack'); }
         } break;
         case 'toxin': {
           animateSprite('enemy','attack');
           actor.charged = { type: 'toxin', id: 'toxin', rounds: 3 };
-          actor.cooldowns['toxin'] = 12;
+          actor.cooldowns['toxin'] = 10;
           log(`${actor.name} injects a delayed toxin (3 rounds).`);
           playSound('defend');
         } break;
@@ -1952,8 +1958,8 @@
         case 'curse': {
           animateSprite('enemy','attack');
           const rounds = 3;
-          let value = 0.3;
-          if(actor.bolster){ value = 0.5; actor.bolster = false; }
+          let value = 0.15;
+          if(actor.bolster){ value = 0.25; actor.bolster = false; }
           const target = state.player;
           target.effects = target.effects || [];
           target.effects.push({ id: 'curse', name: 'Curse', rounds, value });
@@ -1965,7 +1971,7 @@
           animateSprite('enemy','attack');
           applyStunTo(state.player, 2);
           if(actor.bolster){ applyStunTo(state.player, 1); consumeBolster(actor); }
-          actor.cooldowns['stun'] = 3;
+          actor.cooldowns['stun'] = 4;
           if(actor.isBoss) actor.cooldowns['stun'] += 3;
           log(`${actor.name} stunned ${state.player.name}!`); playSound('stun');
         } break;
