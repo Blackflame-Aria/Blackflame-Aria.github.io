@@ -827,7 +827,7 @@
   function chooseBossExperiment(){
     const boss = {
       id: 'boss-experiment',
-      name: 'Experiment 137-B',
+      name: '137-B',
       type: 'Boss',
       maxHp: 2200,
       power: 5,
@@ -849,7 +849,7 @@
       name: 'Rosie',
       type: 'Boss',
       maxHp: 1800,
-      power: 10,
+      power: 8.5,
       healing: 0,
       hpBars: 6,
       powerBars: 3,
@@ -994,7 +994,7 @@
       $enemyName.textContent = state.enemy.name || '';
       if(state.enemy && state.enemy.name === 'Rosie'){
         $enemyName.style.color = '#f4d77aff';
-      } else if(state.enemy && state.enemy.name === 'Experiment 137-B'){
+      } else if(state.enemy && state.enemy.name === '137-B'){
         $enemyName.style.color = '#0f0';
       } else {
         $enemyName.style.color = state.enemy && state.enemy.isBoss ? '#f0f' : '';
@@ -1160,6 +1160,7 @@
           }
           dmg = Math.max(0, dmg);
           actor.hp -= dmg; total -= dmg; playSound('poison');
+          try{ if(side === 'player') animateSprite('player','dot','small'); else animateSprite('enemy','dot','small'); }catch(e){}
           if(side==='player') flashShake('small', $playerHpFill); else flashShake('small', $enemyHpFill);
         }
         if(eff.id==='rot'){
@@ -1175,7 +1176,9 @@
           }
           dmg = Math.max(0, dmg);
           actor.hp -= dmg; total -= dmg; playSound('poison');
+          try{ if(side === 'player') animateSprite('player','dot','small'); else animateSprite('enemy','dot','small'); }catch(e){}
           if(side==='player') flashShake('small', $playerHpFill); else flashShake('small', $enemyHpFill);
+          try{ triggerVinesReflect(actor, src, dmg); }catch(e){}
         }
         if(eff.id==='poison'){
           let dmg = eff.value;
@@ -1190,7 +1193,9 @@
           }
           dmg = Math.max(0, dmg);
           actor.hp -= dmg; total -= dmg; playSound('poison');
+          try{ if(side === 'player') animateSprite('player','dot','small'); else animateSprite('enemy','dot','small'); }catch(e){}
           if(side==='player') flashShake('small', $playerHpFill); else flashShake('small', $enemyHpFill);
+          try{ triggerVinesReflect(actor, src, dmg); }catch(e){}
         }
         if(eff.id==='decay'){
           const stacks = (typeof eff.stacks === 'number') ? eff.stacks : 1;
@@ -1212,7 +1217,14 @@
           }
           dmg = Math.max(0, dmg);
           actor.hp -= dmg; total -= dmg; playSound('poison');
+          try{ if(side === 'player') animateSprite('player','dot','small'); else animateSprite('enemy','dot','small'); }catch(e){}
           if(side==='player') flashShake('small', $playerHpFill); else flashShake('small', $enemyHpFill);
+          try{
+            if(actor && Array.isArray(actor.effects) && !(eff._reflected)){
+              const vine = actor.effects.find(e=>e.id === 'vines');
+              if(vine && dmg > 0 && src){ try{ triggerVinesReflect(actor, src, dmg); }catch(e){} }
+            }
+          }catch(e){}
           try{
             if(actor && Array.isArray(actor.effects) && !(eff._reflected)){
               const vine = actor.effects.find(e=>e.id === 'vines');
@@ -1598,6 +1610,7 @@
           playSound('heal');
         } break;
         case 'defend': { 
+          animateSprite('player','heal','small');
           actor.defend = 1;
           if(actor.bolster){ actor.defend = 2; }
           actor.effects = actor.effects || [];
@@ -1613,7 +1626,6 @@
           let value = Math.round((actor.power || 0) * 5 + randInt(0,5));
           if(actor.bolster){ value += 20; actor.bolster = false; }
           state.enemy.effects.push({id:'dot',name:'Bleed',rounds:3,value}); log(`${actor.name} lashes out (${value}/round).`);
-          playSound('poison');
           actor.cooldowns['dot'] = 2;
         } break;
         case 'hot': {
@@ -1720,13 +1732,14 @@
           target.effects.push({ id: 'curse', name: 'Curse', rounds, value });
           actor.cooldowns['curse'] = 6;
           log({ text: `${actor.name} weakens ${target.name} (${rounds} rounds).`, abilityId: 'curse' });
+          playSound('defend');
         } break;
         case 'toxin': {
           animateSprite('player','attack');
-          playSound('defend');
           actor.charged = { type: 'toxin', id: 'toxin', rounds: 3 };
           actor.cooldowns['toxin'] = 12;
           log(`${actor.name} injects a delayed toxin (3 rounds).`);
+          playSound('defend');
         } break;
         case 'stun': {
           animateSprite('player','attack');
@@ -1742,7 +1755,7 @@
           actor.effects = actor.effects || [];
           const b = actor.effects.find(e=>e.id === 'bolstered');
           if(b) b.rounds = Math.max(1, b.rounds);
-          else actor.effects.push({ id: 'bolstered', name: 'Bolstered', rounds: 1 });
+          else actor.effects.push({ id: 'bolstered', name: 'Bolstered', rounds: 2 });
           log(`${actor.name} bolstered their next ability.`);
           playSound('bolster');
           actor.cooldowns['bolster'] = 4;
@@ -1808,6 +1821,7 @@
           actor.cooldowns['heal'] = 3;
         } break;
         case 'defend':{ 
+          animateSprite('enemy','heal','small');
           actor.defend = 2;
           if(actor.bolster){ actor.defend = 3; }
           actor.effects = actor.effects || [];
@@ -1824,11 +1838,10 @@
           let value = Math.round((actor.power || 0) * 5 + randInt(0,5));
           if(actor.bolster){ value += 20; actor.bolster = false; }
           state.player.effects.push({id:'dot',name:'Bleed',rounds:3,value}); log(`${actor.name} lashes out(${value}/round).`);
-          playSound('poison');
           actor.cooldowns['dot'] = 1;
         } break;
         case 'decay': {
-          animateSprite('player','dot','small');
+          animateSprite('player','attack','small');
           const rounds = 99;
           const value = 5;
           const target = state.player;
@@ -1837,7 +1850,6 @@
           if(existing){ existing.stacks = (existing.stacks || 1) + 1; existing.rounds = rounds; existing.source = 'enemy'; existing.value = value; }
           else target.effects.push({ id: 'decay', name: 'Decay', rounds, value, stacks: 1, source: 'enemy' });
           log({ text: `${actor.name} released a miasma of Decay${existing ? ' ['+existing.stacks+']' : ''} (${rounds} rounds).`, abilityId: 'decay' });
-          playSound('poison');
         } break;
         case 'hot': {
           animateSprite('enemy','heal','small');
@@ -1910,10 +1922,10 @@
         } break;
         case 'toxin': {
           animateSprite('enemy','attack');
-          playSound('defend');
           actor.charged = { type: 'toxin', id: 'toxin', rounds: 3 };
           actor.cooldowns['toxin'] = 12;
           log(`${actor.name} injects a delayed toxin (3 rounds).`);
+          playSound('defend');
         } break;
         case 'vines': {
           animateSprite('enemy','heal','medium');
@@ -1947,6 +1959,7 @@
           target.effects.push({ id: 'curse', name: 'Curse', rounds, value });
           actor.cooldowns['curse'] = 6;
           log({ text: `${actor.name} weakens ${target.name} (${rounds} rounds).`, abilityId: 'curse' });
+          playSound('defend');
         } break;
         case 'stun': {
           animateSprite('enemy','attack');
@@ -1962,7 +1975,7 @@
           actor.effects = actor.effects || [];
           const be = actor.effects.find(e=>e.id === 'bolstered');
           if(be) be.rounds = Math.max(1, be.rounds);
-          else actor.effects.push({ id: 'bolstered', name: 'Bolstered', rounds: 1 });
+          else actor.effects.push({ id: 'bolstered', name: 'Bolstered', rounds: 2 });
           log(`${actor.name} bolstered their next ability.`);
           playSound('bolster');
           actor.cooldowns['bolster'] = 4;

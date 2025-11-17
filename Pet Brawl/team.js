@@ -868,13 +868,13 @@
     state.enemy = JSON.parse(JSON.stringify(boss));
     state.enemy.isBoss = true;
     const healingIds = ['heal','hot','charge-heal','team-heal'];
-    state.enemyAbilities = ABILITIES.filter(a => !healingIds.includes(a.id) && a.id !== 'intervene' && a.id !== 'renew' && a.id !== 'decay').map(a=>a.id);
+    state.enemyAbilities = ABILITIES.filter(a => !healingIds.includes(a.id) && a.id !== 'intervene' && a.id !== 'renew' && a.id !== 'decay' && a.id !== 'scratch').map(a=>a.id);
   }
 
   function chooseBossExperiment(){
     const boss = {
       id: 'boss-experiment',
-      name: 'Experiment 137-B',
+      name: '137-B',
       type: 'Boss',
       maxHp: 3000,
       power: 5,
@@ -896,7 +896,7 @@
       name: 'Rosie',
       type: 'Boss',
       maxHp: 2500,
-      power: 10,
+      power: 8.5,
       healing: 0,
       hpBars: 6,
       powerBars: 3,
@@ -1144,7 +1144,7 @@
     $enemyName.textContent = state.enemy.name || '';
     if(state.enemy && state.enemy.name === 'Rosie'){
       $enemyName.style.color = '#f5f1e0';
-    } else if(state.enemy && state.enemy.name === 'Experiment 137-B'){
+    } else if(state.enemy && state.enemy.name === '137-B'){
       $enemyName.style.color = '#0f0';
     } else {
       $enemyName.style.color = state.enemy && state.enemy.isBoss ? '#f0f' : '';
@@ -1211,7 +1211,7 @@
           $enemyName.textContent = activeEnemy.name || '';
           if(activeEnemy && activeEnemy.name === 'Rosie'){
               $enemyName.style.color = '#f4d77aff';
-            } else if(activeEnemy && activeEnemy.name === 'Experiment 137-B'){
+            } else if(activeEnemy && activeEnemy.name === '137-B'){
               $enemyName.style.color = '#0f0';
             } else {
               $enemyName.style.color = activeEnemy.isBoss ? '#f0f' : '';
@@ -1282,6 +1282,8 @@
   if($vsRightInner) $vsRightInner.style.transform = `scaleX(${eScale})`;
     $playerEffects.textContent = p && p.effects ? p.effects.map(x=>`${x.name}(${x.rounds})`).join(', ') : '';
     $enemyEffects.textContent = e && e.effects ? e.effects.map(x=>`${x.name}(${x.rounds})`).join(', ') : '';
+    $playerEffects.textContent = p.effects.map(x=>`${x.name}${x.stacks ? ' ['+x.stacks+']' : ''}(${x.rounds})`).join(', ');
+    $enemyEffects.textContent = e.effects.map(x=>`${x.name}${x.stacks ? ' ['+x.stacks+']' : ''}(${x.rounds})`).join(', ');
 
     const leftBenchEl = document.getElementById('vs-left-bench-hp');
     const rightBenchEl = document.getElementById('vs-right-bench-hp');
@@ -1387,59 +1389,25 @@
   function applyEffects(target){
     function _processActorEffects(actor, side){
       if(!actor) return;
+      if(actor.dead) return;
+      const resolveSource = (s) => {
+        if(!s) return null;
+        if(typeof s === 'object') return s;
+        if(typeof s === 'string'){
+          if(s === 'player' || s === 'enemy') return state[s];
+          const findIn = (team) => Array.isArray(team) ? team.find(p=>p && p.id === s) : null;
+          let found = findIn(state.playerTeam) || findIn(state.enemyTeam);
+          if(!found){ if(state.player && state.player.id === s) found = state.player; if(state.enemy && state.enemy.id === s) found = state.enemy; }
+          return found || null;
+        }
+        return null;
+      };
       let total = 0;
       const remaining = [];
       (actor.effects || []).forEach(eff=>{
         if(eff.id==='dot'){
           let dmg = eff.value;
-          if(actor.defend){
-            const strength = (typeof actor.defend === 'number') ? actor.defend : 1;
-            dmg = Math.round(strength >= 2 ? dmg * 0.25 : dmg * 0.5);
-            actor.defend = false;
-          }
-          if(actor && Array.isArray(actor.effects)){
-            const bubble = actor.effects.find(e=>e.id === 'bubble');
-            if(bubble && typeof bubble.value === 'number') dmg -= bubble.value;
-          }
-          dmg = Math.max(0, dmg);
-          actor.hp -= dmg; total -= dmg; playSound('poison');
-          if(side==='player') flashShake('small', $playerHpFill); else flashShake('small', $enemyHpFill);
-        }
-        if(eff.id==='rot'){
-          let dmg = eff.value;
-          if(actor.defend){
-            const strength = (typeof actor.defend === 'number') ? actor.defend : 1;
-            dmg = Math.round(strength >= 2 ? dmg * 0.25 : dmg * 0.5);
-            actor.defend = false;
-          }
-          if(actor && Array.isArray(actor.effects)){
-            const bubble = actor.effects.find(e=>e.id === 'bubble');
-            if(bubble && typeof bubble.value === 'number') dmg -= bubble.value;
-          }
-          dmg = Math.max(0, dmg);
-          actor.hp -= dmg; total -= dmg; playSound('poison');
-          if(side==='player') flashShake('small', $playerHpFill); else flashShake('small', $enemyHpFill);
-        }
-        if(eff.id==='poison'){
-          let dmg = eff.value;
-          if(actor.defend){
-            const strength = (typeof actor.defend === 'number') ? actor.defend : 1;
-            dmg = Math.round(strength >= 2 ? dmg * 0.25 : dmg * 0.5);
-            actor.defend = false;
-          }
-          if(actor && Array.isArray(actor.effects)){
-            const bubble = actor.effects.find(e=>e.id === 'bubble');
-            if(bubble && typeof bubble.value === 'number') dmg -= bubble.value;
-          }
-          dmg = Math.max(0, dmg);
-          actor.hp -= dmg; total -= dmg; playSound('poison');
-          if(side==='player') flashShake('small', $playerHpFill); else flashShake('small', $enemyHpFill);
-        }
-        if(eff.id==='decay'){
-          const stacks = (typeof eff.stacks === 'number') ? eff.stacks : 1;
-          let dmg = (eff.value || 5) * stacks;
-          const srcKey = eff.source || null;
-          const src = srcKey ? state[srcKey] : null;
+          const src = resolveSource(eff.source);
           if(src && Array.isArray(src.effects)){
             const curse = src.effects.find(e=>e.id === 'curse');
             if(curse && typeof curse.value === 'number') dmg = Math.round(dmg * Math.max(0, 1 - curse.value));
@@ -1455,6 +1423,74 @@
           }
           dmg = Math.max(0, dmg);
           actor.hp -= dmg; total -= dmg; playSound('poison');
+          try{ if(side === 'player') animateSprite('player','dot','small'); else animateSprite('enemy','dot','small'); }catch(e){}
+          if(side==='player') flashShake('small', $playerHpFill); else flashShake('small', $enemyHpFill);
+          try{ triggerVinesReflect(actor, src, dmg); }catch(e){}
+        }
+        if(eff.id==='rot'){
+          let dmg = eff.value;
+          const src = resolveSource(eff.source);
+          if(src && Array.isArray(src.effects)){
+            const curse = src.effects.find(e=>e.id === 'curse');
+            if(curse && typeof curse.value === 'number') dmg = Math.round(dmg * Math.max(0, 1 - curse.value));
+          }
+          if(actor.defend){
+            const strength = (typeof actor.defend === 'number') ? actor.defend : 1;
+            dmg = Math.round(strength >= 2 ? dmg * 0.25 : dmg * 0.5);
+            actor.defend = false;
+          }
+          if(actor && Array.isArray(actor.effects)){
+            const bubble = actor.effects.find(e=>e.id === 'bubble');
+            if(bubble && typeof bubble.value === 'number') dmg -= bubble.value;
+          }
+          dmg = Math.max(0, dmg);
+          actor.hp -= dmg; total -= dmg; playSound('poison');
+          try{ if(side === 'player') animateSprite('player','dot','small'); else animateSprite('enemy','dot','small'); }catch(e){}
+          if(side==='player') flashShake('small', $playerHpFill); else flashShake('small', $enemyHpFill);
+          try{ triggerVinesReflect(actor, src, dmg); }catch(e){}
+        }
+        if(eff.id==='poison'){
+          let dmg = eff.value;
+          const src = resolveSource(eff.source);
+          if(src && Array.isArray(src.effects)){
+            const curse = src.effects.find(e=>e.id === 'curse');
+            if(curse && typeof curse.value === 'number') dmg = Math.round(dmg * Math.max(0, 1 - curse.value));
+          }
+          if(actor.defend){
+            const strength = (typeof actor.defend === 'number') ? actor.defend : 1;
+            dmg = Math.round(strength >= 2 ? dmg * 0.25 : dmg * 0.5);
+            actor.defend = false;
+          }
+          if(actor && Array.isArray(actor.effects)){
+            const bubble = actor.effects.find(e=>e.id === 'bubble');
+            if(bubble && typeof bubble.value === 'number') dmg -= bubble.value;
+          }
+          dmg = Math.max(0, dmg);
+          actor.hp -= dmg; total -= dmg; playSound('poison');
+          try{ if(side === 'player') animateSprite('player','dot','small'); else animateSprite('enemy','dot','small'); }catch(e){}
+          if(side==='player') flashShake('small', $playerHpFill); else flashShake('small', $enemyHpFill);
+          try{ triggerVinesReflect(actor, src, dmg); }catch(e){}
+        }
+        if(eff.id==='decay'){
+          const stacks = (typeof eff.stacks === 'number') ? eff.stacks : 1;
+          let dmg = (eff.value || 5) * stacks;
+          const src = resolveSource(eff.source);
+          if(src && Array.isArray(src.effects)){
+            const curse = src.effects.find(e=>e.id === 'curse');
+            if(curse && typeof curse.value === 'number') dmg = Math.round(dmg * Math.max(0, 1 - curse.value));
+          }
+          if(actor.defend){
+            const strength = (typeof actor.defend === 'number') ? actor.defend : 1;
+            dmg = Math.round(strength >= 2 ? dmg * 0.25 : dmg * 0.5);
+            actor.defend = false;
+          }
+          if(actor && Array.isArray(actor.effects)){
+            const bubble = actor.effects.find(e=>e.id === 'bubble');
+            if(bubble && typeof bubble.value === 'number') dmg -= bubble.value;
+          }
+          dmg = Math.max(0, dmg);
+          actor.hp -= dmg; total -= dmg; playSound('poison');
+          try{ if(side === 'player') animateSprite('player','dot','small'); else animateSprite('enemy','dot','small'); }catch(e){}
           if(side==='player') flashShake('small', $playerHpFill); else flashShake('small', $enemyHpFill);
           try{
             if(actor && Array.isArray(actor.effects) && !(eff._reflected)){
@@ -1476,15 +1512,27 @@
                   reflected = Math.max(0, reflected);
                   src.hp -= reflected;
                   log(`${actor.name}'s Vines returned ${reflected} damage to ${src.name}.`);
+                  try{
+                    const attackerKey = (src === state.player || (Array.isArray(state.playerTeam) && state.playerTeam.includes(src))) ? 'player' : 'enemy';
+                    animateSprite(attackerKey,'dot','small');
+                    if(attackerKey === 'player') flashShake('small', $playerHpFill); else flashShake('small', $enemyHpFill);
+                  }catch(e){}
                   if(src.hp <= 0){ src.hp = 0; if(!src.dead){ src.dead = true; log(`${src.name} was brutally murdered!`); playSound('murder'); try{ if(src.isBoss){ const es = document.getElementById('enemy-sprite'); if(es) es.src = (src.sickImage || 'Sprites/sick.gif'); } }catch(e){} finishBattle(); } }
                 }
               }
             }
           }catch(e){}
         }
-        if(eff.id==='hot'){ actor.hp += eff.value; total += eff.value; if(actor.hp>actor.maxHp) actor.hp=actor.maxHp; playSound('regenerate'); }
+        if(eff.id==='hot'){ 
+          if(!actor.dead){ actor.hp += eff.value; total += eff.value; if(actor.hp>actor.maxHp) actor.hp=actor.maxHp; playSound('regenerate'); }
+        }
         if(eff.id==='scorch'){
           let dmg = eff.value;
+          const src = resolveSource(eff.source);
+          if(src && Array.isArray(src.effects)){
+            const curse = src.effects.find(e=>e.id === 'curse');
+            if(curse && typeof curse.value === 'number') dmg = Math.round(dmg * Math.max(0, 1 - curse.value));
+          }
           if(actor.defend){
             const strength = (typeof actor.defend === 'number') ? actor.defend : 1;
             dmg = Math.round(strength >= 2 ? dmg * 0.25 : dmg * 0.5);
@@ -1497,9 +1545,15 @@
           dmg = Math.max(0, dmg);
           actor.hp -= dmg; total -= dmg; playSound('attack');
           if(side==='player') flashShake('medium', $playerHpFill); else flashShake('medium', $enemyHpFill);
+          try{ triggerVinesReflect(actor, src, dmg); }catch(e){}
         }
         if(eff.id==='hurricane'){
           let dmg = eff.value;
+          const src = resolveSource(eff.source);
+          if(src && Array.isArray(src.effects)){
+            const curse = src.effects.find(e=>e.id === 'curse');
+            if(curse && typeof curse.value === 'number') dmg = Math.round(dmg * Math.max(0, 1 - curse.value));
+          }
           if(actor.defend){
             const strength = (typeof actor.defend === 'number') ? actor.defend : 1;
             dmg = Math.round(strength >= 2 ? dmg * 0.25 : dmg * 0.5);
@@ -1512,6 +1566,7 @@
           dmg = Math.max(0, dmg);
           actor.hp -= dmg; total -= dmg; playSound('attack');
           if(side==='player') flashShake('medium', $playerHpFill); else flashShake('medium', $enemyHpFill);
+          try{ triggerVinesReflect(actor, src, dmg); }catch(e){}
         }
         eff.rounds -= 1;
         if(eff.rounds>0) remaining.push(eff);
@@ -1535,14 +1590,14 @@
           const enemyTeam = state.enemyTeam || [];
           if(playerTeam.includes(actor)){
             if(state.player === actor){
-              const next = playerTeam.find(p=>!p.dead && p !== actor);
-              if(next){ const idx = playerTeam.indexOf(next); const picked = playerTeam.splice(idx,1)[0]; playerTeam.unshift(picked); state.player = playerTeam[0]; log(`${state.player.name} will avenge them!`); }
+              const nextIdx = playerTeam.findIndex(p=> p && p !== actor && !p.dead && (typeof p.hp === 'number' ? p.hp > 0 : true));
+              if(nextIdx > -1){ const picked = playerTeam.splice(nextIdx,1)[0]; playerTeam.unshift(picked); state.player = playerTeam[0]; log(`${state.player.name} will avenge them!`); }
               else { finishBattle(); return; }
             }
           } else if(enemyTeam.includes(actor)){
             if(state.enemy === actor){
-              const next = enemyTeam.find(p=>!p.dead && p !== actor);
-              if(next){ const idx = enemyTeam.indexOf(next); const picked = enemyTeam.splice(idx,1)[0]; enemyTeam.unshift(picked); state.enemy = enemyTeam[0]; log(`${state.enemy.name} will avenge them!`); }
+              const nextIdx = enemyTeam.findIndex(p=> p && p !== actor && !p.dead && (typeof p.hp === 'number' ? p.hp > 0 : true));
+              if(nextIdx > -1){ const picked = enemyTeam.splice(nextIdx,1)[0]; enemyTeam.unshift(picked); state.enemy = enemyTeam[0]; log(`${state.enemy.name} will avenge them!`); }
               else { finishBattle(); return; }
             }
           } else {
@@ -1606,6 +1661,7 @@
   function applyStunTo(target, rounds){
     if(!target) return;
     target.stunned = (target.stunned && target.stunned>0) ? target.stunned + rounds : rounds;
+    try{ target._justStunned = true; }catch(e){}
     target.effects = target.effects || [];
     const s = target.effects.find(e=>e.id === 'stunned');
     if(s) s.rounds = target.stunned;
@@ -1663,6 +1719,7 @@
   function applyCharged(actorKey){
     const actor = state[actorKey];
     if(!actor) return;
+    if(actor.dead) return;
     if(actor.charged){
       if(typeof actor.charged.rounds === 'number' && actor.charged.rounds > 1){
         actor.charged.rounds -= 1;
@@ -1699,7 +1756,7 @@
         playSound('attack');
         const applied = applyDamage(actorKey, targetKey, exec, 'toxin-execute');
         const target = state[targetKey];
-        if(target && target.hp > 0){ target.effects = target.effects || []; target.effects.push({ id: 'rot', name: 'Rot', rounds: 8, value: rot }); }
+        if(target && target.hp > 0){ target.effects = target.effects || []; target.effects.push({ id: 'rot', name: 'Rot', rounds: 8, value: rot, source: actorKey }); }
         log({ text: `${actor.name}'s Toxin burst for ${applied} damage and afflicted ${target? target.name : ''} with Rot.`, abilityId: 'toxin' });
         if(targetKey === 'player') flashShake('large', $playerHpFill); else flashShake('large', $enemyHpFill);
       }
@@ -1739,6 +1796,8 @@
   function applyDamage(fromKey, toKey, rawAmount, label){
     const atk = state[fromKey];
     const def = state[toKey];
+    if(atk && atk.dead) return 0;
+    if(def && def.dead) return 0;
     let dmg = Math.round(rawAmount);
     if(atk && Array.isArray(atk.effects)){
       const curse = atk.effects.find(e=>e.id === 'curse');
@@ -1910,7 +1969,7 @@
           animateSprite('player','heal','medium');
           actor.defend = 1;
           if(actor.bolster){ actor.defend = 2; actor.bolster = false; 
-            actor.effects = actor.effects || []; if(!actor.effects.find(e=>e.id==='bolstered')) actor.effects.push({ id: 'bolstered', name: 'Bolstered', rounds: 1 }); }
+            actor.effects = actor.effects || []; if(!actor.effects.find(e=>e.id==='bolstered')) actor.effects.push({ id: 'bolstered', name: 'Bolstered', rounds: 2 }); }
           actor.effects = actor.effects || [];
           const existing = actor.effects.find(e=>e.id === 'defended');
           if(existing) existing.rounds = Math.max(existing.rounds, actor.defend);
@@ -1923,8 +1982,7 @@
           animateSprite('player','attack');
           let value = Math.round((actor.power || 0) * 8 + randInt(0,9));
           if(actor.bolster){ value += 20; actor.bolster = false; }
-          state.enemy.effects.push({id:'dot',name:'Bleed',rounds:3,value}); log(`${actor.name} lashes out (${value}/round).`);
-          playSound('poison');
+          state.enemy.effects.push({id:'dot',name:'Bleed',rounds:3,value, source: actor.id || 'player'}); log(`${actor.name} lashes out (${value}/round).`);
           actor.cooldowns['dot'] = 2;
         } break;
         case 'hot': {
@@ -1973,10 +2031,10 @@
           const target = state.enemy;
           if(actor.bolster){
             target.effects = target.effects || [];
-            target.effects.push({ id: 'scorch', name: 'Scorch', rounds: rounds + 2, value });
+            target.effects.push({ id: 'scorch', name: 'Scorch', rounds: rounds + 2, value, source: actor.id || 'player' });
           } else {
             target.effects = target.effects || [];
-            target.effects.push({ id: 'scorch', name: 'Scorch', rounds, value });
+            target.effects.push({ id: 'scorch', name: 'Scorch', rounds, value, source: actor.id || 'player' });
           }
           actor.cooldowns['scorch'] = 5;
           log({ text: `${actor.name} scorches ${target.name}.`, abilityId: 'scorch' });
@@ -2001,8 +2059,8 @@
           const targets = (rawTargets || []).filter(t => t && !t.dead && t.hp > 0);
           targets.forEach(t => {
             t.effects = t.effects || [];
-            if(actor.bolster) t.effects.push({ id: 'hurricane', name: 'Hurricane', rounds: rounds + 2, value });
-            else t.effects.push({ id: 'hurricane', name: 'Hurricane', rounds, value });
+            if(actor.bolster) t.effects.push({ id: 'hurricane', name: 'Hurricane', rounds: rounds + 2, value, source: actor.id || 'player' });
+            else t.effects.push({ id: 'hurricane', name: 'Hurricane', rounds, value, source: actor.id || 'player' });
           });
           actor.cooldowns['hurricane'] = 7;
           if(actor.bolster) actor.bolster = false;
@@ -2030,7 +2088,6 @@
           target.effects.push({ id: 'curse', name: 'Curse', rounds, value });
           actor.cooldowns['curse'] = 6;
           log({ text: `${actor.name} weakens ${target.name} (${rounds} rounds).`, abilityId: 'curse' });
-          playSound('poison');
         } break;
         case 'charge-heal': {
           const value = Math.round((actor.healing || 0) * 70 + randInt(0,15));
@@ -2051,7 +2108,7 @@
           animateSprite('player','heal','medium');
           actor.bolster = true;
           actor.effects = actor.effects || [];
-          if(!actor.effects.find(e=>e.id==='bolstered')) actor.effects.push({ id: 'bolstered', name: 'Bolstered', rounds: 1 });
+          if(!actor.effects.find(e=>e.id==='bolstered')) actor.effects.push({ id: 'bolstered', name: 'Bolstered', rounds: 2 });
           log(`${actor.name} bolstered their next ability.`);
           playSound('bolster');
           actor.cooldowns['bolster'] = 4;
@@ -2139,7 +2196,7 @@
               attempts++;
               if(!team[0].dead) break;
             }
-            if(team[0] && !team[0].dead){
+            if(team[0] && !team[0].dead && (typeof team[0].hp !== 'number' || team[0].hp > 0)){
               state.player = team[0];
               state.player.defend = 2;
               state.player.bolster = true;
@@ -2170,7 +2227,7 @@
               do {
                 team.push(team.shift());
                 attempts++;
-              } while(team[0] && team[0].dead && attempts < team.length);
+              } while(team[0] && (team[0].dead || (typeof team[0].hp === 'number' && team[0].hp <= 0)) && attempts < team.length);
               if(team[0] === state.player){
                 log('No alive ally to switch to.');
               } else if(team[0] && !team[0].dead){
@@ -2237,7 +2294,7 @@
           if(actor.bolster){ enemyAtk += 30; actor.bolster = false; }
           const applied = applyDamage('enemy','player', enemyAtk, 'scratch-no-attack-sound');
           const target = state.player;
-          if(target && target.hp > 0){ target.effects = target.effects || []; target.effects.push({ id: 'poison', name: 'Poison', rounds: 2, value: 30 }); log({ text: `${actor.name} inflicted Poison on ${target.name}.`, abilityId: 'scratch' }); }
+          if(target && target.hp > 0){ target.effects = target.effects || []; target.effects.push({ id: 'poison', name: 'Poison', rounds: 2, value: 30, source: actor.id || 'enemy' }); log({ text: `${actor.name} inflicted Poison on ${target.name}.`, abilityId: 'scratch' }); }
           actor.cooldowns['scratch'] = 4;
           playSound('meow');
         } break;
@@ -2267,8 +2324,7 @@
           animateSprite('enemy','attack');
           let value = Math.round((actor.power || 0) * 5 + randInt(0,5));
           if(actor.bolster){ value += 20; actor.bolster = false; }
-          state.player.effects.push({id:'dot',name:'Bleed',rounds:3,value}); log(`${actor.name} lashes out (${value}/round).`);
-          playSound('poison');
+          state.player.effects.push({id:'dot',name:'Bleed',rounds:3,value, source: actor.id || 'enemy'}); log(`${actor.name} lashes out (${value}/round).`);
           actor.cooldowns['dot'] = 1;
         } break;
         case 'decay': {
@@ -2279,9 +2335,8 @@
           target.effects = target.effects || [];
           const existing = target.effects.find(e=>e.id === 'decay');
           if(existing){ existing.stacks = (existing.stacks || 1) + 1; existing.rounds = rounds; existing.source = 'enemy'; existing.value = value; }
-          else target.effects.push({ id: 'decay', name: 'Decay', rounds, value, stacks: 1, source: 'enemy' });
-          log({ text: `${actor.name} applied Decay${existing ? ' ['+existing.stacks+']' : ''} (${rounds} rounds).`, abilityId: 'decay' });
-          playSound('poison');
+          else target.effects.push({ id: 'decay', name: 'Decay', rounds, value, stacks: 1, source: actor.id || 'enemy' });
+          log({ text: `${actor.name} released a miasma of Decay${existing ? ' ['+existing.stacks+']' : ''} (${rounds} rounds).`, abilityId: 'decay' });
         } break;
         case 'hot': {
           animateSprite('enemy','heal','small');
@@ -2308,7 +2363,7 @@
         case 'stun': {
           applyStunTo(state.player, 2);
           if(actor.bolster){ applyStunTo(state.player, 1); actor.bolster = false; }
-          actor.cooldowns['stun'] = 3;
+          actor.cooldowns['stun'] = 5;
           if(actor.isBoss) actor.cooldowns['stun'] += 3;
           log(`${actor.name} stunned ${state.player.name}!`); playSound('stun');
         } break;
@@ -2368,7 +2423,8 @@
           const team = state.enemyTeam && state.enemyTeam.length ? state.enemyTeam : [state.enemy];
           const boost = actor.bolster ? 30 : 0;
           animateSprite('enemy','team-heal','big');
-          team.forEach(p=>{
+          const alive = (team || []).filter(p => p && !p.dead && p.hp > 0);
+          alive.forEach(p=>{
             let amount = Math.round((actor.healing || 0) * 12 + randInt(0,9));
             if(boost) amount += boost;
             p.hp += amount; if(p.hp>p.maxHp) p.hp = p.maxHp;
@@ -2392,8 +2448,8 @@
           const value = 50;
           const target = state.player;
           target.effects = target.effects || [];
-          if(actor.bolster) target.effects.push({ id: 'scorch', name: 'Scorch', rounds: rounds + 2, value });
-          else target.effects.push({ id: 'scorch', name: 'Scorch', rounds, value });
+          if(actor.bolster) target.effects.push({ id: 'scorch', name: 'Scorch', rounds: rounds + 2, value, source: actor.id || 'enemy' });
+          else target.effects.push({ id: 'scorch', name: 'Scorch', rounds, value, source: actor.id || 'enemy' });
           actor.cooldowns['scorch'] = 5;
           if(actor.bolster) actor.bolster = false;
           log({ text: `${actor.name} scorches ${target.name}. (${rounds} rounds).`, abilityId: 'scorch' });
@@ -2416,8 +2472,8 @@
           const targets = (rawTargets || []).filter(t => t && !t.dead && t.hp > 0);
           targets.forEach(t => {
             t.effects = t.effects || [];
-            if(actor.bolster) t.effects.push({ id: 'hurricane', name: 'Hurricane', rounds: rounds + 1, value });
-            else t.effects.push({ id: 'hurricane', name: 'Hurricane', rounds, value });
+            if(actor.bolster) t.effects.push({ id: 'hurricane', name: 'Hurricane', rounds: rounds + 1, value, source: actor.id || 'enemy' });
+            else t.effects.push({ id: 'hurricane', name: 'Hurricane', rounds, value, source: actor.id || 'enemy' });
           });
           actor.cooldowns['hurricane'] = 8;
           if(actor.bolster) actor.bolster = false;
@@ -2484,7 +2540,11 @@
   applyCharged('enemy');
   if(state.turn === 'finished') return;
       if(state.enemy.stunned && state.enemy.stunned > 0){
-        log(`${state.enemy.name} is stunned and skips their turn.`);
+        const just = !!state.enemy._justStunned;
+        if(!just || state.enemy.stunned > 1){
+          log(`${state.enemy.name} is stunned and skips their turn.`);
+        }
+        try{ state.enemy._justStunned = false; }catch(e){}
         state.enemy.stunned -= 1;
         if(Array.isArray(state.enemy.effects)){
           const se = state.enemy.effects.find(e=>e.id === 'stunned');
@@ -2511,7 +2571,11 @@
         return;
       }
       if(state.player.stunned && state.player.stunned > 0){
-        log(`${state.player.name} is stunned and skips their turn.`);
+        const just = !!state.player._justStunned;
+        if(!just || state.player.stunned > 1){
+          log(`${state.player.name} is stunned and skips their turn.`);
+        }
+        try{ state.player._justStunned = false; }catch(e){}
         state.player.stunned -= 1;
         if(Array.isArray(state.player.effects)){
           const sp = state.player.effects.find(e=>e.id === 'stunned');
