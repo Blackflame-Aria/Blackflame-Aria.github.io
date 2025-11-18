@@ -1282,6 +1282,24 @@
           actor.hp -= dmg; total -= dmg; playSound('attack');
           if(side==='player') flashShake('medium', $playerHpFill); else flashShake('medium', $enemyHpFill);
         }
+        if(eff.id === 'toxin'){
+          try{
+            if(eff.rounds > 1){
+            } else {
+              const fromKey = eff.sourceKey || (eff.source || null) || null;
+              const srcKey = (fromKey === 'player' || fromKey === 'enemy') ? fromKey : null;
+              const attackerKey = srcKey || (side === 'player' ? 'enemy' : 'player');
+              let exec = Math.round(275 + randInt(0,25));
+              let rot = 25;
+              if(eff.bolstered){ exec = Math.round(exec * 1.15); rot = 40; }
+              try{ animateSprite(attackerKey, 'attack', 'big'); }catch(e){}
+              const applied = applyDamage(attackerKey, side === 'player' ? 'player' : 'enemy', exec, 'toxin-execute');
+              if(actor && actor.hp > 0){ actor.effects = actor.effects || []; actor.effects.push({ id: 'rot', name: 'Rot', rounds: 8, value: rot, source: attackerKey }); }
+              log({ text: `${(eff.sourceKey === 'player' ? 'Player' : eff.sourceKey === 'enemy' ? 'Enemy' : 'Unknown')} toxin burst for ${applied} damage on ${actor? actor.name : side}.`, abilityId: 'toxin' });
+              if(side === 'player') flashShake('large', $playerHpFill); else flashShake('large', $enemyHpFill);
+            }
+          }catch(e){}
+        }
         eff.rounds -= 1;
         if(eff.rounds>0) remaining.push(eff);
       });
@@ -1742,8 +1760,13 @@
         } break;
         case 'toxin': {
           animateSprite('player','attack');
-          actor.charged = { type: 'toxin', id: 'toxin', rounds: 3 };
+          const target = (state.enemyTeam && state.enemyTeam.length) ? state.enemyTeam[0] : state.enemy;
+          if(target){
+            target.effects = target.effects || [];
+            target.effects.push({ id: 'toxin', name: 'toxin', rounds: 3, sourceKey: 'player', bolstered: !!actor.bolster });
+          }
           actor.cooldowns['toxin'] = 11;
+          if(actor.bolster) actor.bolster = false;
           log(`${actor.name} injects a delayed toxin (3 rounds).`);
           playSound('defend');
         } break;
@@ -1855,6 +1878,7 @@
           const existing = target.effects.find(e=>e.id === 'decay');
           if(existing){ existing.stacks = (existing.stacks || 1) + 1; existing.rounds = rounds; existing.source = 'enemy'; existing.value = value; }
           else target.effects.push({ id: 'decay', name: 'Decay', rounds, value, stacks: 1, source: 'enemy' });
+          if(actor && actor.isBoss && actor.name === '137-B') playSound('defend');
           log({ text: `${actor.name} released a miasma of Decay${existing ? ' ['+existing.stacks+']' : ''} (${rounds} rounds).`, abilityId: 'decay' });
         } break;
         case 'hot': {
@@ -1928,8 +1952,13 @@
         } break;
         case 'toxin': {
           animateSprite('enemy','attack');
-          actor.charged = { type: 'toxin', id: 'toxin', rounds: 3 };
+          const target = state.player;
+          if(target){
+            target.effects = target.effects || [];
+            target.effects.push({ id: 'toxin', name: 'toxin', rounds: 3, sourceKey: 'enemy', bolstered: !!actor.bolster });
+          }
           actor.cooldowns['toxin'] = 10;
+          if(actor.bolster) actor.bolster = false;
           log(`${actor.name} injects a delayed toxin (3 rounds).`);
           playSound('defend');
         } break;
