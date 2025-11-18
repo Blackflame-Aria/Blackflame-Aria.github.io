@@ -1276,11 +1276,12 @@
   animateNumber($vsRightHp, state._displayHp?.enemy ?? newE, newE, 420, 'enemy', e ? e.maxHp : 0);
   let pw = p && p.maxHp ? Math.max(0, (p.hp / p.maxHp)) : 0;
   let ew = e && e.maxHp ? Math.max(0, (e.hp / e.maxHp)) : 0;
-  const MIN_SCALE = 0.02;
-  const pScale = (pw>0 && pw<MIN_SCALE) ? MIN_SCALE : pw;
-  const eScale = (ew>0 && ew<MIN_SCALE) ? MIN_SCALE : ew;
-  if($vsLeftInner) $vsLeftInner.style.transform = `scaleX(${pScale})`;
-  if($vsRightInner) $vsRightInner.style.transform = `scaleX(${eScale})`;
+  try{
+    const leftInner = document.getElementById('vs-left-inner');
+    const rightInner = document.getElementById('vs-right-inner');
+    if(leftInner) leftInner.style.transform = `scaleX(${pw})`;
+    if(rightInner) rightInner.style.transform = `scaleX(${ew})`;
+  }catch(e){}
     $playerEffects.textContent = p && p.effects ? p.effects.map(x=>`${x.name}(${x.rounds})`).join(', ') : '';
     $enemyEffects.textContent = e && e.effects ? e.effects.map(x=>`${x.name}(${x.rounds})`).join(', ') : '';
     $playerEffects.textContent = p.effects.map(x=>`${x.name}${x.stacks ? ' ['+x.stacks+']' : ''}(${x.rounds})`).join(', ');
@@ -1302,6 +1303,46 @@
       const totalMax = bench.reduce((s,x)=>s + (x.maxHp||0),0);
       rightBenchEl.textContent = `Bench: ${cur} / ${totalMax}`;
     }
+  }
+
+  function ensureHpSegments(){
+    try{
+      const left = document.querySelector('.vs-fill.left');
+      const right = document.querySelector('.vs-fill.right');
+      if(left && !left.querySelector('.vs-segments')){
+        const segs = document.createElement('div'); segs.className = 'vs-segments';
+        for(let i=0;i<50;i++){ const d=document.createElement('div'); d.className='vs-seg'; segs.appendChild(d); }
+        left.appendChild(segs);
+      }
+      if(right && !right.querySelector('.vs-segments')){
+        const segs = document.createElement('div'); segs.className = 'vs-segments';
+        for(let i=0;i<50;i++){ const d=document.createElement('div'); d.className='vs-seg'; segs.appendChild(d); }
+        right.appendChild(segs);
+      }
+    }catch(e){}
+  }
+
+  function setHpSegments(side, ratio){
+    try{
+      const root = document.querySelector(side==='player'?'.vs-fill.left':'.vs-fill.right');
+      if(!root) return;
+      const segWrap = root.querySelector('.vs-segments');
+      if(!segWrap) return;
+      const segs = segWrap.querySelectorAll('.vs-seg');
+      const total = 50;
+      const count = Math.max(0, Math.min(total, Math.floor(ratio * total)));
+      segWrap.classList.remove('hp-ok','hp-warn','hp-danger');
+      if(ratio > 0.6) segWrap.classList.add('hp-ok');
+      else if(ratio > 0.3) segWrap.classList.add('hp-warn');
+      else segWrap.classList.add('hp-danger');
+      segs.forEach((el, idx)=>{
+        if(idx < count){
+          if(!el.classList.contains('on')){ el.classList.add('on','flicker-on'); setTimeout(()=> el.classList.remove('flicker-on'), 180); }
+        } else {
+          if(el.classList.contains('on')){ el.classList.remove('on'); el.classList.add('flicker-off'); setTimeout(()=> el.classList.remove('flicker-off'), 180); }
+        }
+      });
+    }catch(e){}
   }
 
   function animateNumber(el, start, end, duration=420, key='player', maxValue){
@@ -1827,8 +1868,6 @@
   function applyDamage(fromKey, toKey, rawAmount, label){
     const atk = state[fromKey];
     const def = state[toKey];
-    if(atk && atk.dead) return 0;
-    if(def && def.dead) return 0;
     let dmg = Math.round(rawAmount);
     if(atk && Array.isArray(atk.effects)){
       const curseAtt = atk.effects.find(e=>e.id === 'curse');
@@ -1846,9 +1885,7 @@
     }
     if(def && Array.isArray(def.effects)){
       const bubble = def.effects.find(e=>e.id === 'bubble');
-      if(bubble && typeof bubble.value === 'number'){
-        dmg -= bubble.value;
-      }
+      if(bubble && typeof bubble.value === 'number') dmg -= bubble.value;
     }
     if(def && Array.isArray(def.effects)){
       const curseDef = def.effects.find(e=>e.id === 'curse');
@@ -1899,7 +1936,7 @@
             } else {
               finishBattle();
               updateUI();
-              return;
+              return dmg;
             }
           }
         } else if(isEnemyPet){
@@ -1915,7 +1952,7 @@
               state.enemy = def;
               finishBattle();
               updateUI();
-              return;
+              return dmg;
             }
           }
         } else {

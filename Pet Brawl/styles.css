@@ -615,6 +615,44 @@ button[disabled] {
 	overflow: hidden; 
 	border: 1px solid #000; 
 }
+.vs-fill { position: absolute; top: 0; bottom: 0; width: 50%; }
+.vs-fill.left { left: 0; right: auto; transform-origin: right center; }
+.vs-fill.right { right: 0; left: auto; transform-origin: left center; }
+.vs-fill .vs-fill-inner { opacity: 1; }
+.vs-fill .vs-segments {
+	position: absolute;
+	inset: 0;
+	display: flex;
+	align-items: stretch;
+	justify-content: stretch;
+	gap: 1px;
+	padding: 2px;
+	box-sizing: border-box;
+	z-index: 2;
+}
+.vs-fill.left .vs-segments { flex-direction: row-reverse; }
+.vs-fill.right .vs-segments { flex-direction: row; }
+.vs-segments .vs-seg {
+	flex: 1 1 auto;
+	border-radius: 2px;
+	background: rgba(255,255,255,0.05);
+	box-shadow: inset 0 0 4px rgba(0,0,0,0.6);
+	position: relative;
+}
+.vs-segments .vs-seg.on::after {
+	content: '';
+	position: absolute;
+	left: 0; right: 0; top: 0; bottom: 0;
+	border-radius: 2px;
+	box-shadow: 0 0 6px rgba(0,0,0,0.2), inset 0 0 6px rgba(255,255,255,0.08);
+}
+.vs-segments.hp-ok .vs-seg.on { background: #0f0; }
+.vs-segments.hp-warn .vs-seg.on { background: #ffd400; }
+.vs-segments.hp-danger .vs-seg.on { background: #ff3b3b; }
+@keyframes segFlickerOn { 0%{opacity:0.2} 50%{opacity:1} 100%{opacity:1} }
+@keyframes segFlickerOff { 0%{opacity:1} 50%{opacity:0.2} 100%{opacity:0} }
+.vs-seg.flicker-on { animation: segFlickerOn 160ms ease-in-out; }
+.vs-seg.flicker-off { animation: segFlickerOff 160ms ease-in-out; }
 .vs-fill { 
 	position: absolute; 
 	top:0; 
@@ -623,10 +661,12 @@ button[disabled] {
 }
 .vs-fill.left { 
 	left: 0; 
+	right: auto;
 	transform-origin: right center; 
 }
 .vs-fill.right { 
 	right:0; 
+	left: auto;
 	transform-origin: left center; 
 }
 .vs-fill-inner { 
@@ -1617,7 +1657,6 @@ button.ability-btn.white:hover {
 	background: gray; 
 }
 
-/* Custom mode (1v8) blue theme overrides */
 .petb-volume.blue .volume-icon{
 	box-shadow: 0 2px 8px rgba(0,0,255,1);
 	box-shadow: inset 0 0 6px rgba(0,0,255,0.94);
