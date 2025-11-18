@@ -28,7 +28,6 @@ header h1 {
 	background: #00f;
 	color: #000;
 }
-
 .ability-btn .keybind,
 .selected-abilities .sel .sel-key {
 	color: #00f;
@@ -55,19 +54,47 @@ header h1 {
 .round-left,
 .round-right,
 #vs-left-hp,
-#vs-right-hp,
+#vs-right-hp {
+	color: #00f !important;
+	margin-left: 4%;
+	margin-right: 4%;
+}
 #round-counter {
 	color: #00f !important;
 }
 .vs-track { 
-	width: 100%; 
-	max-width:880px; 
+	width: 95%; 
+	max-width:800px; 
 	height: 26px; 
 	background: #002; 
-	border-radius: 18px; 
+	border-radius: 8px; 
 	position: relative; 
 	overflow: hidden; 
 	border: 1px solid #000; 
+}
+#vs-left-hp { 
+	font-size: 20px; 
+	white-space: nowrap;
+	display: inline-block;
+	overflow-wrap: normal;
+	word-break: keep-all;
+}
+
+#vs-right-hp { 
+	font-size: 20px;
+	white-space: nowrap;
+	display: inline-block;
+	overflow-wrap: normal;
+	word-break: keep-all;
+}
+
+.bench-hp-row { 
+	width: 90%; 
+	max-width: 850px; 
+	margin: 6px auto 0 auto; 
+	display:flex; 
+	justify-content:space-between; 
+	align-items:center; 
 }
 
 @keyframes Pulse {

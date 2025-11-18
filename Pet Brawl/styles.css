@@ -610,7 +610,7 @@ button[disabled] {
 	max-width:880px; 
 	height: 26px; 
 	background: #020; 
-	border-radius: 18px; 
+	border-radius: 8px; 
 	position: relative; 
 	overflow: hidden; 
 	border: 1px solid #000; 
