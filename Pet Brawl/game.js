@@ -74,10 +74,10 @@
       type: 'type-special', 
       desc: 'Damage enemy team for 3 rounds' },
     { 
-      id: 'renew', 
-      name: 'Renew', 
+      id: 'beam', 
+      name: 'Beam', 
       type: 'type-special', 
-      desc: 'Large self heal' },
+      desc: 'Heavy damage and heal equal to damage dealt (CD 4)' },
     { 
       id: 'curse', 
       name: 'Curse', 
@@ -126,7 +126,7 @@
   ABILITY_COLOR.scorch = 'red';
   ABILITY_COLOR.shatter = 'gray';
   ABILITY_COLOR.hurricane = 'green';
-  ABILITY_COLOR.renew = 'yellow';
+  ABILITY_COLOR.beam = 'yellow';
   ABILITY_COLOR.curse = 'purple';
   ABILITY_COLOR.toxin = 'blight';
   ABILITY_COLOR.vines = 'bloom';
@@ -173,9 +173,9 @@
     { id:'p4',
       name:'Vala',
       type:'Gleam',
-      maxHp:600,
+      maxHp:650,
       power:6.5,
-      healing:5.75,
+      healing:5.25,
       hpBars:2,
       powerBars:1,
       healingBars:6,
@@ -197,7 +197,7 @@
     { id:'p6',
       name:'Palo',
       type:'Flame',
-      maxHp:500,
+      maxHp:550,
       power:11,
       healing:3,
       hpBars:1,
@@ -221,7 +221,7 @@
         type: 'Bloom',
         maxHp:750,
         power:6,
-        healing:5,
+        healing:4.75,
         hpBars:4,
         powerBars:2,
         healingBars:4,
@@ -873,8 +873,8 @@
     const healingIds = ['heal','hot','charge-heal'];
     const offenses = ABILITIES.filter(a=>a.type === 'offense' && a.id !== 'decay' && a.id !== 'scratch');
     const all = ABILITIES.filter(a => a.id !== 'decay' && a.id !== 'scratch');
-  const typeMap = { Fluid: 'bubble', Flame: 'scorch', Stone: 'shatter', Storm: 'hurricane', Gleam: 'renew', Gloom: 'curse', Blight: 'toxin', Bloom: 'vines' };
-  const typeSpecialIds = ['bubble','scorch','shatter','hurricane','renew','curse','toxin','vines'];
+  const typeMap = { Fluid: 'bubble', Flame: 'scorch', Stone: 'shatter', Storm: 'hurricane', Gleam: 'beam', Gloom: 'curse', Blight: 'toxin', Bloom: 'vines' };
+  const typeSpecialIds = ['bubble','scorch','shatter','hurricane','beam','curse','toxin','vines'];
     let chosen = [];
     const attackAbility = ABILITIES.find(a=>a.id === 'attack' && a.type === 'offense');
     if(attackAbility){
@@ -1110,17 +1110,23 @@
   $actions.appendChild(passBtn);
 
     try{
-  const typeMap = { Fluid: 'bubble', Flame: 'scorch', Stone: 'shatter', Storm: 'hurricane', Gleam: 'renew', Gloom: 'curse', Blight: 'toxin', Bloom: 'vines' };
+  const typeMap = { Fluid: 'bubble', Flame: 'scorch', Stone: 'shatter', Storm: 'hurricane', Gleam: 'beam', Gloom: 'curse', Blight: 'toxin', Bloom: 'vines' };
       const typeId = state.player && state.player.type ? typeMap[state.player.type] : null;
       if(typeId){
         const cd = (state.player.cooldowns && state.player.cooldowns[typeId]) || 0;
         const abilDef = ABILITIES.find(a=>a.id===typeId) || {};
         const tbtn = el('button', {'data-id': typeId, 'data-key': '2'});
-        const label = cd>0 ? `${abilDef.name || typeId} (${cd})` : (abilDef.name || typeId);
+        const label = (abilDef.name || typeId);
         tbtn.innerHTML = `<span class="keybind">2</span>${label}`;
         if(cd>0) tbtn.disabled = true;
         if(state.player && state.player.stunned && state.player.stunned > 0) tbtn.disabled = true;
         const color = ABILITY_COLOR[typeId]; if(color) tbtn.classList.add('ability-btn', color);
+        if(cd>0){
+          const ov = document.createElement('span');
+          ov.className = 'cooldown-overlay';
+          ov.textContent = String(cd);
+          tbtn.appendChild(ov);
+        }
         tbtn.addEventListener('click', ()=>{ playerUseAbility(typeId); });
         $actions.appendChild(tbtn);
       }
@@ -1131,11 +1137,17 @@
       const key = String(idx + 3);
       const b = el('button',{'data-id':id,'data-key':key});
       const cd = (state.player.cooldowns && state.player.cooldowns[id]) || 0;
-      const label = cd>0 ? `${a.name} (${cd})` : a.name;
+      const label = a.name;
       b.innerHTML = `<span class="keybind">${key}</span>${label}`;
       if(cd>0) b.disabled = true;
       if(state.player.stunned && state.player.stunned > 0) b.disabled = true;
       const color = ABILITY_COLOR[id]; if(color) b.classList.add('ability-btn', color);
+      if(cd>0){
+        const ov = document.createElement('span');
+        ov.className = 'cooldown-overlay';
+        ov.textContent = String(cd);
+        b.appendChild(ov);
+      }
       b.addEventListener('click',()=>{ playerUseAbility(id); });
       $actions.appendChild(b);
     })
@@ -1290,7 +1302,7 @@
               const srcKey = (fromKey === 'player' || fromKey === 'enemy') ? fromKey : null;
               const attackerKey = srcKey || (side === 'player' ? 'enemy' : 'player');
               let exec = Math.round(275 + randInt(0,25));
-              let rot = 25; // base rot damage per round
+              let rot = 25;
               if(eff.bolstered){ exec = Math.round(exec * 1.15); rot = 40; }
               try{ animateSprite(attackerKey, 'attack', 'big'); }catch(e){}
               const applied = applyDamage(attackerKey, side === 'player' ? 'player' : 'enemy', exec, 'toxin-execute');
@@ -1429,7 +1441,7 @@
       else if(type === 'toxin'){
         const targetKey = actorKey === 'player' ? 'enemy' : 'player';
         let exec = Math.round(275 + randInt(0,25));
-        let rot = 25; // align with base Rot damage (25/round)
+        let rot = 25;
         if(actor.bolster){ exec = Math.round(exec * 1.15); rot = 40; actor.bolster = false; }
         animateSprite(actorKey, 'attack', 'big');
         playSound('attack');
@@ -1649,7 +1661,8 @@
           animateSprite('player','attack');
           let value = Math.round((actor.power || 0) * 5 + randInt(0,5));
           if(actor.bolster){ value += 20; actor.bolster = false; }
-          state.enemy.effects.push({id:'dot',name:'Bleed',rounds:3,value}); log(`${actor.name} lashes out (${value}/round).`);
+          state.enemy.effects.push({id:'dot',name:'Bleed',rounds:3,value});
+          log(`${actor.name} lashes out (${value}/round).`);
           actor.cooldowns['dot'] = 2;
         } break;
         case 'hot': {
@@ -1658,7 +1671,8 @@
           if(actor.bolster){ value += 18; actor.bolster = false; }
           const curse = (actor.effects||[]).find(e=>e.id==='curse');
           if(curse && typeof curse.value === 'number') value = Math.round(value * (1 - curse.value));
-          actor.effects.push({id:'hot',name:'Regen',rounds:3,value}); log(`${actor.name} applied Regenerate (${value}/round).`);
+          actor.effects.push({id:'hot',name:'Regen',rounds:3,value});
+          log(`${actor.name} applied Regenerate (${value}/round).`);
           playSound('regenerate');
           actor.cooldowns['hot'] = 2;
         } break;
@@ -1735,16 +1749,21 @@
           if(actor.bolster) actor.bolster = false;
           if(targets.length){ log({ text: `${actor.name} struck ${targets.map(x=>x.name).join(', ')} for ${value} damage.`, abilityId: 'hurricane' }); playSound('attack'); }
         } break;
-        case 'renew': {
-          animateSprite('player','heal','big');
-          let amount = 300;
-          if(actor.bolster){ amount = 400; actor.bolster = false; }
-          const curse = (actor.effects||[]).find(e=>e.id==='curse');
-          if(curse && typeof curse.value === 'number') amount = Math.round(amount * (1 - curse.value));
-          actor.hp += amount; if(actor.hp > actor.maxHp) actor.hp = actor.maxHp;
-          actor.cooldowns['renew'] = 8;
-          log({ text: `${actor.name} heals for ${amount} HP.`, abilityId: 'renew' });
-          playSound('heal');
+        case 'beam': {
+          animateSprite('player','attack');
+          let base = Math.round((actor.power || 0) * 20 + randInt(0,15));
+          if(actor.bolster){ base += 60; actor.bolster = false; }
+          const dealt = applyDamage('player','enemy', base, 'beam-suppress');
+          const targetName = state.enemy ? state.enemy.name : 'opponent';
+          log({ text: `${actor.name} beams ${targetName} for ${dealt}.`, abilityId: 'beam' });
+          if(dealt > 0 && actor && actor.hp > 0){
+            animateSprite('player','heal','small');
+            actor.hp += dealt; if(actor.hp > actor.maxHp) actor.hp = actor.maxHp;
+            playSound('attack');
+            playSound('heal');
+            log({ text: `${actor.name} restores ${dealt} HP.`, abilityId: 'heal' });
+          }
+          actor.cooldowns['beam'] = 5;
         } break;
         case 'curse': {
           animateSprite('player','attack');
@@ -1769,14 +1788,6 @@
           if(actor.bolster) actor.bolster = false;
           log(`${actor.name} injects a delayed toxin (3 rounds).`);
           playSound('defend');
-        } break;
-        case 'stun': {
-          animateSprite('player','attack');
-          applyStunTo(state.enemy, 1);
-          if(actor.bolster){ applyStunTo(state.enemy, 1); consumeBolster(actor); }
-          actor.cooldowns['stun'] = 5; 
-          log(`${actor.name} stunned ${state.enemy.name}!`);
-          playSound('stun');
         } break;
         case 'bolster': {
           animateSprite('player','heal','medium');
@@ -1804,13 +1815,13 @@
   function enemyAct(){
     const actor = state.enemy;
     const avail = state.enemyAbilities.filter(id=>!(actor.cooldowns && actor.cooldowns[id]));
-  const typeMap = { Fluid: 'bubble', Flame: 'scorch', Stone: 'shatter', Storm: 'hurricane', Gleam: 'renew', Gloom: 'curse', Blight: 'toxin', Bloom: 'vines' };
-    const typeSpecialIds = ['bubble','scorch','shatter','hurricane','renew','curse','toxin','vines'];
+  const typeMap = { Fluid: 'bubble', Flame: 'scorch', Stone: 'shatter', Storm: 'hurricane', Gleam: 'beam', Gloom: 'curse', Blight: 'toxin', Bloom: 'vines' };
+    const typeSpecialIds = ['bubble','scorch','shatter','hurricane','beam','curse','toxin','vines'];
     const filtered = avail.filter(i=> i !== 'intervene');
     const finalAvail = filtered.filter(aid => {
       if(actor && actor.isBoss && aid === 'stun') return false;
       if(typeSpecialIds.includes(aid)){
-        if(actor && actor.isBoss) return aid !== 'renew';
+        if(actor && actor.isBoss) return aid !== 'beam';
         const mapped = actor && actor.type ? typeMap[actor.type] : null;
         return mapped === aid;
       }
@@ -1973,16 +1984,20 @@
           log({ text: `${actor.name}'s vines return a portion of damage taken. (${rounds} rounds).`, abilityId: 'vines' });
           playSound('defend');
         } break;
-        case 'renew': {
-          animateSprite('enemy','heal','big');
-          let amount = 400;
-          if(actor.bolster){ amount = 500; actor.bolster = false; }
-          const curse = (actor.effects||[]).find(e=>e.id==='curse');
-          if(curse && typeof curse.value === 'number') amount = Math.round(amount * (1 - curse.value));
-          actor.hp += amount; if(actor.hp>actor.maxHp) actor.hp = actor.maxHp;
-          actor.cooldowns['renew'] = 8;
-          log({ text: `${actor.name} heals for ${amount} HP.`, abilityId: 'renew' });
-          playSound('heal');
+        case 'beam': {
+          animateSprite('enemy','attack');
+          let base = Math.round((actor.power || 0) * 22 + randInt(0,15));
+          if(actor.bolster){ base += 50; actor.bolster = false; }
+          const dealt = applyDamage('enemy','player', base, 'beam-suppress');
+          const targetName = state.player ? state.player.name : 'opponent';
+          log({ text: `${actor.name} beams ${targetName} for ${dealt}.`, abilityId: 'beam' });
+          if(dealt > 0 && actor && actor.hp > 0){
+            animateSprite('enemy','heal','small');
+            actor.hp += dealt; if(actor.hp>actor.maxHp) actor.hp = actor.maxHp;
+            playSound('heal');
+            log({ text: `${actor.name} restores ${dealt} HP.`, abilityId: 'heal' });
+          }
+          actor.cooldowns['beam'] = 4;
         } break;
         case 'curse': {
           animateSprite('enemy','attack');
@@ -2129,7 +2144,7 @@
     debugEnemyPicks(opts = {}){
       const mode = opts.mode || 'single';
       const iterations = typeof opts.iterations === 'number' ? opts.iterations : 100;
-      const typeMap = { Fluid: 'bubble', Flame: 'scorch', Stone: 'shatter', Storm: 'hurricane', Gleam: 'renew', Gloom: 'curse', Blight: 'toxin', Bloom: 'vines' };
+      const typeMap = { Fluid: 'bubble', Flame: 'scorch', Stone: 'shatter', Storm: 'hurricane', Gleam: 'beam', Gloom: 'curse', Blight: 'toxin', Bloom: 'vines' };
       const summary = {};
       const prev = JSON.parse(JSON.stringify(state));
       for(let i=0;i<iterations;i++){

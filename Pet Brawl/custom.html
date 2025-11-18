@@ -1,12 +1,110 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Document</title>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>Boss Battle</title>
+    <meta name="description" content="Boss Battle">
+    <meta property="og:title" content="Boss Battle">
+    <meta property="og:image" content="https://blackflame-aria.github.io/Pet%20Brawl/Images/link.png">
+    <meta property="og:description" content="Boss Battle">
+    <meta property="og:type" content="website">
+    <link rel="icon" type="image/png" href="Sprites/Adult2 (1).gif">
+    <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="custom.css">
 </head>
 <body>
-    
+    <div class="app">
+        <header>
+            <h1>Boss Battle</h1>
+        </header>
+
+        <main>
+            <section id="splash" class="panel">
+                <div class="controls splash-modes">
+                    <button id="splash-play" class="splash-primary">Play</button>
+                    <button id="mode-1v1" class="splash-mode mode-1v1" onclick="location.href='index.html'">1v1</button>
+                    <button id="mode-3v3" class="splash-mode mode-3v3" onclick="location.href='team.html'">3v3</button>
+                </div>
+            </section>
+
+            <section id="setup" class="panel hidden">
+                <div class="compat-stub">
+                    <div id="pet-list" class="pet-list"></div>
+                    <div id="ability-list" class="ability-list"></div>
+                    <div id="selected-abilities" class="selected-abilities">No abilities selected</div>
+                </div>
+                <div class="controls">
+                    <button id="start-btn" disabled>Start</button>
+                </div>
+            </section>
+
+            <section id="battle" class="panel hidden">
+                <div id="vs-hp" class="vs-hp">
+                    <div id="round-row" class="round-row">
+                        <div class="round-left"><div id="vs-left-hp" class="hp-badge">0 / 0</div></div>
+                        <div id="round-counter">1</div>
+                        <div class="round-right"><div id="vs-right-hp" class="hp-badge">0 / 0</div></div>
+                    </div>
+                    <div class="vs-track">
+                        <div id="turn-left" class="turn-pill left hidden">TURN</div>
+                        <div id="turn-right" class="turn-pill right hidden">TURN</div>
+                        <div class="vs-divider"></div>
+                        <div id="vs-left" class="vs-fill left">
+                            <div id="vs-left-inner" class="vs-fill-inner"></div>
+                        </div>
+                        <div id="vs-right" class="vs-fill right">
+                            <div id="vs-right-inner" class="vs-fill-inner"></div>
+                        </div>
+                    </div>
+                    <div class="bench-hp-row">
+                        <div class="bench-left"><div id="vs-left-bench-hp" class="hp-badge">Bench: 0</div></div>
+                        <div class="bench-right"><div id="vs-right-bench-hp" class="hp-badge">Bench: 0</div></div>
+                    </div>
+                </div>
+
+                <div class="combatants">
+                    <div class="combatant player">
+                        <div class="name-wrap">
+                            <h4 id="player-name">Eggling</h4>
+                            <div id="player-type" class="type">Boss</div>
+                            <span id="player-status" class="status"></span>
+                        </div>
+                        <div class="sprite"><img id="player-sprite" src="Sprites/Adult2 (1).gif" alt="player sprite"/></div>
+                        <div class="hp-bar">
+                            <div id="player-hp-fill" class="fill"><div id="player-hp-inner" class="fill-inner"></div></div>
+                        </div>
+                        <div id="player-hp-text" class="hp-text"></div>
+                        <div id="player-effects" class="effects"></div>
+                    </div>
+
+                    <div class="combatant enemy">
+                        <div class="name-wrap">
+                            <h4 id="enemy-name">Enemy</h4>
+                            <div id="enemy-type" class="type">Type</div>
+                            <span id="enemy-status" class="status"></span>
+                        </div>
+                        <div class="sprite"><img id="enemy-sprite" src="Images/Kivi.png" alt="enemy sprite"/></div>
+                        <div class="hp-bar">
+                            <div id="enemy-hp-fill" class="fill"><div id="enemy-hp-inner" class="fill-inner"></div></div>
+                        </div>
+                        <div id="enemy-hp-text" class="hp-text"></div>
+                        <div id="enemy-effects" class="effects"></div>
+                    </div>
+                </div>
+
+                <div id="actions" class="actions"></div>
+                <div id="log" class="log"></div>
+
+                <div class="controls">
+                    <button id="back-btn">Back</button>
+                    <button id="home-btn">Home</button>
+                    <button id="restart-btn" class="hidden">Restart</button>
+                </div>
+            </section>
+        </main>
+    </div>
+
     <script src="custom.js"></script>
 </body>
 </html>
