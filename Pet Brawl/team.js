@@ -1581,7 +1581,7 @@
               if(eff.bolstered){ exec = Math.round(exec * 1.15); rot = 40; }
               try{ animateSprite(attackerKey, 'attack', 'big'); }catch(e){}
               const applied = applyDamage(attackerKey, side === 'player' ? 'player' : 'enemy', exec, 'toxin-execute');
-              if(actor && actor.hp > 0){ actor.effects = actor.effects || []; actor.effects.push({ id: 'rot', name: 'Rot', rounds: 8, value: rot, source: attackerKey }); }
+              if(actor && actor.hp > 0){ remaining.push({ id: 'rot', name: 'Rot', rounds: 8, value: rot, source: attackerKey }); }
               log({ text: `${(eff.sourceKey === 'player' ? 'Player' : eff.sourceKey === 'enemy' ? 'Enemy' : 'Unknown')} toxin burst for ${applied} damage on ${actor? actor.name : side}.`, abilityId: 'toxin' });
               if(side === 'player') flashShake('large', $playerHpFill); else flashShake('large', $enemyHpFill);
             }
@@ -1769,7 +1769,7 @@
       else if(type === 'toxin'){
         const targetKey = actorKey === 'player' ? 'enemy' : 'player';
         let exec = Math.round(275 + randInt(0,25));
-        let rot = 30;
+        let rot = 25;
         if(actor.bolster){ exec = Math.round(exec * 1.15); rot = 40; actor.bolster = false; }
         animateSprite(actorKey, 'attack', 'big');
         playSound('attack');
