@@ -1176,16 +1176,32 @@
   console.log('startBattle: turn=', state.turn);
   }
 
+  function deadSpriteFor(name){
+    const map = { Kivi:'KiviDead.png', Tuuli:'TuliDead.png', Vala:'ValaDead.png', Palo:'PaloDead.png', Vika:'VikaDead.png', Vesi:'VesiDead.png', Sieni:'SieniDead.png', Haju:'HajuDead.png' };
+    const file = map[name];
+    return file ? ('DeadSprites/' + file) : null;
+  }
+
+  function spriteSrcForPet(p){
+    if(!p) return '';
+    if(p.dead || (typeof p.hp === 'number' && p.hp <= 0)){
+      if(p.isBoss) return p.sickImage || p.image || '';
+      const d = deadSpriteFor(p.name);
+      return d || p.image || '';
+    }
+    return p.image || '';
+  }
+
   function updateBattleSprites(){
     const main = document.getElementById('player-sprite');
     const b1 = document.getElementById('player-sprite-back1');
     const b2 = document.getElementById('player-sprite-back2');
     if(Array.isArray(state.playerTeam) && state.playerTeam.length>0){
-      const p0 = state.playerTeam[0]; if(main) { main.src = p0.image; if(p0.dead) main.classList.add('dead'); else main.classList.remove('dead'); }
-      const p1 = state.playerTeam[1]; if(b1) { if(p1){ b1.src = p1.image; b1.style.display='block'; if(p1.dead) b1.classList.add('dead'); else b1.classList.remove('dead'); } else { b1.style.display='none'; } }
-      const p2 = state.playerTeam[2]; if(b2) { if(p2){ b2.src = p2.image; b2.style.display='block'; if(p2.dead) b2.classList.add('dead'); else b2.classList.remove('dead'); } else { b2.style.display='none'; } }
+      const p0 = state.playerTeam[0]; if(main) { main.src = spriteSrcForPet(p0); if(p0.dead) main.classList.add('dead'); else main.classList.remove('dead'); }
+      const p1 = state.playerTeam[1]; if(b1) { if(p1){ b1.src = spriteSrcForPet(p1); b1.style.display='block'; if(p1.dead) b1.classList.add('dead'); else b1.classList.remove('dead'); } else { b1.style.display='none'; } }
+      const p2 = state.playerTeam[2]; if(b2) { if(p2){ b2.src = spriteSrcForPet(p2); b2.style.display='block'; if(p2.dead) b2.classList.add('dead'); else b2.classList.remove('dead'); } else { b2.style.display='none'; } }
     } else {
-      if(main && state.player) main.src = state.player.image;
+      if(main && state.player) main.src = spriteSrcForPet(state.player);
       if(b1) b1.style.display='none'; if(b2) b2.style.display='none';
     }
     try{
@@ -1199,11 +1215,11 @@
     const eb1 = document.getElementById('enemy-sprite-back1');
     const eb2 = document.getElementById('enemy-sprite-back2');
     if(Array.isArray(state.enemyTeam) && state.enemyTeam.length>0){
-      const e0 = state.enemyTeam[0]; if(em) { em.src = e0.image; if(e0.dead) em.classList.add('dead'); else em.classList.remove('dead'); }
-      const e1 = state.enemyTeam[1]; if(eb1) { if(e1){ eb1.src = e1.image; eb1.style.display='block'; if(e1.dead) eb1.classList.add('dead'); else eb1.classList.remove('dead'); } else { eb1.style.display='none'; } }
-      const e2 = state.enemyTeam[2]; if(eb2) { if(e2){ eb2.src = e2.image; eb2.style.display='block'; if(e2.dead) eb2.classList.add('dead'); else eb2.classList.remove('dead'); } else { eb2.style.display='none'; } }
+      const e0 = state.enemyTeam[0]; if(em) { em.src = spriteSrcForPet(e0); if(e0.dead) em.classList.add('dead'); else em.classList.remove('dead'); }
+      const e1 = state.enemyTeam[1]; if(eb1) { if(e1){ eb1.src = spriteSrcForPet(e1); eb1.style.display='block'; if(e1.dead) eb1.classList.add('dead'); else eb1.classList.remove('dead'); } else { eb1.style.display='none'; } }
+      const e2 = state.enemyTeam[2]; if(eb2) { if(e2){ eb2.src = spriteSrcForPet(e2); eb2.style.display='block'; if(e2.dead) eb2.classList.add('dead'); else eb2.classList.remove('dead'); } else { eb2.style.display='none'; } }
     } else if(state.enemy){
-      if(em) em.src = state.enemy.image; if(eb1) eb1.style.display='none'; if(eb2) eb2.style.display='none';
+      if(em) em.src = spriteSrcForPet(state.enemy); if(eb1) eb1.style.display='none'; if(eb2) eb2.style.display='none';
     }
     try{
       const activeEnemy = (Array.isArray(state.enemyTeam) && state.enemyTeam.length>0) ? state.enemyTeam[0] : state.enemy;
@@ -1678,6 +1694,7 @@
         else { if(side==='player') flashHeal($playerHpFill); else flashHeal($enemyHpFill); }
       }
       updateUI();
+      try{ updateBattleSprites(); }catch(e){}
       if(actor.hp <= 0){
         actor.hp = 0;
         updateUI();

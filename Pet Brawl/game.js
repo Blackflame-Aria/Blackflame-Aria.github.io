@@ -1026,6 +1026,12 @@
   console.log('startBattle: turn=', state.turn);
   }
 
+  function deadSpriteFor(name){
+    const map = { Kivi:'KiviDead.png', Tuuli:'TuliDead.png', Vala:'ValaDead.png', Palo:'PaloDead.png', Vika:'VikaDead.png', Vesi:'VesiDead.png', Sieni:'SieniDead.png', Haju:'HajuDead.png' };
+    const file = map[name];
+    return file ? ('DeadSprites/' + file) : null;
+  }
+
   function tickCooldowns(actor){
     if(!actor || !actor.cooldowns) return;
     Object.keys(actor.cooldowns).forEach(k=>{
@@ -1398,7 +1404,15 @@
           actor.dead = true;
           log(`${actor.name} was brutally murdered!`);
           playSound('murder');
-          try{ if(actor.isBoss){ const es = document.getElementById('enemy-sprite'); if(es) es.src = (actor.sickImage || es.src); } }catch(e){}
+          try{ 
+            if(actor.isBoss){ 
+              const es = document.getElementById('enemy-sprite'); if(es) es.src = (actor.sickImage || es.src); 
+            } else {
+              const elId = (side === 'player') ? 'player-sprite' : 'enemy-sprite';
+              const imgEl = document.getElementById(elId);
+              if(imgEl){ const deadSrc = deadSpriteFor(actor.name); if(deadSrc) imgEl.src = deadSrc; }
+            }
+          }catch(e){}
           finishBattle();
         }
       }
@@ -1600,7 +1614,7 @@
     if(!(label && /suppress/i.test(label))){
       log(`${atk.name} dealt ${dmg} damage to ${def.name}.`);
     }
-  if(def.hp<=0){ def.hp=0; if(!def.dead){ def.dead = true; log(`${def.name} was brutally murdered!`); playSound('murder'); try{ if(def.isBoss){ const es = document.getElementById('enemy-sprite'); if(es) es.src = (def.sickImage || es.src); } }catch(e){} finishBattle(); } }
+  if(def.hp<=0){ def.hp=0; if(!def.dead){ def.dead = true; log(`${def.name} was brutally murdered!`); playSound('murder'); try{ if(def.isBoss){ const es = document.getElementById('enemy-sprite'); if(es) es.src = (def.sickImage || es.src); } else { const elId = (toKey === 'player') ? 'player-sprite' : 'enemy-sprite'; const imgEl = document.getElementById(elId); if(imgEl){ const deadSrc = deadSpriteFor(def.name); if(deadSrc) imgEl.src = deadSrc; } } }catch(e){} finishBattle(); } }
   updateUI();
     if(toKey === 'player') flashHit($playerHpFill); else flashHit($enemyHpFill);
     return dmg;

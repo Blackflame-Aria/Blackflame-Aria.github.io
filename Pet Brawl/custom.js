@@ -509,6 +509,11 @@
 		}
 		function updateNamesAndSprites(){
 			try{
+				function deadSpriteFor(name){
+					var map = { Kivi:'KiviDead.png', Tuuli:'TuliDead.png', Vala:'ValaDead.png', Palo:'PaloDead.png', Vika:'VikaDead.png', Vesi:'VesiDead.png', Sieni:'SieniDead.png', Haju:'HajuDead.png' };
+					var file = map[name];
+					return file ? ('DeadSprites/' + file) : null;
+				}
 				if($playerName) $playerName.textContent = state.player.name;
 				if($enemyName) $enemyName.textContent = state.enemy.name;
 				if($playerType) $playerType.textContent = state.player.type||'';
@@ -553,7 +558,7 @@
 						if (!img) {
 							img = document.createElement('img');
 							img.setAttribute('data-id', id);
-							img.src = p.image;
+							img.src = (p.dead || p.hp<=0) ? (deadSpriteFor(p.name) || p.image) : p.image;
 							img.alt = p.name;
 							img.title = p.name;
 							img.style.opacity = '0';
@@ -561,7 +566,7 @@
 							void img.offsetWidth;
 							img.style.opacity = '0.38';
 						} else {
-							img.src = p.image; 
+							img.src = (p.dead || p.hp<=0) ? (deadSpriteFor(p.name) || p.image) : p.image; 
 							img.alt = p.name;
 							img.title = p.name;
 							img.classList.remove('dead');
@@ -1010,6 +1015,7 @@
 						}
 						actor.bolster=false;
 						actor.cooldowns = actor.cooldowns || {}; actor.cooldowns['teamAttack'] = 4;
+						try{ playSound('attack'); }catch(e){}
 						try{ var psT=document.querySelector('.combatant.player .sprite'); if(psT){ psT.classList.add('team-attack-right'); setTimeout(function(){ psT.classList.remove('team-attack-right'); }, 520); } }catch(e){}
 					} break;
 					case 'crystalize': {
