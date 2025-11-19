@@ -862,8 +862,8 @@
 				switch(id){
 					case 'pass': playSound('pass'); logMsg(actor.name + ' passed the turn.'); break;
 					case 'attack': {
-						var base = (actor.power||0)*12 + rint(0,9);
-						if(actor.bolster){ base += 30; actor.bolster=false; }
+						var base = (actor.power||0)*15 + rint(0,12);
+						if(actor.bolster){ base += 50; actor.bolster=false; }
 						applyDamageFromTo(actor, state.player, base);
 					} break;
 					case 'defend': {
@@ -872,43 +872,43 @@
 						actor.cooldowns['defend'] = 2;
 					} break;
 					case 'bleed': {
-						var valB = Math.round((actor.power||0)*5 + rint(0,5));
+						var valB = Math.round((actor.power||0)*7 + rint(0,5));
 						addEffect(state.player,{id:'dot',name:'Bleed',rounds:3,value: valB});
 						logMsg(actor.name + ' lashes out (' + valB + '/round).');
 						actor.cooldowns['bleed'] = 1;
 					} break;
 					case 'toxin': {
-						var exec = { damage: 275 + rint(0,25), rotValue:25, rotRounds:8 };
+						var exec = { damage: 275 + rint(0,25), rotValue:45, rotRounds:8 };
 						addEffect(state.player,{id:'toxin',name:'Toxin',rounds:3,exec: exec});
 						logMsg(actor.name + ' injects a delayed toxin (executes in 3 rounds).');
-						actor.cooldowns['toxin'] = 11;
+						actor.cooldowns['toxin'] = 5;
 					} break;
 					case 'bubble': {
-						addEffect(actor,{id:'bubble',name:'Bubble',rounds:3,value:20});
+						addEffect(actor,{id:'bubble',name:'Bubble',rounds:3,value:60});
 						logMsg({ text: actor.name + ' reduces damage taken (3 rounds).', abilityId: 'bubble' });
-						actor.cooldowns['bubble'] = 5;
+						actor.cooldowns['bubble'] = 3;
 					} break;
 					case 'bolster': {
 						actor.bolster=true; addEffect(actor,{id:'bolstered',name:'Bolstered',rounds:2}); playSound('bolster');
 						logMsg(actor.name + ' bolstered their next ability.');
-						actor.cooldowns['bolster'] = 4;
+						actor.cooldowns['bolster'] = 3;
 					} break;
 					case 'shatter': {
-						var dmg=100, self=30; if(actor.bolster){ dmg=130; self=40; actor.bolster=false; }
+						var dmg=150, self=75; if(actor.bolster){ dmg=200; self=100; actor.bolster=false; }
 						var applied = applyDamageFromTo(actor, state.player, dmg);
 						actor.hp = Math.max(0, actor.hp - self); logMsg(actor.name + ' struck ' + state.player.name + ' for ' + applied + ' damage and takes ' + self + '.');
-						actor.cooldowns['shatter'] = 4;
+						actor.cooldowns['shatter'] = 2;
 					} break;
 					case 'hurricane': {
-						addEffect(state.player,{id:'hurricane',name:'Hurricane',rounds:3,value:50});
+						addEffect(state.player,{id:'hurricane',name:'Hurricane',rounds:3,value:75});
 						logMsg({ text: actor.name + ' struck ' + state.player.name + ' for 50 damage.', abilityId: 'hurricane' });
-						actor.cooldowns['hurricane'] = 7;
+						actor.cooldowns['hurricane'] = 3;
 						try{ var es4 = document.querySelector('.combatant.enemy .sprite'); if(es4){ es4.classList.add('team-attack-left'); setTimeout(function(){ es4.classList.remove('team-attack-left'); }, 520); } }catch(e){}
 					} break;
 					case 'scorch': {
-						addEffect(state.player,{id:'scorch',name:'Scorch',rounds:3,value:50});
+						addEffect(state.player,{id:'scorch',name:'Scorch',rounds:3,value:75});
 						logMsg({ text: actor.name + ' scorches ' + state.player.name + '. (3 rounds).', abilityId: 'scorch' });
-						actor.cooldowns['scorch'] = 5;
+						actor.cooldowns['scorch'] = 3;
 						try{ var es5 = document.querySelector('.combatant.enemy .sprite'); if(es5){ es5.classList.add('attack-bounce'); setTimeout(function(){ es5.classList.remove('attack-bounce'); }, 520); } }catch(e){}
 					} break;
 					case 'vines': {
@@ -916,15 +916,15 @@
 						addEffect(actor,{id:'vines',name:'Vines',rounds:4,pct:pct});
 						if(actor.bolster){ actor.bolster=false; removeEffect(actor,'bolstered'); }
 						logMsg({ text: actor.name + " is wrapped in vines, returning damage taken (" + Math.round(pct*100) + "%). (4 rounds).", abilityId: 'vines' });
-						actor.cooldowns['vines'] = 7;
+						actor.cooldowns['vines'] = 3;
 					} break;
 					case 'curse': {
 						addEffect(state.player,{id:'weaken',name:'Curse',rounds:3,factor:0.15});
 						logMsg({ text: actor.name + ' weakens ' + state.player.name + ' (3 rounds).', abilityId: 'curse' });
-						actor.cooldowns['curse'] = 5;
+						actor.cooldowns['curse'] = 3;
 					} break;
 					case 'regen': {
-						var valR = 35; addEffect(actor,{id:'hot',name:'Regen',rounds:3,value:valR}); playSound('regenerate'); logMsg(actor.name + ' applied Regenerate (' + valR + '/round).');
+						var valR = 45; addEffect(actor,{id:'hot',name:'Regen',rounds:3,value:valR}); playSound('regenerate'); logMsg(actor.name + ' applied Regenerate (' + valR + '/round).');
 						actor.cooldowns['regen'] = 2;
 						try{ var es2 = document.querySelector('.combatant.enemy .sprite'); if(es2){ es2.classList.add('heal-bounce'); setTimeout(function(){ es2.classList.remove('heal-bounce'); }, 520); } }catch(e){}
 					} break;
@@ -940,20 +940,20 @@
 						try{ var es3 = document.querySelector('.combatant.enemy .sprite'); if(es3){ es3.classList.add('team-heal-up'); setTimeout(function(){ es3.classList.remove('team-heal-up'); }, 520); } }catch(e){}
 					} break;
 					case 'heal': {
-						var amt = Math.round((actor.healing||3)*25 + rint(10,20));
+						var amt = Math.round((actor.healing||3)*30 + rint(10,25));
 						actor.hp = Math.min(actor.maxHp, actor.hp + amt); playSound('heal'); logMsg(actor.name + ' healed ' + amt + ' HP.');
 						actor.cooldowns['heal'] = 3;
 					} break;
 					case 'chargeAttack': {
 						actor.bolster=true; playSound('chargeAttack'); logMsg(actor.name + ' begins charging an attack.');
-						actor.cooldowns['chargeAttack'] = 4;
+						actor.cooldowns['chargeAttack'] = 2;
 					} break;
 					case 'chargeHeal': {
 						addEffect(actor,{id:'hot',name:'Charge Heal',rounds:3,value:45}); playSound('chargeHeal'); logMsg(actor.name + ' is charging a heal.');
-						actor.cooldowns['chargeHeal'] = 4;
+						actor.cooldowns['chargeHeal'] = 3;
 					} break;
 					case 'beam': {
-						var baseB = (actor.power||0)*12 + rint(0,9) + 30;
+						var baseB = (actor.power||0)*16 + rint(0,9) + 30;
 						if(actor.bolster){ baseB += 30; actor.bolster=false; removeEffect(actor,'bolstered'); }
 						var dealt = applyDamageFromTo(actor, state.player, baseB, 'suppress-log');
 						logMsg(actor.name + ' beams ' + (state.player ? state.player.name : 'opponent') + ' for ' + dealt + '.', 'attack');
@@ -963,7 +963,7 @@
 							playSound('heal');
 							try{ var esB = document.querySelector('.combatant.enemy .sprite'); if(esB){ esB.classList.add('heal-bounce'); setTimeout(function(){ esB.classList.remove('heal-bounce'); }, 520); } }catch(e){}
 						}
-						actor.cooldowns['beam'] = 4;
+						actor.cooldowns['beam'] = 3;
 					} break;
 					default: logMsg(actor.name + ' passed the turn.','info'); playSound('pass');
 				}
@@ -982,7 +982,7 @@
 				switch(id){
 					case 'pass': playSound('pass'); logMsg(actor.name + ' passed the turn.'); break;
 					case 'attack': {
-						var base=(actor.power||0)*12 + rint(0,9); if(actor.bolster){ base+=30; actor.bolster=false; }
+						var base=(actor.power||0)*10 + rint(0,9); if(actor.bolster){ base+=30; actor.bolster=false; }
 						applyDamageFromTo(actor, state.enemy, base);
 						flash($enemyHpFill,'hit');
 					} break;
@@ -1002,14 +1002,14 @@
 						try{ var psB=document.querySelector('.combatant.player .sprite'); if(psB){ psB.classList.add('attack-bounce'); setTimeout(function(){ psB.classList.remove('attack-bounce'); }, 520); } }catch(e){}
 					} break;
 					case 'shatter': {
-						var dmg=120, self=30; if(actor.bolster){ dmg=150; self=40; actor.bolster=false; }
+						var dmg=150, self=90; if(actor.bolster){ dmg=200; self=125; actor.bolster=false; }
 						var applied = applyDamageFromTo(actor, state.enemy, dmg); actor.hp=Math.max(0, actor.hp-self); logMsg(actor.name + ' struck ' + state.enemy.name + ' for ' + applied + ' damage and takes ' + self + '.');
-						actor.cooldowns = actor.cooldowns || {}; actor.cooldowns['shatter'] = 4;
+						actor.cooldowns = actor.cooldowns || {}; actor.cooldowns['shatter'] = 5;
 					} break;
 					case 'teamAttack': {
 						var i; for(i=0;i<state.enemyTeam.length;i++){
 							var t=state.enemyTeam[i]; if(!t || t.dead || t.hp<=0) continue;
-							var baseA=(actor.power||0)*9 + rint(0,8); if(actor.bolster){ baseA+=20; }
+							var baseA=(actor.power||0)*3 + rint(0,8); if(actor.bolster){ baseA+=15; }
 							var hit = applyDamageFromTo(actor, t, baseA, 'suppress-log');
 							logMsg(actor.name + ' struck ' + t.name + ' for ' + hit + ' damage.');
 						}
@@ -1055,9 +1055,9 @@
 				Haju:['pass','toxin','chargeAttack','bolster','bleed'],
 				Kivi:['pass','shatter','defend','attack','teamHeal'],
 				Tuuli:['pass','hurricane','attack','regen','bleed'],
-				Vala:['pass','beam','chargeHeal','bolster','attack'],
+				Vala:['pass','beam','teamHeal','bolster','attack'],
 				Palo:['pass','scorch','attack','chargeAttack','bleed'],
-				Vika:['pass','curse','chargeAttack','heal','bolster'],
+				Vika:['pass','curse','chargeAttack','teamHeal','bolster'],
 				Vesi:['pass','bubble','attack','bleed','regen'],
 				Sieni:['pass','vines','attack','defend','bolster']
 			};
