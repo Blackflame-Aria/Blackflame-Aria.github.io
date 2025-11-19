@@ -1,12 +1,11 @@
 
-/* Segmented HP bar (3v3) */
 .vs-fill .vs-fill-inner { opacity: 0 !important; }
 
 .vs-track { 
 	width: 100%;
 	max-width: 1000px;
 	height: 26px;
-	background: #020;
+	background: #303;
 	border-radius: 8px;
 	position: relative;
 	overflow: hidden;
