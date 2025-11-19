@@ -1082,12 +1082,12 @@
       const right = document.querySelector('.vs-fill.right');
       if(left && !left.querySelector('.vs-segments')){
         const segs = document.createElement('div'); segs.className = 'vs-segments';
-        for(let i=0;i<50;i++){ const d=document.createElement('div'); d.className='vs-seg'; segs.appendChild(d); }
+        for(let i=0;i<25;i++){ const d=document.createElement('div'); d.className='vs-seg'; segs.appendChild(d); }
         left.appendChild(segs);
       }
       if(right && !right.querySelector('.vs-segments')){
         const segs = document.createElement('div'); segs.className = 'vs-segments';
-        for(let i=0;i<50;i++){ const d=document.createElement('div'); d.className='vs-seg'; segs.appendChild(d); }
+        for(let i=0;i<25;i++){ const d=document.createElement('div'); d.className='vs-seg'; segs.appendChild(d); }
         right.appendChild(segs);
       }
     }catch(e){}
@@ -1100,7 +1100,7 @@
       const segWrap = root.querySelector('.vs-segments');
       if(!segWrap) return;
       const segs = segWrap.querySelectorAll('.vs-seg');
-      const total = 50;
+      const total = 25;
       const target = Math.max(0, Math.min(total, Math.floor(ratio * total)));
       segWrap.classList.remove('hp-ok','hp-warn','hp-danger');
       if(ratio > 0.6) segWrap.classList.add('hp-ok'); else if(ratio > 0.3) segWrap.classList.add('hp-warn'); else segWrap.classList.add('hp-danger');

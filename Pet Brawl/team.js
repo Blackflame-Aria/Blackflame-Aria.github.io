@@ -1276,12 +1276,9 @@
   animateNumber($vsRightHp, state._displayHp?.enemy ?? newE, newE, 420, 'enemy', e ? e.maxHp : 0);
   let pw = p && p.maxHp ? Math.max(0, (p.hp / p.maxHp)) : 0;
   let ew = e && e.maxHp ? Math.max(0, (e.hp / e.maxHp)) : 0;
-  try{
-    const leftInner = document.getElementById('vs-left-inner');
-    const rightInner = document.getElementById('vs-right-inner');
-    if(leftInner) leftInner.style.transform = `scaleX(${pw})`;
-    if(rightInner) rightInner.style.transform = `scaleX(${ew})`;
-  }catch(e){}
+  ensureHpSegments();
+  setHpSegments('player', pw);
+  setHpSegments('enemy', ew);
     $playerEffects.textContent = p && p.effects ? p.effects.map(x=>`${x.name}(${x.rounds})`).join(', ') : '';
     $enemyEffects.textContent = e && e.effects ? e.effects.map(x=>`${x.name}(${x.rounds})`).join(', ') : '';
     $playerEffects.textContent = p.effects.map(x=>`${x.name}${x.stacks ? ' ['+x.stacks+']' : ''}(${x.rounds})`).join(', ');
@@ -1311,12 +1308,12 @@
       const right = document.querySelector('.vs-fill.right');
       if(left && !left.querySelector('.vs-segments')){
         const segs = document.createElement('div'); segs.className = 'vs-segments';
-        for(let i=0;i<50;i++){ const d=document.createElement('div'); d.className='vs-seg'; segs.appendChild(d); }
+        for(let i=0;i<25;i++){ const d=document.createElement('div'); d.className='vs-seg'; segs.appendChild(d); }
         left.appendChild(segs);
       }
       if(right && !right.querySelector('.vs-segments')){
         const segs = document.createElement('div'); segs.className = 'vs-segments';
-        for(let i=0;i<50;i++){ const d=document.createElement('div'); d.className='vs-seg'; segs.appendChild(d); }
+        for(let i=0;i<25;i++){ const d=document.createElement('div'); d.className='vs-seg'; segs.appendChild(d); }
         right.appendChild(segs);
       }
     }catch(e){}
@@ -1329,19 +1326,50 @@
       const segWrap = root.querySelector('.vs-segments');
       if(!segWrap) return;
       const segs = segWrap.querySelectorAll('.vs-seg');
-      const total = 50;
-      const count = Math.max(0, Math.min(total, Math.floor(ratio * total)));
+      const total = 25;
+      const target = Math.max(0, Math.min(total, Math.floor(ratio * total)));
       segWrap.classList.remove('hp-ok','hp-warn','hp-danger');
-      if(ratio > 0.6) segWrap.classList.add('hp-ok');
-      else if(ratio > 0.3) segWrap.classList.add('hp-warn');
-      else segWrap.classList.add('hp-danger');
-      segs.forEach((el, idx)=>{
-        if(idx < count){
-          if(!el.classList.contains('on')){ el.classList.add('on','flicker-on'); setTimeout(()=> el.classList.remove('flicker-on'), 180); }
-        } else {
-          if(el.classList.contains('on')){ el.classList.remove('on'); el.classList.add('flicker-off'); setTimeout(()=> el.classList.remove('flicker-off'), 180); }
+      if(ratio > 0.6) segWrap.classList.add('hp-ok'); else if(ratio > 0.3) segWrap.classList.add('hp-warn'); else segWrap.classList.add('hp-danger');
+      state._segCounts = state._segCounts || { player: null, enemy: null };
+      state._segAnim = state._segAnim || { player: null, enemy: null };
+      const key = side==='player' ? 'player' : 'enemy';
+      const from = (state._segCounts[key] == null) ? target : state._segCounts[key];
+      if(state._segAnim[key] && state._segAnim[key].raf){ cancelAnimationFrame(state._segAnim[key].raf); state._segAnim[key] = null; }
+      if(from === target){
+        for(let idx=0; idx<segs.length; idx++){
+          const shouldOn = idx >= (total - target);
+          if(shouldOn){ if(!segs[idx].classList.contains('on')) segs[idx].classList.add('on'); }
+          else { if(segs[idx].classList.contains('on')) segs[idx].classList.remove('on'); }
         }
-      });
+        state._segCounts[key] = target;
+        return;
+      }
+      const duration = 420;
+      const startTime = performance.now();
+      function draw(now){
+        const t = Math.min(1, (now - startTime) / duration);
+        const eased = t<0.5 ? 2*t*t : -1 + (4-2*t)*t;
+        const cur = from + (target - from) * eased;
+        const curCount = Math.max(0, Math.min(total, Math.round(cur)));
+        for(let idx=0; idx<segs.length; idx++){
+          const shouldOn = idx >= (total - curCount);
+          const isOn = segs[idx].classList.contains('on');
+          if(shouldOn && !isOn){ segs[idx].classList.add('on'); }
+          if(!shouldOn && isOn){ segs[idx].classList.remove('on'); }
+        }
+        if(t < 1){ state._segAnim[key] = { raf: requestAnimationFrame(draw) }; }
+        else {
+          for(let idx=0; idx<segs.length; idx++){
+            const shouldOn = idx >= (total - target);
+            const isOn = segs[idx].classList.contains('on');
+            if(shouldOn && !isOn){ segs[idx].classList.add('on','flicker-on'); setTimeout(()=> segs[idx].classList.remove('flicker-on'), 180); }
+            if(!shouldOn && isOn){ segs[idx].classList.remove('on'); segs[idx].classList.add('flicker-off'); setTimeout(()=> segs[idx].classList.remove('flicker-off'), 180); }
+          }
+          state._segCounts[key] = target;
+          state._segAnim[key] = null;
+        }
+      }
+      state._segAnim[key] = { raf: requestAnimationFrame(draw) };
     }catch(e){}
   }
 

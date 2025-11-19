@@ -426,12 +426,9 @@
 			animateNumber($vsLeftHp, (state._displayHp.player!=null?state._displayHp.player:pNow), pNow, 420, 'player', p.maxHp);
 			animateNumber($vsRightHp, (state._displayHp.enemy!=null?state._displayHp.enemy:eNow), eNow, 420, 'enemy', e.maxHp);
 			var pw=Math.max(0,p.hp/p.maxHp), ew=Math.max(0,e.hp/e.maxHp);
-			try{
-				var leftInner = document.getElementById('vs-left-inner');
-				var rightInner = document.getElementById('vs-right-inner');
-				if(leftInner) leftInner.style.transform = 'scaleX(' + pw + ')';
-				if(rightInner) rightInner.style.transform = 'scaleX(' + ew + ')';
-			}catch(e){}
+			ensureHpSegments();
+			setHpSegments('player', pw);
+			setHpSegments('enemy', ew);
 			$playerEffects.textContent = (p.effects||[]).map(function(x){ return x.name + (x.stacks?(' ['+x.stacks+']'):'') + '(' + x.rounds + ')'; }).join(', ');
 			$enemyEffects.textContent = (e.effects||[]).map(function(x){ return x.name + (x.stacks?(' ['+x.stacks+']'):'') + '(' + x.rounds + ')'; }).join(', ');
 			if($benchR){
@@ -447,12 +444,12 @@
 				var right = document.querySelector('.vs-fill.right');
 				if(left && !left.querySelector('.vs-segments')){
 					var segs = document.createElement('div'); segs.className='vs-segments';
-					for(var i=0;i<50;i++){ var d=document.createElement('div'); d.className='vs-seg'; segs.appendChild(d); }
+					for(var i=0;i<25;i++){ var d=document.createElement('div'); d.className='vs-seg'; segs.appendChild(d); }
 					left.appendChild(segs);
 				}
 				if(right && !right.querySelector('.vs-segments')){
 					var segs2 = document.createElement('div'); segs2.className='vs-segments';
-					for(var j=0;j<50;j++){ var d2=document.createElement('div'); d2.className='vs-seg'; segs2.appendChild(d2); }
+					for(var j=0;j<25;j++){ var d2=document.createElement('div'); d2.className='vs-seg'; segs2.appendChild(d2); }
 					right.appendChild(segs2);
 				}
 			}catch(e){}
@@ -464,20 +461,50 @@
 				var segWrap = root.querySelector('.vs-segments');
 				if(!segWrap) return;
 				var segs = segWrap.querySelectorAll('.vs-seg');
-				var total = 50;
-				var count = Math.max(0, Math.min(total, Math.floor(ratio * total)));
+				var total = 25;
+				var target = Math.max(0, Math.min(total, Math.floor(ratio * total)));
 				segWrap.classList.remove('hp-ok','hp-warn','hp-danger');
-				if(ratio > 0.6) segWrap.classList.add('hp-ok');
-				else if(ratio > 0.3) segWrap.classList.add('hp-warn');
-				else segWrap.classList.add('hp-danger');
-				for(var idx=0; idx<segs.length; idx++){
-					var el = segs[idx];
-					if(idx < count){
-						if(!el.classList.contains('on')){ el.classList.add('on','flicker-on'); (function(elm){ setTimeout(function(){ elm.classList.remove('flicker-on'); }, 180); })(el); }
-					} else {
-						if(el.classList.contains('on')){ el.classList.remove('on'); el.classList.add('flicker-off'); (function(elm){ setTimeout(function(){ elm.classList.remove('flicker-off'); }, 180); })(el); }
+				if(ratio > 0.6) segWrap.classList.add('hp-ok'); else if(ratio > 0.3) segWrap.classList.add('hp-warn'); else segWrap.classList.add('hp-danger');
+				state._segCounts = state._segCounts || { player: null, enemy: null };
+				state._segAnim = state._segAnim || { player: null, enemy: null };
+				var key = side==='player' ? 'player' : 'enemy';
+				var from = (state._segCounts[key] == null) ? target : state._segCounts[key];
+				if(state._segAnim[key] && state._segAnim[key].raf){ cancelAnimationFrame(state._segAnim[key].raf); state._segAnim[key] = null; }
+				if(from === target){
+					for(var idx=0; idx<segs.length; idx++){
+						var shouldOn = idx >= (total - target);
+						if(shouldOn){ if(!segs[idx].classList.contains('on')) segs[idx].classList.add('on'); }
+						else { if(segs[idx].classList.contains('on')) segs[idx].classList.remove('on'); }
+					}
+					state._segCounts[key] = target;
+					return;
+				}
+				var duration = 420;
+				var startTime = performance.now();
+				function draw(now){
+					var t = Math.min(1, (now - startTime) / duration);
+					var eased = t<0.5 ? 2*t*t : -1 + (4-2*t)*t;
+					var cur = from + (target - from) * eased;
+					var curCount = Math.max(0, Math.min(total, Math.round(cur)));
+					for(var idx=0; idx<segs.length; idx++){
+						var shouldOn = idx >= (total - curCount);
+						var isOn = segs[idx].classList.contains('on');
+						if(shouldOn && !isOn){ segs[idx].classList.add('on'); }
+						if(!shouldOn && isOn){ segs[idx].classList.remove('on'); }
+					}
+					if(t < 1){ state._segAnim[key] = { raf: requestAnimationFrame(draw) }; }
+					else {
+						for(var idx=0; idx<segs.length; idx++){
+							var shouldOn = idx >= (total - target);
+							var isOn = segs[idx].classList.contains('on');
+							if(shouldOn && !isOn){ segs[idx].classList.add('on','flicker-on'); (function(elm){ setTimeout(function(){ elm.classList.remove('flicker-on'); }, 180); })(segs[idx]); }
+							if(!shouldOn && isOn){ segs[idx].classList.remove('on'); segs[idx].classList.add('flicker-off'); (function(elm){ setTimeout(function(){ elm.classList.remove('flicker-off'); }, 180); })(segs[idx]); }
+						}
+						state._segCounts[key] = target;
+						state._segAnim[key] = null;
 					}
 				}
+				state._segAnim[key] = { raf: requestAnimationFrame(draw) };
 			}catch(e){}
 		}
 		function updateNamesAndSprites(){
@@ -1013,7 +1040,7 @@
 		}
 
 		function makeBoss(){
-			return { id:'boss-eggling-custom', name:'Eggling', type:'Boss', maxHp:4500, power:10, healing:4, image:'Sprites/Adult2 (1).gif', hp:4000, effects:[], defend:false, dead:false, cooldowns:{} };
+			return { id:'boss-eggling-custom', name:'Eggling', type:'Boss', maxHp:5000, power:10, healing:4, image:'Sprites/Adult2 (1).gif', hp:5000, effects:[], defend:false, dead:false, cooldowns:{} };
 		}
 		function makeEnemy(p){
 			var e = JSON.parse(JSON.stringify(p));

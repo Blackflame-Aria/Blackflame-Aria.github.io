@@ -1,3 +1,5 @@
+
+/* Segmented HP bar (3v3) */
 .vs-fill .vs-fill-inner { opacity: 0 !important; }
 
 .vs-track { 
@@ -42,7 +44,7 @@
 	box-shadow: 0 0 6px rgba(0,0,0,0.2), inset 0 0 6px rgba(255,255,255,0.08);
 }
 
-.vs-segments.hp-ok .vs-seg.on { background: #0f0; }
+.vs-segments.hp-ok .vs-seg.on { background: #f0f; }
 .vs-segments.hp-warn .vs-seg.on { background: #ffee00; }
 .vs-segments.hp-danger .vs-seg.on { background: #f00; }
 
@@ -50,4 +52,3 @@
 @keyframes segFlickerOff { 0%{opacity:1} 50%{opacity:0.2} 100%{opacity:0} }
 .vs-seg.flicker-on { animation: segFlickerOn 160ms ease-in-out; }
 .vs-seg.flicker-off { animation: segFlickerOff 160ms ease-in-out; }
-

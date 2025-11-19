@@ -1,12 +1,12 @@
 :root {
-	--neon: #00f;
-	--accent: #00f;
-	--good: #00f;
+	--neon: #08f;
+	--accent: #08f;
+	--good: #08f;
 }
 
 body {
-	border: #00f 2px solid;
-	box-shadow: inset 0 0 10px #00f, 0 0 10px #00f, 0 0 10px 2px #00f inset;
+	border: #08f 2px solid;
+	box-shadow: inset 0 0 10px #08f, 0 0 10px #08f, 0 0 10px 2px #08f inset;
 }
 
 header h1 {
@@ -25,12 +25,12 @@ header h1 {
 }
 
 .vs-track.boss .turn-pill.right {
-	background: #00f;
+	background: #08f;
 	color: #000;
 }
 .ability-btn .keybind,
 .selected-abilities .sel .sel-key {
-	color: #00f;
+	color: #08f;
 }
 
 .bench-hp-row .hp-badge {
@@ -55,12 +55,12 @@ header h1 {
 .round-right,
 #vs-left-hp,
 #vs-right-hp {
-	color: #00f !important;
+	color: #08f !important;
 	margin-left: 4%;
 	margin-right: 4%;
 }
 #round-counter {
-	color: #00f !important;
+	color: #08f !important;
 }
 .vs-track { 
 	width: 95%; 
@@ -98,35 +98,35 @@ header h1 {
 }
 
 @keyframes Pulse {
-	0% { box-shadow: 0 0 18px rgba(0,0,255,0.06); }
-	50% { box-shadow: 0 0 50px rgba(0,0,255,0.56); }
-	100% { box-shadow: 0 0 18px rgba(0,0,255,0.06); }
+	0% { box-shadow: 0 0 18px rgba(0,136,255,0.06); }
+	50% { box-shadow: 0 0 50px rgba(0,136,255,0.56); }
+	100% { box-shadow: 0 0 18px rgba(0,136,255,0.06); }
 }
 
 @keyframes neonPulse {
-	0% { box-shadow: 0 0 6px rgba(0,0,255,0.4); transform: translateY(0) scale(1); }
-	50% { box-shadow: 0 0 24px rgba(0,0,255,0.3); transform: translateY(-2px) scale(1.02); }
-	100% { box-shadow: 0 0 6px rgba(0,0,255,0.2); transform: translateY(0) scale(1); }
+	0% { box-shadow: 0 0 6px rgba(0,136,255,0.4); transform: translateY(0) scale(1); }
+	50% { box-shadow: 0 0 24px rgba(0,136,255,0.3); transform: translateY(-2px) scale(1.02); }
+	100% { box-shadow: 0 0 6px rgba(0,136,255,0.2); transform: translateY(0) scale(1); }
 }
 
 .combatant.active h3,
 .combatant.active .name-wrap h4 {
-	background: linear-gradient(90deg, rgba(0,0,255,0.10), rgba(0,0,255,0.04));
-	text-shadow: 0 0 12px rgba(0,0,255,0.9);
+	background: linear-gradient(90deg, rgba(0,136,255,0.10), rgba(0,136,255,0.04));
+	text-shadow: 0 0 12px rgba(0,136,255,0.9);
 }
 
 .combatant.active {
-	box-shadow: 0 0 30px rgba(0,0,255,0.18);
+	box-shadow: 0 0 30px rgba(0,136,255,0.18);
 }
 
-.vs-divider { box-shadow: 0 0 6px #00f; }
+.vs-divider { box-shadow: 0 0 6px #08f; }
 
 .vs-fill.left .vs-fill-inner {
-	background: linear-gradient(35deg,#00f,#88f) !important;
+	background: linear-gradient(35deg,#08f,#88f) !important;
 }
 
-.log { border-color: #00f; }
-.log div { border-left-color: #00f; }
+.log { border-color: #08f; }
+.log div { border-left-color: #08f; }
 
 .enemy-backring {
 	position: absolute;
@@ -148,14 +148,18 @@ header h1 {
 .combatant.enemy .sprite { position: relative; }
 #enemy-sprite { position: relative; z-index: 2; }
 
-.ability-btn .keybind { color: #00f !important; }
+.ability-btn .keybind { color: #08f !important; }
 
 #actions button[disabled] { opacity: 0.45; filter: grayscale(25%); }
 
 button.ability-btn.pink { border-color: #ff00ff; color: #ff00ff; }
 button.ability-btn.pink:hover { background: #ff00ff; color: #000; }
 
-.ability-btn { position: relative; }
+.ability-btn { 
+	position: relative;
+	width: 100%;
+	padding: 10px 11px; 
+}
 .ability-btn .cooldown-overlay {
 	position: absolute;
 	inset: 0;
@@ -169,7 +173,7 @@ button.ability-btn.pink:hover { background: #ff00ff; color: #000; }
 	pointer-events: none;
 }
 
-.log-msg { color: #0000ff; }
+.log-msg { color: #0088ff; }
 
 .log-msg {
 	transition: transform 220ms ease, opacity 220ms ease;
@@ -179,8 +183,8 @@ button.ability-btn.pink:hover { background: #ff00ff; color: #000; }
 	opacity: 0.0;
 }
 .log-msg.announce {
-	color: #00f;
-	border-left-color: #00f;
+	color: #08f;
+	border-left-color: #08f;
 }
 .log-msg.blight {
 	color: #00aa00;
