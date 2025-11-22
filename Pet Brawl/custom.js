@@ -616,7 +616,28 @@
 		function applyDamageFromTo(atk, def, baseDamage, label){
 			var raw = Math.max(0, Math.round(baseDamage));
 			raw = Math.round(raw * getWeakenMultiplier(atk));
-			if(def.defend){ raw = Math.round(raw * 0.5); consumeDefend(def); }
+			if(def.defend){
+				var defendedEff=null;
+				if(def.effects){
+					for(var di=0; di<def.effects.length; di++){
+						if(def.effects[di].id==='defended'){ defendedEff=def.effects[di]; break; }
+					}
+				}
+				var reduction = 0.5;
+				if(def.name === 'Eggling'){
+					var bolsteredActive = def.bolster || hasEffect(def,'bolstered');
+					reduction = bolsteredActive ? 0 : 0.25;
+				}
+				raw = Math.round(raw * reduction);
+				if(typeof def.defendCharges === 'number' && def.defendCharges > 1){
+					def.defendCharges -= 1;
+					if(defendedEff){ defendedEff.stacks = def.defendCharges; }
+				} else {
+					consumeDefend(def);
+					def.defendCharges = 0;
+					if(defendedEff){ defendedEff.stacks = 0; }
+				}
+			}
 			var bubble=null;
 			if(def.effects){ for(var i=0;i<def.effects.length;i++){ if(def.effects[i].id==='bubble'){ bubble=def.effects[i]; break; } } }
 			if(bubble && typeof bubble.value==='number') raw = Math.max(0, raw - bubble.value);
@@ -654,7 +675,10 @@
 				def.hp=0; def.dead=true;
 				logMsg(def.name + ' was brutally murdered!', 'brutally');
 				playSound('murder');
-				if(def===state.enemy){ rotateNextEnemy(); } else { finishBattle(); }
+				if(def===state.enemy){
+					rotateNextEnemy();
+				} else {
+				}
 			}
 			return raw;
 		}
@@ -880,7 +904,7 @@
 					case 'toxin': {
 						var exec = { damage: 275 + rint(0,25), rotValue:45, rotRounds:8 };
 						addEffect(state.player,{id:'toxin',name:'Toxin',rounds:3,exec: exec});
-						logMsg(actor.name + ' injects a delayed toxin (executes in 3 rounds).');
+						logMsg(actor.name + ' injects a delayed toxin (3 rounds).');
 						actor.cooldowns['toxin'] = 5;
 					} break;
 					case 'bubble': {
@@ -982,13 +1006,21 @@
 				switch(id){
 					case 'pass': playSound('pass'); logMsg(actor.name + ' passed the turn.'); break;
 					case 'attack': {
-						var base=(actor.power||0)*10 + rint(0,9); if(actor.bolster){ base+=30; actor.bolster=false; }
+						var base=(actor.power||0)*10 + rint(0,15); if(actor.bolster){ base+=50; actor.bolster=false; }
 						applyDamageFromTo(actor, state.enemy, base);
 						flash($enemyHpFill,'hit');
 					} break;
 					case 'defend': {
-						actor.defend=true; addEffect(actor,{id:'defended',name:'Defended',rounds:2}); playSound('defend'); logMsg(actor.name + ' braced for incoming damage.');
-						actor.cooldowns = actor.cooldowns || {}; actor.cooldowns['defend'] = 3;
+						if(actor.name === 'Eggling'){
+							actor.defend=true; actor.defendCharges=2;
+							addEffect(actor,{id:'defended',name:'Defended',rounds:3,stacks:3});
+							playSound('defend'); logMsg(actor.name + ' braces (2 charges, enhanced).');
+						} else {
+							actor.defend=true; actor.defendCharges=1;
+							addEffect(actor,{id:'defended',name:'Defended',rounds:3});
+							playSound('defend'); logMsg(actor.name + ' braced for incoming damage.');
+						}
+						actor.cooldowns = actor.cooldowns || {}; actor.cooldowns['defend'] = 5;
 					} break;
 					case 'bolster': {
 						actor.bolster=true; addEffect(actor,{id:'bolstered',name:'Bolstered',rounds:2}); playSound('bolster'); logMsg(actor.name + ' bolstered their next ability.');
@@ -1009,7 +1041,7 @@
 					case 'teamAttack': {
 						var i; for(i=0;i<state.enemyTeam.length;i++){
 							var t=state.enemyTeam[i]; if(!t || t.dead || t.hp<=0) continue;
-							var baseA=(actor.power||0)*3 + rint(0,8); if(actor.bolster){ baseA+=15; }
+							var baseA=(actor.power||0)*3.25 + rint(0,15); if(actor.bolster){ baseA+=35; }
 							var hit = applyDamageFromTo(actor, t, baseA, 'suppress-log');
 							logMsg(actor.name + ' struck ' + t.name + ' for ' + hit + ' damage.');
 						}
@@ -1017,6 +1049,8 @@
 						actor.cooldowns = actor.cooldowns || {}; actor.cooldowns['teamAttack'] = 4;
 						try{ playSound('attack'); }catch(e){}
 						try{ var psT=document.querySelector('.combatant.player .sprite'); if(psT){ psT.classList.add('team-attack-right'); setTimeout(function(){ psT.classList.remove('team-attack-right'); }, 520); } }catch(e){}
+						var allDeadPost = (state.enemyTeam||[]).every(function(p){ return !p || p.dead || p.hp<=0; });
+						if(allDeadPost){ finishBattle(); }
 					} break;
 					case 'crystalize': {
 						actor.cooldowns = actor.cooldowns || {};
@@ -1046,7 +1080,18 @@
 		}
 
 		function makeBoss(){
-			return { id:'boss-eggling-custom', name:'Eggling', type:'Boss', maxHp:5000, power:10, healing:4, image:'Sprites/Adult2 (1).gif', hp:5000, effects:[], defend:false, dead:false, cooldowns:{} };
+			return { id:'boss-eggling-custom', 
+				name:'Eggling', 
+				type:'Boss', 
+				maxHp:7000, 
+				power:10, 
+				healing:4, 
+				image:'Sprites/Adult2 (1).gif', 
+				hp:7000, 
+				effects:[], 
+				defend:false,
+				dead:false, 
+				cooldowns:{} };
 		}
 		function makeEnemy(p){
 			var e = JSON.parse(JSON.stringify(p));

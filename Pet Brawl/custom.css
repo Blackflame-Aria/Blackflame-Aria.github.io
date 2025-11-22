@@ -130,7 +130,7 @@ header h1 {
 
 .enemy-backring {
 	position: absolute;
-	left: 0; right: 0; top: 30px; bottom: 0;
+	left: 0; right: 0; top: 40px; bottom: 0;
 	pointer-events: none;
 	z-index: 0;
 }
