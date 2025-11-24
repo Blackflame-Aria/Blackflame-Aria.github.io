@@ -2154,6 +2154,7 @@
     } else if(lastActor === 'enemy'){
       state.round = (state.round || 1) + 1;
       updateRoundDisplay();
+      try{ log({ text: `--Round ${state.round}--`, type: 'announce' }); }catch(e){}
       setActiveTurn('player');
       applyEffects('player');
       if(state.turn === 'finished') return;

@@ -752,6 +752,7 @@
 			}catch(e){}
 			if(def.hp<=0 && !def.dead){
 				def.hp=0; def.dead=true;
+				try{ updateNamesAndSprites(); }catch(e){}
 				logMsg(def.name + ' was brutally murdered!', 'brutally');
 				playSound('murder');
 				if(def===state.enemy){
@@ -836,7 +837,9 @@
 				flash( side==='player'? $playerHpFill : $enemyHpFill, total<0?'hit':'heal');
 			}
 			if(actor.hp<=0 && !actor.dead){
-				actor.dead=true; actor.hp=0; logMsg(actor.name + ' was brutally murdered!', 'brutally'); playSound('murder');
+				actor.dead=true; actor.hp=0;
+				try{ updateNamesAndSprites(); }catch(e){}
+				logMsg(actor.name + ' was brutally murdered!', 'brutally'); playSound('murder');
 				if(side==='enemy'){
 					ensureActiveEnemyAlive();
 				} else {
@@ -938,7 +941,9 @@
 				}
 				setTimeout(enemyAct, 800);
 			}else{
-				state.round = (state.round||1) + 1; updateRound();
+				state.round = (state.round||1) + 1;
+				updateRound();
+				logMsg('--Round ' + state.round + '--', 'announce');
 				if(state.player){
 					state.player.cooldowns = state.player.cooldowns || {};
 					for(var key in state.player.cooldowns){ if(state.player.cooldowns[key]>0){ state.player.cooldowns[key]-=1; if(state.player.cooldowns[key]<=0) delete state.player.cooldowns[key]; } }
