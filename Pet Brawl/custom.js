@@ -1105,7 +1105,7 @@
 							if(actor.bolster){ actor.bolster=false; }
 							removeEffect(actor,'bolstered');
 							playSound('defend');
-								logMsg(actor.name + ' forms Guard (' + (bolsteredActive? '75':'50') + '% reduction, 3 rounds).');
+								logMsg(actor.name + ' braces for incoming damage (3 rounds).');
 								actor.defend=false; actor.defendCharges=0;
 						} else {
 							actor.defend=true; actor.defendCharges=1;

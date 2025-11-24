@@ -7,12 +7,12 @@ body {
 }
 
 .game-title {
-    color: #ff6f91;
+    color: rebeccapurple;
     text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.2);
 }
 
 .turn-text {
-    color: #700200;
+    color: rebeccapurple;
     font-size: 1.5rem;
     margin: 20px 0;
 }
@@ -42,7 +42,8 @@ body {
 .cell {
     width: 60px;
     height: 60px;
-    background: rgba(255, 135, 135, 0.8);
+    background: rebeccapurple;
+    color: #fff;
     border-radius: 10px;
     display: flex;
     align-items: center;
@@ -53,7 +54,7 @@ body {
 }
 
 .cell:hover {
-    background: rgba(255, 182, 193, 0.8);
+    background: rebeccapurple;
 }
 
 .cell img {
@@ -62,8 +63,9 @@ body {
 }
 
 .btn-primary {
-    background-color: #ff6f91;;
-    border: 2px solid #fff;
+    background-color: #fff;
+    border: 2px solid rebeccapurple;
+    color: rebeccapurple;
     padding: 10px 20px;
     font-size: 1.2rem;
     border-radius: 15px;
@@ -71,10 +73,10 @@ body {
 }
 
 .btn-primary:hover {
-    background-color: #ffffff;
+    background-color: rebeccapurple;
     transform: scale(1.05);
-    border-color: #ff6f91;
-    color: #ff6f91;
+    border-color: rebeccapurple;
+    color: #fff;
 }
 
 .modal-title {
@@ -88,7 +90,7 @@ body {
 
 a {
     padding: 10px 20px;
-    color: #ff8181;
+    color: rebeccapurple;
    }
 a:hover {
     color: #fff;
@@ -96,13 +98,13 @@ a:hover {
    
 #return-button {
   background-color: #ffffff;
-  border: 2px solid #ff8181;
+  border: 2px solid rebeccapurple;
   margin-top: 20px;
   padding: 10px 0px;
   color: rgb(0, 0, 0);
 }
 
 #return-button:hover {
-  background-color: #ff6f91;;
+  background-color: rebeccapurple;;
   border: 2px solid #fff;
 }
