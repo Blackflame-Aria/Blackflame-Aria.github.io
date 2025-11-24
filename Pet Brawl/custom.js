@@ -95,10 +95,12 @@
 		function createVolumeControlUI(){
 			var container = document.createElement('div');
 			container.className = 'petb-volume blue';
-			container.innerHTML = '<div class="volume-icon" title="Toggle sound">🔊</div>' +
+			container.innerHTML = '' +
+				'<div class="volume-icon" title="Toggle sound">🔊</div>' +
 				'<div class="volume-control">' +
 				  '<div class="volume-meter" id="petb-volume-meter">' +
-				    '<div id="petb-volume-bar"></div>' +
+				    '<div class="volume-bar" id="petb-volume-bar"><div class="volume-bar-inner"></div></div>' +
+				    '<div class="volume-segments" id="petb-volume-segments"></div>' +
 				    '<div class="volume-handle" id="petb-volume-handle"></div>' +
 				  '</div>' +
 				'</div>';
@@ -107,7 +109,17 @@
 			var icon = container.querySelector('.volume-icon');
 			var meter = container.querySelector('#petb-volume-meter');
 			var bar = container.querySelector('#petb-volume-bar');
+			var barInner = bar ? bar.querySelector('.volume-bar-inner') : null;
+			var segWrap = container.querySelector('#petb-volume-segments');
 			var handle = container.querySelector('#petb-volume-handle');
+			var VOL_SEG_COUNT = 16;
+			if(segWrap && !segWrap.childElementCount){
+				for(var si=0; si<VOL_SEG_COUNT; si++){
+					var seg = document.createElement('div');
+					seg.className = 'vol-seg';
+					segWrap.appendChild(seg);
+				}
+			}
 
 			var collapseTimer = null;
 			var isVolDragging = false;
@@ -116,6 +128,22 @@
 			function render(){
 				var pct = Math.round((volumeLevel||0) * 100);
 				bar.style.width = pct + '%';
+				if(barInner){
+					barInner.style.transform = 'scaleX(' + (pct/100) + ')';
+				}
+				if(segWrap){
+					var segs = segWrap.querySelectorAll('.vol-seg');
+					var totalSegs = segs.length || VOL_SEG_COUNT;
+					var active = Math.round((pct/100) * totalSegs);
+					segWrap.classList.remove('vol-ok','vol-warn','vol-danger');
+					if(pct > 80) segWrap.classList.add('vol-ok');
+					else if(pct > 60) segWrap.classList.add('vol-warn');
+					else segWrap.classList.add('vol-danger');
+					for(var si2=0; si2<segs.length; si2++){
+						if(si2 < active){ segs[si2].classList.add('on'); }
+						else { segs[si2].classList.remove('on'); }
+					}
+				}
 				var rect = meter.getBoundingClientRect();
 				var meterW = Math.max(8, rect.width || 120);
 				var handleX = (pct/100) * meterW;
@@ -194,14 +222,14 @@
 		setTimeout(createVolumeControlUI, 50);
 
 		var PETS = [
-			{ id:'p7', name:'Haju', type:'Blight', maxHp:700, power:10.5, healing:0.5, image:'Images/Haju.png' },
-			{ id:'p1', name:'Kivi', type:'Stone', maxHp:1000, power:7.5, healing:2.5, image:'Images/Kivi.png' },
-			{ id:'p2', name:'Tuuli', type:'Storm', maxHp:900, power:8, healing:2.5, image:'Images/Tuli.png' },
-			{ id:'p4', name:'Vala', type:'Gleam', maxHp:600, power:6.5, healing:5.75, image:'Images/Vala.png' },
-			{ id:'p6', name:'Palo', type:'Flame', maxHp:500, power:11, healing:3, image:'Images/Palo.png' },
-			{ id:'p3', name:'Vika', type:'Gloom', maxHp:800, power:9, healing:3, image:'Images/Vika.png' },
+			{ id:'p7', name:'Haju', type:'Blight', maxHp:650, power:10.5, healing:0.5, image:'Images/Haju.png' },
+			{ id:'p1', name:'Kivi', type:'Stone', maxHp:900, power:7.5, healing:2.5, image:'Images/Kivi.png' },
+			{ id:'p2', name:'Tuuli', type:'Storm', maxHp:750, power:8, healing:2.5, image:'Images/Tuli.png' },
+			{ id:'p4', name:'Vala', type:'Gleam', maxHp:650, power:6.5, healing:5.75, image:'Images/Vala.png' },
+			{ id:'p6', name:'Palo', type:'Flame', maxHp:650, power:11, healing:3, image:'Images/Palo.png' },
+			{ id:'p3', name:'Vika', type:'Gloom', maxHp:700, power:9, healing:3, image:'Images/Vika.png' },
 			{ id:'p5', name:'Vesi', type:'Fluid', maxHp:700, power:8, healing:4, image:'Images/Vesi.png' },
-			{ id:'p8', name:'Sieni', type:'Bloom', maxHp:750, power:6, healing:5, image:'Images/Sieni.png' }
+			{ id:'p8', name:'Sieni', type:'Bloom', maxHp:700, power:6, healing:5, image:'Images/Sieni.png' }
 		];
 
 		var PLAYER_ABILITIES = [
@@ -355,7 +383,8 @@
 				else if(/\b(attacks|attack|injects|dealt|struck|lashes out|returned)\b/.test(txt)) cls='attack';
 				else if(/\b(inflicted)\b/.test(txt)) cls='blight';
 				else if(/\b(beams)\b/.test(txt)) cls='beam';
-				else if(/\b(braced|defends|stunned|passed|bolstered|intervened|avenge)\b/.test(txt)) cls='support';
+				else if(/\b(shatters)\b/.test(txt)) cls='shatter';
+				else if(/\b(braced|braces|defends|stunned|passed|bolstered|intervened|avenge)\b/.test(txt)) cls='support';
 				else if(/\b(started|ended)\b/.test(txt)) cls='announce';
 				else if(/\b(brutally)\b/.test(txt)) cls='brutally';
 				if(type) d.classList.add(type);
@@ -412,6 +441,21 @@
 			}
 			state._hpAnim[key]=requestAnimationFrame(step);
 		}
+		function animateBenchHp(el, start, end, duration, maxValue){
+			if(!el) return;
+			duration = (typeof duration==='number')? duration : 420;
+			if(state._hpAnim.bench) cancelAnimationFrame(state._hpAnim.bench);
+			var range = end - start, t0 = performance.now();
+			function step(t){
+				var k = Math.min(1,(t-t0)/duration);
+				var e = k<0.5?2*k*k:-1+(4-2*k)*k;
+				var v = Math.round(start + range*e);
+				el.textContent = 'Bench: ' + v + ' / ' + maxValue;
+				if(k<1){ state._hpAnim.bench = requestAnimationFrame(step); }
+				else { el.textContent = 'Bench: ' + end + ' / ' + maxValue; state._displayHp.bench = end; state._hpAnim.bench = null; }
+			}
+			state._hpAnim.bench = requestAnimationFrame(step);
+		}
 		function flash(fill, kind){
 			var inner = fill && fill.querySelector ? fill.querySelector('.fill-inner') : null;
 			if(!inner) return;
@@ -435,7 +479,8 @@
 				var bench=state.enemyTeam.slice(1);
 				var cur=0, tot=0;
 				for(var i=0;i<bench.length;i++){ cur += (bench[i].hp||0); tot += (bench[i].maxHp||0); }
-				$benchR.textContent = 'Bench: ' + cur + ' / ' + tot;
+				state._displayHp.bench = (typeof state._displayHp.bench === 'number')? state._displayHp.bench : cur;
+				animateBenchHp($benchR, state._displayHp.bench, cur, 420, tot);
 			}
 		}
 		function ensureHpSegments(){
@@ -444,12 +489,12 @@
 				var right = document.querySelector('.vs-fill.right');
 				if(left && !left.querySelector('.vs-segments')){
 					var segs = document.createElement('div'); segs.className='vs-segments';
-					for(var i=0;i<25;i++){ var d=document.createElement('div'); d.className='vs-seg'; segs.appendChild(d); }
+					for(var i=0;i<20;i++){ var d=document.createElement('div'); d.className='vs-seg'; segs.appendChild(d); }
 					left.appendChild(segs);
 				}
 				if(right && !right.querySelector('.vs-segments')){
 					var segs2 = document.createElement('div'); segs2.className='vs-segments';
-					for(var j=0;j<25;j++){ var d2=document.createElement('div'); d2.className='vs-seg'; segs2.appendChild(d2); }
+					for(var j=0;j<20;j++){ var d2=document.createElement('div'); d2.className='vs-seg'; segs2.appendChild(d2); }
 					right.appendChild(segs2);
 				}
 			}catch(e){}
@@ -461,7 +506,7 @@
 				var segWrap = root.querySelector('.vs-segments');
 				if(!segWrap) return;
 				var segs = segWrap.querySelectorAll('.vs-seg');
-				var total = 25;
+				var total = 20;
 				var target = Math.max(0, Math.min(total, Math.floor(ratio * total)));
 				segWrap.classList.remove('hp-ok','hp-warn','hp-danger');
 				if(ratio > 0.6) segWrap.classList.add('hp-ok'); else if(ratio > 0.3) segWrap.classList.add('hp-warn'); else segWrap.classList.add('hp-danger');
@@ -613,9 +658,43 @@
 			if(!actor) return;
 			if(actor.defend){ actor.defend=false; removeEffect(actor,'defended'); }
 		}
+		function setPlayerDeathSprite(){
+			if(state.player && state.player.dead){
+				state.player.image = 'Sprites/Sick2.gif';
+				var ps = document.getElementById('player-sprite'); if(ps) ps.src = state.player.image;
+			}
+		}
+		function ensureActiveEnemyAlive(){
+			var team = state.enemyTeam;
+			if(!team || team.length===0){ finishBattle(); return; }
+			var firstIdx = -1;
+			for(var i=0;i<team.length;i++){
+				if(team[i] && !team[i].dead && team[i].hp>0){ firstIdx = i; break; }
+			}
+			if(firstIdx === -1){ finishBattle(); return; }
+			if(firstIdx !== 0){
+				var next = team.splice(firstIdx,1)[0];
+				team.unshift(next);
+			}
+			if(state.enemy !== team[0]){
+				state.enemy = team[0];
+				updateNamesAndSprites();
+				logMsg(state.enemy.name + ' enters the fray!','announce');
+			}
+		}
 		function applyDamageFromTo(atk, def, baseDamage, label){
 			var raw = Math.max(0, Math.round(baseDamage));
 			raw = Math.round(raw * getWeakenMultiplier(atk));
+			var guardEff = null;
+			if(def && def.effects){
+				for(var gdi=0; gdi<def.effects.length; gdi++){
+					if(def.effects[gdi].id==='eguard'){ guardEff = def.effects[gdi]; break; }
+				}
+			}
+			if(guardEff){
+				var gpct = (typeof guardEff.pct==='number') ? guardEff.pct : 0.5;
+				raw = Math.round(raw * gpct);
+			}
 			if(def.defend){
 				var defendedEff=null;
 				if(def.effects){
@@ -661,7 +740,7 @@
 						logMsg(def.name + "'s vines returned " + ret + ' damage to ' + atk.name + '.', 'attack');
 						if(atk.hp<=0 && !atk.dead){
 							atk.hp=0; atk.dead=true; logMsg(atk.name + ' was brutally murdered!', 'brutally'); playSound('murder');
-							if(atk===state.enemy){ rotateNextEnemy(); } else { finishBattle(); }
+							if(atk===state.enemy){ rotateNextEnemy(); } else { setPlayerDeathSprite(); finishBattle(); }
 						}
 					}
 				}
@@ -676,8 +755,9 @@
 				logMsg(def.name + ' was brutally murdered!', 'brutally');
 				playSound('murder');
 				if(def===state.enemy){
-					rotateNextEnemy();
-				} else {
+					ensureActiveEnemyAlive();
+				} else if(def===state.player){
+					setPlayerDeathSprite();
 				}
 			}
 			return raw;
@@ -687,11 +767,17 @@
 			if(!actor || actor.dead) return;
 			var remaining=[], total=0;
 			var i, eff;
+			var guardEff=null, guardPct=null;
+			if(actor.effects){
+				for(var gi=0; gi<actor.effects.length; gi++){
+					if(actor.effects[gi].id==='eguard'){ guardEff=actor.effects[gi]; guardPct = (typeof guardEff.pct==='number')? guardEff.pct : 0.5; break; }
+				}
+			}
 			for(i=0;i<(actor.effects||[]).length;i++){
 				eff = actor.effects[i];
 				if(eff.id==='dot' || eff.id==='scorch' || eff.id==='hurricane' || eff.id==='rot'){
 					var d = eff.value||0;
-					if(actor.defend){ d = Math.round(d*0.5); actor.defend=false; removeEffect(actor,'defended'); }
+					if(guardPct!=null){ d = Math.round(d * guardPct); }
 					var bub=null; if(actor.effects){ for(var bi=0;bi<actor.effects.length;bi++){ if(actor.effects[bi].id==='bubble'){ bub=actor.effects[bi]; break; } } }
 					if(bub && typeof bub.value==='number') d = Math.max(0, d - bub.value);
 					actor.hp = Math.max(0, actor.hp - d); total -= d; playSound('poison');
@@ -706,7 +792,7 @@
 						var exec = eff.exec || {};
 						var dmg = (typeof exec.damage==='number')? exec.damage : (275 + rint(0,25));
 						var dtx = dmg;
-						if(actor.defend){ dtx = Math.round(dtx*0.5); actor.defend=false; removeEffect(actor,'defended'); }
+						if(guardPct!=null){ dtx = Math.round(dtx * guardPct); }
 						var bub2=null; if(actor.effects){ for(var bk=0;bk<actor.effects.length;bk++){ if(actor.effects[bk].id==='bubble'){ bub2=actor.effects[bk]; break; } } }
 						if(bub2 && typeof bub2.value==='number') dtx = Math.max(0, dtx - bub2.value);
 						actor.hp = Math.max(0, actor.hp - dtx); total -= dtx; playSound('poison');
@@ -734,7 +820,7 @@
 					var step = (typeof eff.step==='number'? eff.step : 0);
 					var c = seq[ step < seq.length ? step : (seq.length-1) ];
 					var d2 = c||0;
-					if(actor.defend){ d2 = Math.round(d2*0.5); actor.defend=false; removeEffect(actor,'defended'); }
+					if(guardPct!=null){ d2 = Math.round(d2 * guardPct); }
 					var bb=null; if(actor.effects){ for(var bj=0;bj<actor.effects.length;bj++){ if(actor.effects[bj].id==='bubble'){ bb=actor.effects[bj]; break; } } }
 					if(bb && typeof bb.value==='number') d2 = Math.max(0, d2 - bb.value);
 					actor.hp = Math.max(0, actor.hp - d2); total -= d2; playSound('poison');
@@ -749,27 +835,21 @@
 				logMsg(actor.name + ' ' + (total<0?'lost':'recovered') + ' ' + Math.abs(total) + ' HP.', total<0?'damage':'heal');
 				flash( side==='player'? $playerHpFill : $enemyHpFill, total<0?'hit':'heal');
 			}
-			if(actor.hp<=0 && !actor.dead){ actor.dead=true; actor.hp=0; logMsg(actor.name + ' was brutally murdered!', 'brutally'); playSound('murder');
-				if(side==='enemy') rotateNextEnemy(); else finishBattle();
+			if(actor.hp<=0 && !actor.dead){
+				actor.dead=true; actor.hp=0; logMsg(actor.name + ' was brutally murdered!', 'brutally'); playSound('murder');
+				if(side==='enemy'){
+					ensureActiveEnemyAlive();
+				} else {
+					setPlayerDeathSprite();
+					finishBattle();
+				}
 			}
 			updateBars();
 		}
 
 		function rotateNextEnemy(){
-			var team = state.enemyTeam;
-			if(!team || team.length<=1) { finishBattle(); return; }
-			var i, idx=-1;
-			for(i=1;i<team.length;i++){ if(team[i] && !team[i].dead && team[i].hp>0){ idx=i; break; } }
-			if(idx>0){
-				var next = team.splice(idx,1)[0];
-				team.unshift(next);
-				state.enemy = team[0];
-				updateNamesAndSprites();
-				logMsg(state.enemy.name + ' will avenge them!', 'announce');
-				updateBars();
-			}else{
-				finishBattle();
-			}
+			ensureActiveEnemyAlive();
+			updateBars();
 		}
 
 		function renderActions(){
@@ -910,7 +990,7 @@
 					case 'bubble': {
 						addEffect(actor,{id:'bubble',name:'Bubble',rounds:3,value:60});
 						logMsg({ text: actor.name + ' reduces damage taken (3 rounds).', abilityId: 'bubble' });
-						actor.cooldowns['bubble'] = 3;
+						actor.cooldowns['bubble'] = 6;
 					} break;
 					case 'bolster': {
 						actor.bolster=true; addEffect(actor,{id:'bolstered',name:'Bolstered',rounds:2}); playSound('bolster');
@@ -919,8 +999,15 @@
 					} break;
 					case 'shatter': {
 						var dmg=150, self=75; if(actor.bolster){ dmg=200; self=100; actor.bolster=false; }
-						var applied = applyDamageFromTo(actor, state.player, dmg);
-						actor.hp = Math.max(0, actor.hp - self); logMsg(actor.name + ' struck ' + state.player.name + ' for ' + applied + ' damage and takes ' + self + '.');
+						var applied = applyDamageFromTo(actor, state.player, dmg, 'suppress-log');
+						actor.hp = Math.max(0, actor.hp - self);
+						logMsg(actor.name + ' struck ' + state.player.name + ' for ' + applied + ' damage and takes ' + self + '.', 'gray');
+						if(actor.hp<=0 && !actor.dead){
+							actor.hp=0; actor.dead=true; logMsg(actor.name + ' was brutally murdered!', 'brutally'); playSound('murder');
+							ensureActiveEnemyAlive();
+							updateBars();
+							if(state.turn==='finished') return;
+						}
 						actor.cooldowns['shatter'] = 2;
 					} break;
 					case 'hurricane': {
@@ -949,7 +1036,7 @@
 					} break;
 					case 'regen': {
 						var valR = 45; addEffect(actor,{id:'hot',name:'Regen',rounds:3,value:valR}); playSound('regenerate'); logMsg(actor.name + ' applied Regenerate (' + valR + '/round).');
-						actor.cooldowns['regen'] = 2;
+						actor.cooldowns['regen'] = 3;
 						try{ var es2 = document.querySelector('.combatant.enemy .sprite'); if(es2){ es2.classList.add('heal-bounce'); setTimeout(function(){ es2.classList.remove('heal-bounce'); }, 520); } }catch(e){}
 					} break;
 					case 'teamHeal': {
@@ -960,7 +1047,7 @@
 							logMsg(actor.name + ' healed ' + al.name + ' for ' + healEach + ' HP.');
 						}
 						playSound('heal');
-						actor.cooldowns['teamHeal'] = 2;
+						actor.cooldowns['teamHeal'] = 3;
 						try{ var es3 = document.querySelector('.combatant.enemy .sprite'); if(es3){ es3.classList.add('team-heal-up'); setTimeout(function(){ es3.classList.remove('team-heal-up'); }, 520); } }catch(e){}
 					} break;
 					case 'heal': {
@@ -1012,9 +1099,14 @@
 					} break;
 					case 'defend': {
 						if(actor.name === 'Eggling'){
-							actor.defend=true; actor.defendCharges=2;
-							addEffect(actor,{id:'defended',name:'Defended',rounds:3,stacks:3});
-							playSound('defend'); logMsg(actor.name + ' braces (2 charges, enhanced).');
+							var bolsteredActive = actor.bolster || hasEffect(actor,'bolstered');
+							var pct = bolsteredActive ? 0.25 : 0.5;
+							addEffect(actor,{ id:'eguard', name:'Guard', rounds:3, pct:pct });
+							if(actor.bolster){ actor.bolster=false; }
+							removeEffect(actor,'bolstered');
+							playSound('defend');
+								logMsg(actor.name + ' forms Guard (' + (bolsteredActive? '75':'50') + '% reduction, 3 rounds).');
+								actor.defend=false; actor.defendCharges=0;
 						} else {
 							actor.defend=true; actor.defendCharges=1;
 							addEffect(actor,{id:'defended',name:'Defended',rounds:3});
@@ -1035,23 +1127,26 @@
 					} break;
 					case 'shatter': {
 						var dmg=150, self=90; if(actor.bolster){ dmg=200; self=125; actor.bolster=false; }
-						var applied = applyDamageFromTo(actor, state.enemy, dmg); actor.hp=Math.max(0, actor.hp-self); logMsg(actor.name + ' struck ' + state.enemy.name + ' for ' + applied + ' damage and takes ' + self + '.');
+						var applied = applyDamageFromTo(actor, state.enemy, dmg, 'suppress-log');
+						actor.hp=Math.max(0, actor.hp-self);
+						logMsg(actor.name + ' shatters ' + state.enemy.name + ' for ' + applied + ' damage and takes ' + self + '.', 'gray');
 						actor.cooldowns = actor.cooldowns || {}; actor.cooldowns['shatter'] = 5;
 					} break;
 					case 'teamAttack': {
-						var i; for(i=0;i<state.enemyTeam.length;i++){
-							var t=state.enemyTeam[i]; if(!t || t.dead || t.hp<=0) continue;
-							var baseA=(actor.power||0)*3.25 + rint(0,15); if(actor.bolster){ baseA+=35; }
-							var hit = applyDamageFromTo(actor, t, baseA, 'suppress-log');
-							logMsg(actor.name + ' struck ' + t.name + ' for ' + hit + ' damage.');
-						}
-						actor.bolster=false;
-						actor.cooldowns = actor.cooldowns || {}; actor.cooldowns['teamAttack'] = 4;
-						try{ playSound('attack'); }catch(e){}
-						try{ var psT=document.querySelector('.combatant.player .sprite'); if(psT){ psT.classList.add('team-attack-right'); setTimeout(function(){ psT.classList.remove('team-attack-right'); }, 520); } }catch(e){}
-						var allDeadPost = (state.enemyTeam||[]).every(function(p){ return !p || p.dead || p.hp<=0; });
-						if(allDeadPost){ finishBattle(); }
-					} break;
+							var targets = state.enemyTeam.slice();
+							for(var ti=0; ti<targets.length; ti++){
+								var t = targets[ti]; if(!t || t.dead || t.hp<=0) continue;
+								var baseA=(actor.power||0)*3.25 + rint(0,15); if(actor.bolster){ baseA+=35; }
+								var hit = applyDamageFromTo(actor, t, baseA, 'suppress-log');
+								logMsg(actor.name + ' struck ' + t.name + ' for ' + hit + ' damage.');
+							}
+							actor.bolster=false;
+							actor.cooldowns = actor.cooldowns || {}; actor.cooldowns['teamAttack'] = 4;
+							try{ playSound('attack'); }catch(e){}
+							try{ var psT=document.querySelector('.combatant.player .sprite'); if(psT){ psT.classList.add('team-attack-right'); setTimeout(function(){ psT.classList.remove('team-attack-right'); }, 520); } }catch(e){}
+							ensureActiveEnemyAlive();
+							if(!state.enemy || state.enemy.dead || state.enemy.hp<=0){ finishBattle(); }
+						} break;
 					case 'crystalize': {
 						actor.cooldowns = actor.cooldowns || {};
 						var cd=actor.cooldowns['crystalize']||0; if(cd>0){ logMsg('Crystalize is on cooldown ('+cd+' rounds).','warn'); break; }

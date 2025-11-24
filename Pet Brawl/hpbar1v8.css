@@ -43,7 +43,7 @@
 	box-shadow: 0 0 6px rgba(0,0,0,0.2), inset 0 0 6px rgba(255,255,255,0.08);
 }
 
-.vs-segments.hp-ok .vs-seg.on { background: #00f; }
+.vs-segments.hp-ok .vs-seg.on { background: #04f; }
 .vs-segments.hp-warn .vs-seg.on { background: #ffee00; }
 .vs-segments.hp-danger .vs-seg.on { background: #f00; }
 
@@ -51,3 +51,48 @@
 @keyframes segFlickerOff { 0%{opacity:1} 50%{opacity:0.2} 100%{opacity:0} }
 .vs-seg.flicker-on { animation: segFlickerOn 160ms ease-in-out; }
 .vs-seg.flicker-off { animation: segFlickerOff 160ms ease-in-out; }
+
+.petb-volume .volume-meter {
+	position: relative;
+	width: 270px;
+	height: 16px;
+	border-radius: 4px;
+	overflow: hidden;
+	background: #000;
+	border: 1px solid #000;
+}
+
+.petb-volume .volume-bar {
+	position: absolute;
+	left: 0;
+	top: 0;
+	bottom: 0;
+	width: 0;
+	background: transparent;
+}
+.petb-volume .volume-segments {
+	position: absolute;
+	inset: 0;
+	display: flex;
+	align-items: stretch;
+	justify-content: stretch;
+	gap: 1px;
+	padding: 2px;
+	box-sizing: border-box;
+}
+.petb-volume .volume-segments .vol-seg {
+	flex: 1 1 auto;
+	border-radius: 2px;
+	background: rgba(255,255,255,0.05);
+	box-shadow: inset 0 0 4px rgba(0,0,0,0.6);
+	transition: background 120ms ease-out, box-shadow 120ms ease-out;
+}
+.petb-volume .volume-segments .vol-seg.on {
+	background: #04f;
+	box-shadow: 0 0 6px rgba(0,0,0,0.2), inset 0 0 6px rgba(255,255,255,0.18);
+}
+.petb-volume .volume-segments.vol-ok .vol-seg.on { background: #f00; }
+.petb-volume .volume-segments.vol-warn .vol-seg.on { background: #ffee00; }
+.petb-volume .volume-segments.vol-danger .vol-seg.on { background: #08f; }
+.petb-volume .volume-segments .vol-seg.flicker-on { animation: segFlickerOn 160ms ease-in-out; }
+.petb-volume .volume-segments .vol-seg.flicker-off { animation: segFlickerOff 160ms ease-in-out; }
