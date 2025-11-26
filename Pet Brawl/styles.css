@@ -1842,8 +1842,9 @@ input, textarea, select, button, [contenteditable="true"] {
 
 .ability-btn .keybind, .selected-abilities .sel .sel-key {
 	position: absolute;
-	left: 0px;
-	top: 1px;
+	opacity: 80%;
+	left: -2px;
+	top: 0px;
 	color: #0f0;
 	font-family: monospace;
 	font-size: 11px;

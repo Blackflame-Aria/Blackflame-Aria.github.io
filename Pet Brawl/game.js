@@ -288,6 +288,7 @@
     chargeHeal: new Audio('Sounds/Charge Heal.wav'),
     chargeAttack: new Audio('Sounds/Charge Attack.wav'),
     murder: new Audio('Sounds/Murder.wav'),
+    curse: new Audio('Sounds/Curse .wav'),
     defend: new Audio('Sounds/Defend.wav')
   };
   SOUNDS.restart = new Audio('Sounds/Restart.wav');
@@ -1267,7 +1268,7 @@
           actor.hp -= dmg; total -= dmg; playSound('poison');
           try{ if(side === 'player') animateSprite('player','dot','small'); else animateSprite('enemy','dot','small'); }catch(e){}
           if(side==='player') flashShake('small', $playerHpFill); else flashShake('small', $enemyHpFill);
-          try{ triggerVinesReflect(actor, src, dmg); }catch(e){}
+          try{ var attacker = (side === 'player') ? state.enemy : state.player; triggerVinesReflect(actor, attacker, dmg); }catch(e){}
         }
         if(eff.id==='poison'){
           let dmg = eff.value;
@@ -1284,7 +1285,7 @@
           actor.hp -= dmg; total -= dmg; playSound('poison');
           try{ if(side === 'player') animateSprite('player','dot','small'); else animateSprite('enemy','dot','small'); }catch(e){}
           if(side==='player') flashShake('small', $playerHpFill); else flashShake('small', $enemyHpFill);
-          try{ triggerVinesReflect(actor, src, dmg); }catch(e){}
+          try{ var attacker = (side === 'player') ? state.enemy : state.player; triggerVinesReflect(actor, attacker, dmg); }catch(e){}
         }
         if(eff.id==='decay'){
           const stacks = (typeof eff.stacks === 'number') ? eff.stacks : 1;
@@ -1309,30 +1310,26 @@
           try{
             if(actor && Array.isArray(actor.effects) && !(eff._reflected)){
               const vine = actor.effects.find(e=>e.id === 'vines');
-              if(vine && dmg > 0 && src){ try{ triggerVinesReflect(actor, src, dmg); }catch(e){} }
+              if(vine && dmg > 0){ try{ var attacker = (side === 'player') ? state.enemy : state.player; triggerVinesReflect(actor, attacker, dmg); }catch(e){} }
             }
           }catch(e){}
           try{
             if(actor && Array.isArray(actor.effects) && !(eff._reflected)){
               const vine = actor.effects.find(e=>e.id === 'vines');
-              if(vine && dmg > 0 && src){
+              if(vine && dmg > 0){
                 const pct = (typeof vine.value === 'number') ? vine.value : 0.3;
                 const ret = Math.round(dmg * pct);
                 if(ret > 0){
                   let reflected = ret;
-                  if(src.defend){
-                    const sstr = (typeof src.defend === 'number') ? src.defend : 1;
-                    reflected = Math.round(sstr >= 2 ? reflected * 0.25 : reflected * 0.5);
-                    src.defend = false;
+                  var attacker = (side === 'player') ? state.enemy : state.player;
+                  if(attacker){
+                    if(attacker.defend){ const sstr = (typeof attacker.defend === 'number') ? attacker.defend : 1; reflected = Math.round(sstr >= 2 ? reflected * 0.25 : reflected * 0.5); attacker.defend = false; }
+                    if(attacker && Array.isArray(attacker.effects)){ const sbubble = attacker.effects.find(e=>e.id === 'bubble'); if(sbubble && typeof sbubble.value === 'number') reflected = Math.max(0, reflected - sbubble.value); }
+                    reflected = Math.max(0, reflected);
+                    attacker.hp -= reflected;
+                    log(`${actor.name}'s Vines returned ${reflected} damage to ${attacker.name}.`);
+                    if(attacker.hp <= 0){ attacker.hp = 0; if(!attacker.dead){ attacker.dead = true; log(`${attacker.name} was brutally murdered!`); playSound('murder'); try{ if(attacker.isBoss){ const es = document.getElementById('enemy-sprite'); if(es) es.src = (attacker.sickImage || es.src); } }catch(e){} finishBattle(); } }
                   }
-                  if(src && Array.isArray(src.effects)){
-                    const sbubble = src.effects.find(e=>e.id === 'bubble');
-                    if(sbubble && typeof sbubble.value === 'number') reflected -= sbubble.value;
-                  }
-                  reflected = Math.max(0, reflected);
-                  src.hp -= reflected;
-                  log(`${actor.name}'s Vines returned ${reflected} damage to ${src.name}.`);
-                  if(src.hp <= 0){ src.hp = 0; if(!src.dead){ src.dead = true; log(`${src.name} was brutally murdered!`); playSound('murder'); try{ if(src.isBoss){ const es = document.getElementById('enemy-sprite'); if(es) es.src = (src.sickImage || es.src); } }catch(e){} finishBattle(); } }
                 }
               }
             }
@@ -1815,7 +1812,7 @@
           actor.hp -= self; if(actor.hp < 0) actor.hp = 0;
           actor.cooldowns['shatter'] = 4;
           log({ text: `${actor.name} struck ${state.enemy.name} for ${applied} damage and takes ${self}.`, abilityId: 'shatter' });
-          playSound('attack');
+          playSound('chargeAttack');
         } break;
         case 'hurricane': {
           animateSprite('player','attack');
@@ -1858,7 +1855,7 @@
           target.effects.push({ id: 'curse', name: 'Curse', rounds, value });
           actor.cooldowns['curse'] = 5;
           log({ text: `${actor.name} weakens ${target.name} (${rounds} rounds).`, abilityId: 'curse' });
-          playSound('defend');
+          playSound('curse');
         } break;
         case 'toxin': {
           animateSprite('player','attack');
@@ -1870,7 +1867,7 @@
           actor.cooldowns['toxin'] = 11;
           if(actor.bolster) actor.bolster = false;
           log(`${actor.name} injects a delayed toxin (3 rounds).`);
-          playSound('defend');
+          playSound('curse');
         } break;
         case 'bolster': {
           animateSprite('player','heal','medium');
@@ -1972,7 +1969,7 @@
           const existing = target.effects.find(e=>e.id === 'decay');
           if(existing){ existing.stacks = (existing.stacks || 1) + 1; existing.rounds = rounds; existing.source = 'enemy'; existing.value = value; }
           else target.effects.push({ id: 'decay', name: 'Decay', rounds, value, stacks: 1, source: 'enemy' });
-          if(actor && actor.isBoss && actor.name === '137-B') playSound('defend');
+          if(actor && actor.isBoss && actor.name === '137-B') playSound('curse');
           log({ text: `${actor.name} released a miasma of Decay${existing ? ' ['+existing.stacks+']' : ''} (${rounds} rounds).`, abilityId: 'decay' });
         } break;
         case 'hot': {
@@ -2054,7 +2051,7 @@
           actor.cooldowns['toxin'] = 10;
           if(actor.bolster) actor.bolster = false;
           log(`${actor.name} injects a delayed toxin (3 rounds).`);
-          playSound('defend');
+          playSound('curse');
         } break;
         case 'vines': {
           animateSprite('enemy','heal','medium');

@@ -327,6 +327,7 @@
     chargeHeal: new Audio('Sounds/Charge Heal.wav'),
     chargeAttack: new Audio('Sounds/Charge Attack.wav'),
     murder: new Audio('Sounds/Murder.wav'),
+    curse: new Audio('Sounds/Curse.wav'),
     defend: new Audio('Sounds/Defend.wav')
   };
   SOUNDS.restart = new Audio('Sounds/Restart.wav');
@@ -1714,7 +1715,7 @@
           } else if(enemyTeam.includes(actor)){
             if(state.enemy === actor){
               const nextIdx = enemyTeam.findIndex(p=> p && p !== actor && !p.dead && (typeof p.hp === 'number' ? p.hp > 0 : true));
-              if(nextIdx > -1){ const picked = enemyTeam.splice(nextIdx,1)[0]; enemyTeam.unshift(picked); state.enemy = enemyTeam[0]; log(`${state.enemy.name} will avenge them!`); }
+              if(nextIdx > -1){ const picked = enemyTeam.splice(nextIdx,1)[0]; enemyTeam.unshift(picked); state.enemy = enemyTeam[0]; log(`${state.enemy.name} will avenge them!`); try{ updateBattleSprites(); }catch(e){} try{ animateSprite('enemy','switch','big'); }catch(e){} try{ playSound('switch'); }catch(e){} }
               else { finishBattle(); return; }
             }
           } else {
@@ -1985,20 +1986,23 @@
             }
           }
         } else if(isEnemyPet){
-          if(state.enemy === def){
-            const next = enemyTeam.find(p=>!p.dead && p !== def);
-            if(next){
-              const idx = enemyTeam.indexOf(next);
-              const picked = enemyTeam.splice(idx,1)[0];
-              enemyTeam.unshift(picked);
-              state.enemy = enemyTeam[0];
-              log(`${state.enemy.name} will avenge them!`);
-            } else {
-              state.enemy = def;
-              finishBattle();
-              updateUI();
-              return dmg;
-            }
+              if(state.enemy === def){
+              const next = enemyTeam.find(p=>!p.dead && p !== def);
+              if(next){
+                const idx = enemyTeam.indexOf(next);
+                const picked = enemyTeam.splice(idx,1)[0];
+                enemyTeam.unshift(picked);
+                state.enemy = enemyTeam[0];
+                log(`${state.enemy.name} will avenge them!`);
+                try{ updateBattleSprites(); }catch(e){}
+                try{ animateSprite('enemy','switch','big'); }catch(e){}
+                try{ playSound('switch'); }catch(e){}
+              } else {
+                state.enemy = def;
+                finishBattle();
+                updateUI();
+                return dmg;
+              }
           }
         } else {
           finishBattle();
@@ -2077,7 +2081,7 @@
           actor.cooldowns['toxin'] = 11;
           if(actor.bolster) actor.bolster = false;
           log(`${actor.name} injects a delayed toxin (3 rounds).`);
-          playSound('defend');
+          playSound('curse');
         } break;
         case 'heal': {
           animateSprite('player','heal','medium');
@@ -2569,6 +2573,7 @@
           actor.effects = actor.effects || [];
           actor.effects.push({ id: 'bubble', name: 'Bubble', rounds, value });
           actor.cooldowns['bubble'] = 5;
+          playSound('defend');
           log({ text: `${actor.name} reduces damage taken (${rounds} rounds).`, abilityId: 'bubble' });
         } break;
         case 'scorch': {
@@ -2581,7 +2586,7 @@
           actor.cooldowns['scorch'] = 5;
           if(actor.bolster) actor.bolster = false;
           log({ text: `${actor.name} scorches ${target.name}. (${rounds} rounds).`, abilityId: 'scorch' });
-          playSound('attack');
+          playSound('curse');
         } break;
         case 'shatter': {
           let dmg = 100;
@@ -2591,7 +2596,7 @@
           actor.hp -= self; if(actor.hp < 0) actor.hp = 0;
           actor.cooldowns['shatter'] = 4;
           log({ text: `${actor.name} struck ${state.player.name} for ${applied} damage and takes ${self}.`, abilityId: 'shatter' });
-          playSound('attack');
+          playSound('chargeAttack');
         } break;
         case 'hurricane': {
           const rounds = 3;
@@ -2631,6 +2636,7 @@
           target.effects = target.effects || [];
           target.effects.push({ id: 'curse', name: 'Curse', rounds, value });
           actor.cooldowns['curse'] = 5;
+          playSound('curse');
           log({ text: `${actor.name} weakens ${target.name} (${rounds} rounds).`, abilityId: 'curse' });
         } break;
         case 'toxin': {
@@ -2643,7 +2649,7 @@
           actor.cooldowns['toxin'] = 11;
           if(actor.bolster) actor.bolster = false;
           log(`${actor.name} injects a delayed toxin (3 rounds).`);
-          playSound('defend');
+          playSound('curse');
         } break;
         case 'vines': {
           animateSprite('enemy','heal','medium');

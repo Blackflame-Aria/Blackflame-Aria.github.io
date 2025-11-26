@@ -51,6 +51,7 @@
 			chargeAttack: new Audio('Sounds/Charge Attack.wav'),
 			murder: new Audio('Sounds/Murder.wav'),
 			defend: new Audio('Sounds/Defend.wav'),
+			curse: new Audio('Sounds/Curse.wav'),
 			restart: new Audio('Sounds/Restart.wav')
 		};
 		var soundEnabled = true;
@@ -270,7 +271,7 @@
     id:'attack', 
     name:'Attack', 
     type:'offense', 
-    desc:'Deal direct damage' },
+    desc:'Simple attack' },
   { 
     id:'bolster', 
     name:'Bolster', 
@@ -300,7 +301,7 @@
     id:'defend', 
     name:'Defend', 
     type:'support', 
-    desc:'Reduce next damage' },
+    desc:'Reduce incoming damage' },
   { 
     id:'stun', 
     name:'Stun', 
@@ -337,7 +338,7 @@
       id: 'shatter', 
       name: 'Shatter', 
       type: 'type-special', 
-      desc: 'Heavy strike to enemy, recoil to self' },
+      desc: 'Heavy strike; causes recoil damage to self' },
     { 
       id: 'hurricane', 
       name: 'Hurricane', 
@@ -367,6 +368,29 @@
   }
   );
 
+	ABILITIES.push(
+		{ 
+			id: 'pass', 
+			name: 'Pass', 
+			type: 'support', 
+			desc: 'End your turn' },
+		{ 
+			id: 'bleed', 
+			name: 'Bleed', 
+			type: 'offense', 
+			desc: 'Inflict damage over time' },
+		{ 
+			id: 'teamAttack', 
+			name: 'Sweep', 
+			type: 'offense', 
+			desc: 'Cleave all enemies' },
+		{ 
+			id: 'crystalize', 
+			name: 'Crystalize', 
+			type: 'offense', 
+			desc: 'Apply escalating damage over time and weaken enemy' }
+	);
+
 		function rint(min,max){ return Math.floor(Math.random()*(max-min+1))+min; }
 		function logMsg(msg, type){
 			if(!msg) return;
@@ -384,6 +408,7 @@
 				else if(/\b(inflicted)\b/.test(txt)) cls='blight';
 				else if(/\b(beams)\b/.test(txt)) cls='beam';
 				else if(/\b(shatters)\b/.test(txt)) cls='shatter';
+				else if(/\b(crystalizes)\b/.test(txt)) cls='crystalize';
 				else if(/\b(braced|braces|defends|stunned|passed|bolstered|intervened|avenge)\b/.test(txt)) cls='support';
 				else if(/\b(started|ended)\b/.test(txt)) cls='announce';
 				else if(/\b(brutally)\b/.test(txt)) cls='brutally';
@@ -654,6 +679,30 @@
 			}
 			return m;
 		}
+
+		function triggerVinesReflect(defender, attacker, dmg){
+			try{
+				if(!defender || !defender.effects || !attacker) return;
+				var vine = null;
+				for(var vi=0; vi<defender.effects.length; vi++){ if(defender.effects[vi].id==='vines'){ vine = defender.effects[vi]; break; } }
+				if(!vine || !(dmg>0)) return;
+				var pct = (typeof vine.pct==='number')? vine.pct : (typeof vine.value==='number'? vine.value : 0.3);
+				var ret = Math.max(0, Math.round(dmg * pct));
+				if(ret <= 0) return;
+				var reflected = ret;
+				if(attacker.defend){ var sstr = (typeof attacker.defend === 'number')? attacker.defend : 1; reflected = Math.round(sstr >= 2 ? reflected * 0.25 : reflected * 0.5); attacker.defend = false; }
+				if(attacker && attacker.effects){ for(var bi=0;bi<attacker.effects.length;bi++){ if(attacker.effects[bi].id==='bubble' && typeof attacker.effects[bi].value==='number'){ reflected = Math.max(0, reflected - attacker.effects[bi].value); break; } } }
+				reflected = Math.max(0, reflected);
+				if(reflected>0){
+					attacker.hp = Math.max(0, attacker.hp - reflected);
+					logMsg(defender.name + "'s vines returned " + reflected + ' damage to ' + attacker.name + '.', 'attack');
+					playSound('defend');
+					if(attacker.hp<=0 && !attacker.dead){ attacker.hp=0; attacker.dead=true; logMsg(attacker.name + ' was brutally murdered!', 'brutally'); playSound('murder');
+						try{ if(attacker===state.enemy){ rotateNextEnemy(); } else { setPlayerDeathSprite(); finishBattle(); } }catch(e){}
+					}
+				}
+			}catch(e){}
+		}
 		function consumeDefend(actor){
 			if(!actor) return;
 			if(actor.defend){ actor.defend=false; removeEffect(actor,'defended'); }
@@ -672,14 +721,18 @@
 				if(team[i] && !team[i].dead && team[i].hp>0){ firstIdx = i; break; }
 			}
 			if(firstIdx === -1){ finishBattle(); return; }
+			var switched = false;
 			if(firstIdx !== 0){
 				var next = team.splice(firstIdx,1)[0];
 				team.unshift(next);
+				switched = true;
 			}
 			if(state.enemy !== team[0]){
 				state.enemy = team[0];
 				updateNamesAndSprites();
-				logMsg(state.enemy.name + ' enters the fray!','announce');
+				logMsg(state.enemy.name + ' shall avenge them!','announce');
+				try{ var es = document.querySelector('.combatant.enemy .sprite'); if(es){ es.classList.add('switch-bounce'); setTimeout(function(){ es.classList.remove('switch-bounce'); }, 600); } }catch(e){}
+				try{ playSound('switch'); }catch(e){}
 			}
 		}
 		function applyDamageFromTo(atk, def, baseDamage, label){
@@ -787,6 +840,10 @@
 						var el = document.querySelector(sel);
 						if(el){ el.classList.add('dot-hit'); setTimeout(function(){ el.classList.remove('dot-hit'); }, 520); }
 					}catch(e){}
+					try{
+						var attacker = (side === 'player') ? state.enemy : state.player;
+						triggerVinesReflect(actor, attacker, d);
+					}catch(e){}
 				}
 				else if(eff.id==='toxin'){
 					if(eff.rounds<=1){
@@ -865,6 +922,19 @@
 				b.setAttribute('data-key', String(i+1));
 				b.innerHTML = '<span class="keybind">' + (i+1) + '</span>' + PLAYER_LABELS[i];
 				(function(ability){ b.addEventListener('click', function(){ playerUseAbility(ability); }); })(id);
+				var abilityObj = (Array.isArray(ABILITIES) && ABILITIES.find)? ABILITIES.find(function(a){ return a.id===id; }) : null;
+				var desc = (abilityObj && abilityObj.desc) ? abilityObj.desc : (ABILITY_NAMES[id] || id);
+				b.setAttribute('data-desc', desc);
+				( function(btn, text){
+					var holdTimer = null;
+					btn.addEventListener('mouseenter', function(){ try{ showAbilityTooltip(btn, text); }catch(e){} });
+					btn.addEventListener('mouseleave', function(){ try{ hideAbilityTooltip(); }catch(e){} });
+					btn.addEventListener('focus', function(){ try{ showAbilityTooltip(btn, text); }catch(e){} });
+					btn.addEventListener('blur', function(){ try{ hideAbilityTooltip(); }catch(e){} });
+					btn.addEventListener('touchstart', function(ev){ try{ if(holdTimer) clearTimeout(holdTimer); holdTimer = setTimeout(function(){ showAbilityTooltip(btn, text); }, 450); }catch(e){} });
+					btn.addEventListener('touchend', function(){ try{ if(holdTimer) clearTimeout(holdTimer); setTimeout(hideAbilityTooltip, 220); }catch(e){} });
+					btn.addEventListener('touchcancel', function(){ try{ if(holdTimer) clearTimeout(holdTimer); hideAbilityTooltip(); }catch(e){} });
+				})(b, desc);
 				$actions.appendChild(b);
 			}
 			$actions.classList.toggle('disabled', state.turn!=='player');
@@ -889,6 +959,29 @@
 					btns[k].removeAttribute('title');
 				}
 			}
+		}
+
+		var _abilityTooltipEl = null;
+
+		function showAbilityTooltip(targetEl, text){
+			try{
+				if(!targetEl) return;
+				if(!_abilityTooltipEl){ _abilityTooltipEl = document.createElement('div'); _abilityTooltipEl.className = 'ability-tooltip'; document.body.appendChild(_abilityTooltipEl); }
+				_abilityTooltipEl.innerHTML = text;
+				_abilityTooltipEl.classList.add('visible');
+				var rect = targetEl.getBoundingClientRect();
+				var ttRect = _abilityTooltipEl.getBoundingClientRect();
+				var left = rect.left + (rect.width/2) - (ttRect.width/2);
+				left = Math.max(8, Math.min(left, window.innerWidth - ttRect.width - 8));
+				var top = rect.top - ttRect.height - 10;
+				if(top < 8) top = rect.bottom + 10;
+				_abilityTooltipEl.style.left = Math.round(left) + 'px';
+				_abilityTooltipEl.style.top = Math.round(top) + 'px';
+			}catch(e){}
+		}
+
+		function hideAbilityTooltip(){
+			try{ if(_abilityTooltipEl){ _abilityTooltipEl.classList.remove('visible'); } }catch(e){}
 		}
 
 		function finishBattle(){
@@ -983,19 +1076,22 @@
 					case 'bleed': {
 						var valB = Math.round((actor.power||0)*7 + rint(0,5));
 						addEffect(state.player,{id:'dot',name:'Bleed',rounds:3,value: valB});
+						playSound('poison');
 						logMsg(actor.name + ' lashes out (' + valB + '/round).');
 						actor.cooldowns['bleed'] = 1;
 					} break;
 					case 'toxin': {
 						var exec = { damage: 275 + rint(0,25), rotValue:45, rotRounds:8 };
 						addEffect(state.player,{id:'toxin',name:'Toxin',rounds:3,exec: exec});
+						playSound('curse');
 						logMsg(actor.name + ' injects a delayed toxin (3 rounds).');
 						actor.cooldowns['toxin'] = 5;
 					} break;
 					case 'bubble': {
-						addEffect(actor,{id:'bubble',name:'Bubble',rounds:3,value:60});
+						addEffect(actor,{id:'bubble',name:'Bubble',rounds:3,value:45});
+						playSound('defend');
 						logMsg({ text: actor.name + ' reduces damage taken (3 rounds).', abilityId: 'bubble' });
-						actor.cooldowns['bubble'] = 6;
+						actor.cooldowns['bubble'] = 7;
 					} break;
 					case 'bolster': {
 						actor.bolster=true; addEffect(actor,{id:'bolstered',name:'Bolstered',rounds:2}); playSound('bolster');
@@ -1003,9 +1099,10 @@
 						actor.cooldowns['bolster'] = 3;
 					} break;
 					case 'shatter': {
-						var dmg=150, self=75; if(actor.bolster){ dmg=200; self=100; actor.bolster=false; }
+						var dmg=150, self=65; if(actor.bolster){ dmg=200; self=80; actor.bolster=false; }
 						var applied = applyDamageFromTo(actor, state.player, dmg, 'suppress-log');
 						actor.hp = Math.max(0, actor.hp - self);
+						playSound('chargeAttack');
 						logMsg(actor.name + ' struck ' + state.player.name + ' for ' + applied + ' damage and takes ' + self + '.', 'gray');
 						if(actor.hp<=0 && !actor.dead){
 							actor.hp=0; actor.dead=true; logMsg(actor.name + ' was brutally murdered!', 'brutally'); playSound('murder');
@@ -1016,28 +1113,33 @@
 						actor.cooldowns['shatter'] = 2;
 					} break;
 					case 'hurricane': {
-						addEffect(state.player,{id:'hurricane',name:'Hurricane',rounds:3,value:75});
-						logMsg({ text: actor.name + ' struck ' + state.player.name + ' for 50 damage.', abilityId: 'hurricane' });
+						var hv = 75;
+						addEffect(state.player,{id:'hurricane',name:'Hurricane',rounds:3,value:hv});
+						playSound('chargeAttack');
+						logMsg({ text: actor.name + ' struck ' + state.player.name + ' for ' + hv + ' damage.' , abilityId: 'hurricane' });
 						actor.cooldowns['hurricane'] = 3;
 						try{ var es4 = document.querySelector('.combatant.enemy .sprite'); if(es4){ es4.classList.add('team-attack-left'); setTimeout(function(){ es4.classList.remove('team-attack-left'); }, 520); } }catch(e){}
 					} break;
 					case 'scorch': {
 						addEffect(state.player,{id:'scorch',name:'Scorch',rounds:3,value:75});
+						playSound('chargeAttack');
 						logMsg({ text: actor.name + ' scorches ' + state.player.name + '. (3 rounds).', abilityId: 'scorch' });
 						actor.cooldowns['scorch'] = 3;
 						try{ var es5 = document.querySelector('.combatant.enemy .sprite'); if(es5){ es5.classList.add('attack-bounce'); setTimeout(function(){ es5.classList.remove('attack-bounce'); }, 520); } }catch(e){}
 					} break;
 					case 'vines': {
 						var pct = actor.bolster ? 0.5 : 0.3;
-						addEffect(actor,{id:'vines',name:'Vines',rounds:4,pct:pct});
+						addEffect(actor,{id:'vines',name:'Vines',rounds:3,pct:pct});
 						if(actor.bolster){ actor.bolster=false; removeEffect(actor,'bolstered'); }
-						logMsg({ text: actor.name + " is wrapped in vines, returning damage taken (" + Math.round(pct*100) + "%). (4 rounds).", abilityId: 'vines' });
-						actor.cooldowns['vines'] = 3;
+						playSound('defend');
+						logMsg({ text: actor.name + "'s vines return a portion of damage taken. (3 rounds).", abilityId: 'vines' });
+						actor.cooldowns['vines'] = 5;
 					} break;
 					case 'curse': {
-						addEffect(state.player,{id:'weaken',name:'Curse',rounds:3,factor:0.15});
-						logMsg({ text: actor.name + ' weakens ' + state.player.name + ' (3 rounds).', abilityId: 'curse' });
-						actor.cooldowns['curse'] = 3;
+						addEffect(state.player,{id:'weaken',name:'Curse',rounds:3,factor:0.10});
+						playSound('curse');
+						logMsg({ text: actor.name + ' curses ' + state.player.name + ' (3 rounds).', abilityId: 'curse' });
+						actor.cooldowns['curse'] = 5;
 					} break;
 					case 'regen': {
 						var valR = 45; addEffect(actor,{id:'hot',name:'Regen',rounds:3,value:valR}); playSound('regenerate'); logMsg(actor.name + ' applied Regenerate (' + valR + '/round).');
@@ -1071,6 +1173,7 @@
 					case 'beam': {
 						var baseB = (actor.power||0)*16 + rint(0,9) + 30;
 						if(actor.bolster){ baseB += 30; actor.bolster=false; removeEffect(actor,'bolstered'); }
+						playSound('chargeAttack');
 						var dealt = applyDamageFromTo(actor, state.player, baseB, 'suppress-log');
 						logMsg(actor.name + ' beams ' + (state.player ? state.player.name : 'opponent') + ' for ' + dealt + '.', 'attack');
 						if(dealt>0){
@@ -1126,6 +1229,7 @@
 					case 'bleed': {
 						var valB = Math.round((actor.power||0)*5 + rint(0,5));
 						addEffect(state.enemy,{id:'dot',name:'Bleed',rounds:3,value: valB});
+						playSound('poison');
 						logMsg(actor.name + ' lashes out (' + valB + '/round).');
 						actor.cooldowns = actor.cooldowns || {}; actor.cooldowns['bleed'] = 3;
 						try{ var psB=document.querySelector('.combatant.player .sprite'); if(psB){ psB.classList.add('attack-bounce'); setTimeout(function(){ psB.classList.remove('attack-bounce'); }, 520); } }catch(e){}
@@ -1134,6 +1238,7 @@
 						var dmg=150, self=90; if(actor.bolster){ dmg=200; self=125; actor.bolster=false; }
 						var applied = applyDamageFromTo(actor, state.enemy, dmg, 'suppress-log');
 						actor.hp=Math.max(0, actor.hp-self);
+						playSound('chargeAttack');
 						logMsg(actor.name + ' shatters ' + state.enemy.name + ' for ' + applied + ' damage and takes ' + self + '.', 'gray');
 						actor.cooldowns = actor.cooldowns || {}; actor.cooldowns['shatter'] = 5;
 					} break;
@@ -1147,7 +1252,7 @@
 							}
 							actor.bolster=false;
 							actor.cooldowns = actor.cooldowns || {}; actor.cooldowns['teamAttack'] = 4;
-							try{ playSound('attack'); }catch(e){}
+							try{ playSound('chargeAttack'); }catch(e){}
 							try{ var psT=document.querySelector('.combatant.player .sprite'); if(psT){ psT.classList.add('team-attack-right'); setTimeout(function(){ psT.classList.remove('team-attack-right'); }, 520); } }catch(e){}
 							ensureActiveEnemyAlive();
 							if(!state.enemy || state.enemy.dead || state.enemy.hp<=0){ finishBattle(); }
@@ -1159,7 +1264,7 @@
 						if(actor.bolster){ seq = [45,60,75]; actor.bolster=false; removeEffect(actor,'bolstered'); }
 						addEffect(state.enemy,{ id:'crystalize', name:'Crystalized', rounds:3, step:0, seq: seq });
 						actor.cooldowns['crystalize']=5;
-						playSound('defend');
+						playSound('curse');
 						var ps=document.querySelector('.combatant.player .sprite'); if(ps){ ps.classList.add('attack-bounce'); setTimeout(function(){ ps.classList.remove('attack-bounce'); }, 480); }
 						logMsg({ text: actor.name + ' crystalizes ' + state.enemy.name + ' (3 rounds).', abilityId: 'crystalize' });
 					} break;
@@ -1186,7 +1291,7 @@
 				maxHp:7000, 
 				power:10, 
 				healing:4, 
-				image:'Sprites/Adult2 (1).gif', 
+				image:'Sprites/Adult2.gif', 
 				hp:7000, 
 				effects:[], 
 				defend:false,
@@ -1232,6 +1337,8 @@
 		if($back){ $back.addEventListener('click', function(){ playSound('restart'); $battle.classList.add('hidden'); if($splash) $splash.classList.remove('hidden'); state.turn='finished'; }); }
 		if($home){ $home.addEventListener('click', function(){ playSound('restart'); window.location.href = '../index.html'; }); }
 		if($restart){ $restart.addEventListener('click', function(){ playSound('restart'); window.location.reload(); }); }
+
+
 
 		window.addEventListener('keydown', function(ev){
 			try{

@@ -162,7 +162,7 @@ button.ability-btn.pink:hover { background: #ff00ff; color: #000; }
 .ability-btn { 
 	position: relative;
 	width: 100%;
-	padding: 10px 5px;
+	padding: 12px 5px;
 	margin: 0px 0;
 	line-height: 1.05;
 	box-sizing: border-box;
@@ -202,8 +202,12 @@ button.ability-btn.pink:hover { background: #ff00ff; color: #000; }
 	border-left-color: #ffee00;
 }
 .log-msg.shatter {
-	color: #999;
-	border-left-color: #999;
+	color: #aaa;
+	border-left-color: #aaa;
+}
+.log-msg.crystalize {
+	color: #f0f;
+	border-left-color: #f0f;
 }
 
 .win-popup {
@@ -238,4 +242,37 @@ button.ability-btn.pink:hover { background: #ff00ff; color: #000; }
 }
 .close-btn {
 	border-top: 1px solid #08f;
+}
+
+.ability-tooltip {
+	position: fixed;
+	z-index: 9999;
+	width: 150px;
+	padding: 8px 5px;
+	background: rgba(0,0,0,0.8);
+	color: #08f;
+	border: 1px solid rgba(0,136,255,0.8);
+	box-shadow: 0 6px 22px #000, 0 0 20px rgba(8,136,255,0.3) inset;
+	border-radius: 10px;
+	font-size: 13px;
+	line-height: 1.25;
+	padding-left: 12px;
+	padding-right: 12px;
+	opacity: 0;
+	transition: opacity 160ms ease, transform 160ms ease;
+	transform: translateY(6px);
+	pointer-events: none;
+}
+.ability-tooltip.visible { opacity: 1; transform: translateY(0); }
+.ability-tooltip::after {
+	content: '';
+	position: absolute;
+	width: 10px; height: 10px;
+	transform: rotate(45deg);
+	background: rgba(0,12,34,0.88);
+	border-left: 1px solid rgba(8,136,255,0.12);
+	border-top: 1px solid rgba(8,136,255,0.12);
+	left: 50%;
+	margin-left: -5px;
+	bottom: -5px;
 }
