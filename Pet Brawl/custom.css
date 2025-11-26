@@ -209,6 +209,10 @@ button.ability-btn.pink:hover { background: #ff00ff; color: #000; }
 	color: #f0f;
 	border-left-color: #f0f;
 }
+.log-msg.curse {
+	color: #a0f;
+	border-left-color: #a0f;
+}
 
 .win-popup {
 	border: 1px solid rgba(0,136,255,0.08);

@@ -408,7 +408,8 @@
 				else if(/\b(inflicted)\b/.test(txt)) cls='blight';
 				else if(/\b(beams)\b/.test(txt)) cls='beam';
 				else if(/\b(shatters)\b/.test(txt)) cls='shatter';
-				else if(/\b(crystalizes)\b/.test(txt)) cls='crystalize';
+				else if(/\b(crystalizes)\b/.test(txt)) d.style.color = '#ff00ff';
+				else if(/\b(cursed|curses)\b/.test(txt)) d.style.color = 'rebeccapurple';
 				else if(/\b(braced|braces|defends|stunned|passed|bolstered|intervened|avenge)\b/.test(txt)) cls='support';
 				else if(/\b(started|ended)\b/.test(txt)) cls='announce';
 				else if(/\b(brutally)\b/.test(txt)) cls='brutally';
@@ -426,6 +427,8 @@
 					else if(/\b(heal|recovered|regenerate)\b/.test(tx)) cls='heal-key';
 					else if(/\b(attacks|poison|bleed|lashes out|struck)\b/.test(tx)) cls='attack';
 					else if(/\b(braced|stunned|bolstered|intervened|reduces)\b/.test(tx)) cls='support';
+					else if(/\b(crystalizes)\b/.test(tx)) cls='crystalize';
+					else if(/\b(cursed|curses)\b/.test(tx)) cls='curse';
 					else if(/\b(started|ended)\b/.test(tx)) cls='started';
 					else if(/\b(brutally|weakens)\b/.test(tx)) cls='brutally';
 				}
@@ -927,12 +930,13 @@
 				b.setAttribute('data-desc', desc);
 				( function(btn, text){
 					var holdTimer = null;
-					btn.addEventListener('mouseenter', function(){ try{ showAbilityTooltip(btn, text); }catch(e){} });
-					btn.addEventListener('mouseleave', function(){ try{ hideAbilityTooltip(); }catch(e){} });
-					btn.addEventListener('focus', function(){ try{ showAbilityTooltip(btn, text); }catch(e){} });
-					btn.addEventListener('blur', function(){ try{ hideAbilityTooltip(); }catch(e){} });
-					btn.addEventListener('touchstart', function(ev){ try{ if(holdTimer) clearTimeout(holdTimer); holdTimer = setTimeout(function(){ showAbilityTooltip(btn, text); }, 450); }catch(e){} });
-					btn.addEventListener('touchend', function(){ try{ if(holdTimer) clearTimeout(holdTimer); setTimeout(hideAbilityTooltip, 220); }catch(e){} });
+					var SHOW_DELAY = 1000;
+					btn.addEventListener('mouseenter', function(){ try{ if(holdTimer) clearTimeout(holdTimer); holdTimer = setTimeout(function(){ showAbilityTooltip(btn, text); }, SHOW_DELAY); }catch(e){} });
+					btn.addEventListener('mouseleave', function(){ try{ if(holdTimer) clearTimeout(holdTimer); hideAbilityTooltip(); }catch(e){} });
+					btn.addEventListener('focus', function(){ try{ if(holdTimer) clearTimeout(holdTimer); holdTimer = setTimeout(function(){ showAbilityTooltip(btn, text); }, SHOW_DELAY); }catch(e){} });
+					btn.addEventListener('blur', function(){ try{ if(holdTimer) clearTimeout(holdTimer); hideAbilityTooltip(); }catch(e){} });
+					btn.addEventListener('touchstart', function(ev){ try{ if(holdTimer) clearTimeout(holdTimer); holdTimer = setTimeout(function(){ showAbilityTooltip(btn, text); }, SHOW_DELAY); }catch(e){} });
+					btn.addEventListener('touchend', function(){ try{ if(holdTimer) clearTimeout(holdTimer); hideAbilityTooltip(); }catch(e){} });
 					btn.addEventListener('touchcancel', function(){ try{ if(holdTimer) clearTimeout(holdTimer); hideAbilityTooltip(); }catch(e){} });
 				})(b, desc);
 				$actions.appendChild(b);
@@ -1073,13 +1077,14 @@
 						logMsg(actor.name + ' braced for incoming damage.');
 						actor.cooldowns['defend'] = 2;
 					} break;
-					case 'bleed': {
-						var valB = Math.round((actor.power||0)*7 + rint(0,5));
-						addEffect(state.player,{id:'dot',name:'Bleed',rounds:3,value: valB});
-						playSound('poison');
-						logMsg(actor.name + ' lashes out (' + valB + '/round).');
-						actor.cooldowns['bleed'] = 1;
-					} break;
+						case 'bleed': {
+							var valB = Math.round((actor.power||0)*7 + rint(0,5));
+							if(actor.bolster){ valB = Math.round(valB * 1.5); actor.bolster = false; removeEffect(actor,'bolstered'); }
+							addEffect(state.player,{id:'dot',name:'Bleed',rounds:3,value: valB});
+							playSound('poison');
+							logMsg(actor.name + ' lashes out (' + valB + '/round).');
+							actor.cooldowns['bleed'] = 1;
+						} break;
 					case 'toxin': {
 						var exec = { damage: 275 + rint(0,25), rotValue:45, rotRounds:8 };
 						addEffect(state.player,{id:'toxin',name:'Toxin',rounds:3,exec: exec});
@@ -1101,9 +1106,25 @@
 					case 'shatter': {
 						var dmg=150, self=65; if(actor.bolster){ dmg=200; self=80; actor.bolster=false; }
 						var applied = applyDamageFromTo(actor, state.player, dmg, 'suppress-log');
-						actor.hp = Math.max(0, actor.hp - self);
+						var selfTaken = self;
+						if(actor && actor.effects){
+							for(var gi=0; gi<actor.effects.length; gi++){
+								if(actor.effects[gi].id === 'eguard'){
+									var gpct = (typeof actor.effects[gi].pct === 'number') ? actor.effects[gi].pct : 0.5;
+									selfTaken = Math.round(selfTaken * gpct);
+									break;
+								}
+							}
+							for(var bi=0; bi<actor.effects.length; bi++){
+								if(actor.effects[bi].id === 'bubble' && typeof actor.effects[bi].value === 'number'){
+									selfTaken = Math.max(0, selfTaken - actor.effects[bi].value);
+									break;
+								}
+							}
+						}
+						actor.hp = Math.max(0, actor.hp - selfTaken);
 						playSound('chargeAttack');
-						logMsg(actor.name + ' struck ' + state.player.name + ' for ' + applied + ' damage and takes ' + self + '.', 'gray');
+						logMsg(actor.name + ' struck ' + state.player.name + ' for ' + applied + ' damage and takes ' + selfTaken + '.', 'gray');
 						if(actor.hp<=0 && !actor.dead){
 							actor.hp=0; actor.dead=true; logMsg(actor.name + ' was brutally murdered!', 'brutally'); playSound('murder');
 							ensureActiveEnemyAlive();
@@ -1163,11 +1184,11 @@
 						actor.cooldowns['heal'] = 3;
 					} break;
 					case 'chargeAttack': {
-						actor.bolster=true; playSound('chargeAttack'); logMsg(actor.name + ' begins charging an attack.');
+						actor.bolster=true; playSound('bolster'); logMsg(actor.name + ' begins charging an attack.');
 						actor.cooldowns['chargeAttack'] = 2;
 					} break;
 					case 'chargeHeal': {
-						addEffect(actor,{id:'hot',name:'Charge Heal',rounds:3,value:45}); playSound('chargeHeal'); logMsg(actor.name + ' is charging a heal.');
+						addEffect(actor,{id:'hot',name:'Charge Heal',rounds:3,value:45}); playSound('bolster'); logMsg(actor.name + ' is charging a heal.');
 						actor.cooldowns['chargeHeal'] = 3;
 					} break;
 					case 'beam': {
@@ -1228,6 +1249,7 @@
 					} break;
 					case 'bleed': {
 						var valB = Math.round((actor.power||0)*5 + rint(0,5));
+						if(actor.bolster){ valB = Math.round(valB * 1.5); actor.bolster = false; removeEffect(actor,'bolstered'); }
 						addEffect(state.enemy,{id:'dot',name:'Bleed',rounds:3,value: valB});
 						playSound('poison');
 						logMsg(actor.name + ' lashes out (' + valB + '/round).');
@@ -1237,9 +1259,25 @@
 					case 'shatter': {
 						var dmg=150, self=90; if(actor.bolster){ dmg=200; self=125; actor.bolster=false; }
 						var applied = applyDamageFromTo(actor, state.enemy, dmg, 'suppress-log');
-						actor.hp=Math.max(0, actor.hp-self);
+						var selfTaken = self;
+						if(actor && actor.effects){
+							for(var gi=0; gi<actor.effects.length; gi++){
+								if(actor.effects[gi].id === 'eguard'){
+									var gpct = (typeof actor.effects[gi].pct === 'number') ? actor.effects[gi].pct : 0.5;
+									selfTaken = Math.round(selfTaken * gpct);
+									break;
+								}
+							}
+							for(var bi=0; bi<actor.effects.length; bi++){
+								if(actor.effects[bi].id === 'bubble' && typeof actor.effects[bi].value === 'number'){
+									selfTaken = Math.max(0, selfTaken - actor.effects[bi].value);
+									break;
+								}
+							}
+						}
+						actor.hp = Math.max(0, actor.hp - selfTaken);
 						playSound('chargeAttack');
-						logMsg(actor.name + ' shatters ' + state.enemy.name + ' for ' + applied + ' damage and takes ' + self + '.', 'gray');
+						logMsg(actor.name + ' shatters ' + state.enemy.name + ' for ' + applied + ' damage and takes ' + selfTaken + '.', 'gray');
 						actor.cooldowns = actor.cooldowns || {}; actor.cooldowns['shatter'] = 5;
 					} break;
 					case 'teamAttack': {
@@ -1303,7 +1341,7 @@
 			e.hp=e.maxHp; e.effects=[]; e.defend=false; e.dead=false;
 			var loadouts = {
 				Haju:['pass','toxin','chargeAttack','bolster','bleed'],
-				Kivi:['pass','shatter','defend','attack','teamHeal'],
+				Kivi:['pass','shatter','defend','attack','chargeHeal'],
 				Tuuli:['pass','hurricane','attack','regen','bleed'],
 				Vala:['pass','beam','teamHeal','bolster','attack'],
 				Palo:['pass','scorch','attack','chargeAttack','bleed'],
