@@ -930,7 +930,7 @@
 				b.setAttribute('data-desc', desc);
 				( function(btn, text){
 					var holdTimer = null;
-					var SHOW_DELAY = 1000;
+					var SHOW_DELAY = 400;
 					btn.addEventListener('mouseenter', function(){ try{ if(holdTimer) clearTimeout(holdTimer); holdTimer = setTimeout(function(){ showAbilityTooltip(btn, text); }, SHOW_DELAY); }catch(e){} });
 					btn.addEventListener('mouseleave', function(){ try{ if(holdTimer) clearTimeout(holdTimer); hideAbilityTooltip(); }catch(e){} });
 					btn.addEventListener('focus', function(){ try{ if(holdTimer) clearTimeout(holdTimer); holdTimer = setTimeout(function(){ showAbilityTooltip(btn, text); }, SHOW_DELAY); }catch(e){} });
