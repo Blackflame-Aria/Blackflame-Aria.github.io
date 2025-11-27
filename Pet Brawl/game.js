@@ -1744,6 +1744,7 @@
           state.enemy.effects.push({id:'dot',name:'Bleed',rounds:3,value});
           log(`${actor.name} lashes out (${value}/round).`);
           actor.cooldowns['dot'] = 2;
+          playSound('curse');
         } break;
         case 'hot': {
           animateSprite('player','heal','small');
@@ -1960,6 +1961,7 @@
           if(actor.bolster){ value += 20; actor.bolster = false; }
           state.player.effects.push({id:'dot',name:'Bleed',rounds:3,value}); log(`${actor.name} lashes out(${value}/round).`);
           actor.cooldowns['dot'] = 1;
+          playSound('curse');
         } break;
         case 'decay': {
           animateSprite('enemy','attack','small');
