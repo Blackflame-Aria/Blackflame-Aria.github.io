@@ -1778,6 +1778,7 @@
           actor.effects.push({ id: 'bubble', name: 'Bubble', rounds, value });
           actor.cooldowns['bubble'] = 5;
           log({ text: `${actor.name} reduces damage taken (${rounds} rounds).`, abilityId: 'bubble' });
+          playSound('defend');
         } break;
         case 'vines': {
           animateSprite('player','heal','medium');
@@ -2001,6 +2002,7 @@
           actor.effects.push({ id: 'bubble', name: 'Bubble', rounds, value });
           actor.cooldowns['bubble'] = 5;
           log({ text: `${actor.name} reduces damage taken (${rounds} rounds).`, abilityId: 'bubble' });
+          playSound('defend');
         } break;
         case 'scorch': {
           animateSprite('enemy','attack');

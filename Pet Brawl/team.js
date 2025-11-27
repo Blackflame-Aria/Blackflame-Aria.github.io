@@ -2178,7 +2178,7 @@
           actor.hp -= self; if(actor.hp < 0) actor.hp = 0;
           actor.cooldowns['shatter'] = 4;
           log({ text: `${actor.name} struck ${state.enemy.name} for ${applied} damage and takes ${self}.`, abilityId: 'shatter' });
-          playSound('attack');
+          playSound('chargeAttack');
         } break;
         case 'hurricane': {
           animateSprite('player','attack');
@@ -2205,6 +2205,7 @@
           if(dealt > 0 && actor && actor.hp > 0){
             animateSprite('player','heal','small');
             actor.hp += dealt; if(actor.hp > actor.maxHp) actor.hp = actor.maxHp;
+            playSound('attack');
             playSound('heal');
             log({ text: `${actor.name} restores ${dealt} HP.`, abilityId: 'heal' });
           }
