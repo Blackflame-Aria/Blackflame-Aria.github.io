@@ -655,6 +655,21 @@
 							setTimeout(function(){ if (img.parentElement === ring) ring.removeChild(img); }, 260);
 						}
 					});
+					try{
+						for(var bi=0; bi<benchAll.length; bi++){
+							var bp = benchAll[bi];
+							if(!bp) continue;
+							var bid = bp.id || bp.name || ('idx-'+(bi+1));
+							if(bp.dead || (typeof bp.hp==='number' && bp.hp<=0)){
+								var imgEl = ring.querySelector('img[data-id="' + bid + '"]');
+								if(imgEl){
+									var ds = deadSpriteFor(bp.name) || bp.image;
+									if(ds) imgEl.src = ds;
+									imgEl.classList.add('dead');
+								}
+							}
+						}
+					}catch(e){}
 				}
 			}catch(e){}
 		}
