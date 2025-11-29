@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NEON SABRE</title>
+    
+    <meta name="description" content="Play Demo">
+    <meta property="og:title" content="Neon Sabre">
+    <meta property="og:description" content="Play Demo">
+    <meta property="og:type" content="website">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+    <div class="scanlines"></div>
+
+    <div id="game-wrapper">
+        <canvas id="gameCanvas" width="450" height="700"></canvas>
+        
+        <div id="ui-layer">
+            <div class="hud-top">
+                <div class="hud-item">SECTOR <span id="floor-display" class="neon-text">1</span></div>
+                <div class="hud-item">ESSENCE <span id="essence-display" class="neon-text">0</span></div>
+            </div>
+
+            <div id="boss-warning" class="hidden">WARNING: TITAN DETECTED</div>
+            <div id="powerup-warning" class="hidden">POWER-UP ACQUIRED</div>
+
+            <div id="restart-row">
+                <div class="bottom-buttons">
+                    <button class="secondary-btn" onclick="togglePause()" id="pause-btn">PAUSE</button>
+                    <button class="secondary-btn" onclick="location.reload()">RESTART</button>
+                </div>
+            </div>
+
+            <div id="start-screen" class="modal">
+                <h1 class="glitch-text" data-text="NEON SABRE">NEON SABRE</h1>
+                <h2 class="subtitle">PROJECT: OVERDRIVE</h2>
+                
+                <h2>-UPGRADES-</h2>
+                <p class="menu-info">STORED ESSENCE: <span id="meta-essence-display" class="neon-text">0</span></p>
+
+                <div class="shop-grid">
+                    <div class="shop-item" onclick="buyUpgrade('dmg')">
+                        <div class="shop-label">IMPACT</div>
+                        <div class="shop-level"><span id="lvl-dmg" class="neon-text">LVL 0</span></div>
+                        <div class="shop-cost" id="cost-dmg">2 ESSENCE</div>
+                    </div>
+                    <div class="shop-item" onclick="buyUpgrade('rate')">
+                        <div class="shop-label">SPEED</div>
+                        <div class="shop-level"><span id="lvl-rate" class="neon-text">LVL 0</span></div>
+                        <div class="shop-cost" id="cost-rate">2 ESSENCE</div>
+                    </div>
+                    <div class="shop-item" onclick="buyUpgrade('charge')">
+                        <div class="shop-label">ULTIMATE</div>
+                        <div class="shop-level"><span id="lvl-hp" class="neon-text">LVL 0</span></div>
+                        <div class="shop-cost" id="cost-hp">2 ESSENCE</div>
+                     </div>
+                     <div class="shop-item" onclick="buyUpgrade('support')">
+                        <div class="shop-label">CANNON DRONE</div>
+                        <div class="shop-level"><span id="lvl-support" class="neon-text">LVL 0</span></div>
+                        <div class="shop-cost" id="cost-support">1000 ESSENCE</div>
+                     </div>
+                </div>
+
+                <div class="shop-actions">
+                    <button class="secondary-btn" onclick="openResetConfirm()">RESET UPGRADES</button>
+                </div>
+
+                <!-- Styled Reset Confirmation Modal -->
+                <div id="reset-confirm" class="reset-modal hidden">
+                    <div class="reset-dialog">
+                        <h4>RESET UPGRADES</h4>
+                        <p>Spent Essence will be refunded and all upgrade levels will be reset.</p>
+                        <div class="reset-actions">
+                            <button class="secondary-btn" id="reset-cancel-btn">CANCEL</button>
+                            <button class="mega-btn" id="reset-confirm-btn">CONFIRM</button>
+                        </div>
+                    </div>
+                </div>
+
+                <p id="high-score">RECORD: SECTOR 0</p>
+                <button class="mega-btn" onclick="startGame()">LAUNCH</button>
+
+                <div class="controls-panel">
+                    <h4>CONTROLS</h4>
+                    <div class="control-line">WASD/ARROWS = move player</div>
+                    <div class="control-line">Q / Tap = Lock-on target</div>
+                    <div class="control-line">Space = Pause</div>
+                    <div class="control-line">E = Ultimate</div>
+                    <div class="control-line">1-9 = Drone ultimates</div>
+                </div>
+            </div>
+
+            <div id="draft-screen" class="modal hidden">
+                <h2 class="neon-text">REINFORCEMENTS</h2>
+                <div class="cards-container" id="draft-cards"></div>
+                <div class="draft-footer">
+                    <button class="secondary-btn" onclick="skipDraft()">REPAIR UNIT (SKIP)</button>
+                </div>
+            </div>
+
+            <!-- Game Over Modal -->
+            <div id="game-over" class="modal hidden">
+                <h2 class="neon-text">UNIT DESTROYED</h2>
+                <p>FINAL SECTOR: <span id="final-floor" class="neon-text">0</span></p>
+                <p>ESSENCE STORED: <span id="banked-essence" class="neon-text">0</span></p>
+                <div class="shop-actions game-over-actions">
+                    <button class="secondary-btn" onclick="restartRun()">RESTART</button>
+                    <button class="secondary-btn" onclick="closeGameOver()">MENU</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>

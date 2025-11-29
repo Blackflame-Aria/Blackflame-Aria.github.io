@@ -1859,6 +1859,14 @@
           log({ text: `${actor.name} weakens ${target.name} (${rounds} rounds).`, abilityId: 'curse' });
           playSound('curse');
         } break;
+        case 'stun': {
+          animateSprite('player','attack');
+          applyStunTo(state.enemy, 2);
+          if(actor.bolster){ applyStunTo(state.enemy, 1); consumeBolster(actor); }
+          actor.cooldowns['stun'] = 4;
+          log(`${actor.name} stunned ${state.enemy.name}!`);
+          playSound('stun');
+        } break;
         case 'toxin': {
           animateSprite('player','attack');
           const target = (state.enemyTeam && state.enemyTeam.length) ? state.enemyTeam[0] : state.enemy;
