@@ -1,4 +1,3 @@
-/* --- ENGINE CONFIG --- */
 const canvas = document.getElementById('gameCanvas');
 const ctx = canvas.getContext('2d');
 
@@ -63,6 +62,16 @@ let powerups = [];
 let particles = [];
 let textPopups = [];
 let blooms = [];
+
+const gameWrapper = document.getElementById('game-wrapper');
+const joyBase = document.createElement('div');
+joyBase.className = 'joystick-base joystick-hidden';
+const joyStick = document.createElement('div');
+joyStick.className = 'joystick-stick joystick-hidden';
+if (gameWrapper) {
+    gameWrapper.appendChild(joyBase);
+    gameWrapper.appendChild(joyStick);
+}
 
 const C = {
     laneY: 600,
@@ -270,14 +279,34 @@ class Pet {
         this.beamActive = false;
         this.beamTime = 0;
         this.deadProcessed = false;
+
+        this.entering = false;
+        this.targetX = 0;
+        this.targetY = 0;
     }
 
     update(idx, total) {
+        if (this.isMain && this.entering) {
+            const ease = 0.12 * GAME.dt;
+            this.x += (this.targetX - this.x) * Math.min(1, ease);
+            this.y += (this.targetY - this.y) * Math.min(1, ease);
+            this.recoil *= 0.6;
+            const arrived = Math.hypot(this.x - this.targetX, this.y - this.targetY) < 1.5;
+            if (arrived) {
+                this.x = this.targetX;
+                this.y = this.targetY;
+                this.entering = false;
+                this.cooldown = 0;
+            }
+        }
+
         if (total > 1 && idx !== 0) {
             const spacing = 50;
-            const startX = (canvas.width/2) - ((total-1)*spacing)/2;
-            const targetX = startX + (idx*spacing);
-            this.x += (targetX - this.x) * 0.1;
+            const center = canvas.width / 2;
+            const side = (idx % 2 === 1) ? -1 : 1; 
+            const order = Math.ceil(idx / 2);    
+            const targetX = center + side * order * spacing;
+            this.x += (targetX - this.x) * 0.12;
         }
         this.recoil *= 0.6;
 
@@ -285,7 +314,7 @@ class Pet {
         const chargeMult = 1 + (meta.chargeLvl || 0) * 0.20;
         this.ultCharge = Math.min(100, this.ultCharge + 0.1 * chargeMult * GAME.dt);
 
-        if(this.cooldown <= 0) {
+        if(!this.entering && this.cooldown <= 0) {
             let t = null;
             if (GAME.target && enemies.includes(GAME.target) && GAME.target.hp > 0) {
                 t = GAME.target;
@@ -446,23 +475,9 @@ class Pet {
         const healthR = isPlayer ? 18: 16;
         const ultR = isPlayer ? 23 : 20;
 
-        ctx.strokeStyle = '#300';
-        ctx.lineWidth = 3;
-        ctx.beginPath();
-        ctx.arc(this.x, this.y, healthR, 0, Math.PI * 2);
-        ctx.stroke();
         const hpPct = Math.max(0, Math.min(1, this.hp / this.maxHp));
-        ctx.strokeStyle = '#f00';
-        ctx.lineWidth = 5;
-        ctx.beginPath();
-        ctx.arc(this.x, this.y, healthR, -Math.PI/2, -Math.PI/2 + hpPct * Math.PI * 2);
-        ctx.stroke();
-
-        ctx.strokeStyle = C.colors[this.type.toLowerCase()] || '#f0f';
-        ctx.lineWidth = 5;
-        ctx.beginPath();
-        ctx.arc(this.x, this.y, ultR, -Math.PI/2, -Math.PI/2 + ultPct * Math.PI * 2);
-        ctx.stroke();
+        drawSegmentedRing(this.x, this.y, healthR, '#300', 12, 0.12, 3, hpPct, '#f00');
+        drawSegmentedRing(this.x, this.y, ultR, '#111', 15, 0.10, 5, ultPct, C.colors[this.type.toLowerCase()] || '#f0f');
 
         if (this.beamActive) {
             let t = null;
@@ -634,10 +649,10 @@ class Enemy {
         const hpPct = Math.max(0, Math.min(1, this.hp / this.maxHp));
         const ringR = (this.rank === 'BOSS') ? this.size + 16 : this.size + 6;
         ctx.lineWidth = (this.rank === 'BOSS') ? 6 : 4;
-        ctx.strokeStyle = '#400';
-        ctx.beginPath(); ctx.arc(this.x, this.y, ringR, 0, Math.PI*2); ctx.stroke();
-        ctx.strokeStyle = '#f00';
-        ctx.beginPath(); ctx.arc(this.x, this.y, ringR, -Math.PI/2, -Math.PI/2 + hpPct * Math.PI*2); ctx.stroke();
+        const segCount = (this.rank === 'BOSS' ? 36 : 24);
+        const segGap = (this.rank === 'BOSS' ? 0.04 : 0.10);
+        const segWidth = (this.rank === 'BOSS' ? 6 : 4);
+        drawSegmentedRing(this.x, this.y, ringR, '#400', segCount, segGap, segWidth, hpPct, '#f00');
     }
 }
 
@@ -665,7 +680,8 @@ class PowerupEntity {
         ctx.arc(this.x, this.y, this.size, 0, Math.PI*2);
         ctx.fill();
         ctx.shadowBlur = 0;
-        ctx.strokeStyle = '#fff';
+        ctx.strokeStyle = '#0ff';
+        ctx.setLineDash([4, 4]);
         ctx.lineWidth = 2;
         ctx.beginPath();
         ctx.arc(this.x, this.y, this.size + 6, 0, Math.PI*2);
@@ -686,6 +702,10 @@ class Bullet {
         this.target = target;
         this.lockOnTarget = lockOnTarget;
         this.piercing = !!opts.piercing;
+        this.pierceChain = this.piercing;
+        this.hitCount = 0;
+        this.maxPierce = 3;
+        this.hitTargets = [];
         const locked = (lockOnTarget !== null && target === lockOnTarget);
         let dx, dy;
         if (locked) {
@@ -718,7 +738,8 @@ class Bullet {
         if(this.trail.length > 3) this.trail.shift();
 
         const locked = (this.lockOnTarget && this.target === this.lockOnTarget);
-        if (locked && this.target && enemies.includes(this.target) && this.target.hp > 0) {
+        const shouldTrack = (locked || this.pierceChain) && this.target && enemies.includes(this.target) && this.target.hp > 0;
+        if (shouldTrack) {
             const dx = this.target.x - this.x;
             const dy = (this.target.y + 15) - this.y;
             const desired = Math.atan2(dy, dx);
@@ -726,7 +747,7 @@ class Bullet {
             let diff = desired - current;
             while (diff > Math.PI) diff -= Math.PI * 2;
             while (diff < -Math.PI) diff += Math.PI * 2;
-            const turnRate = 0.12 * GAME.dt;
+            const turnRate = (this.pierceChain ? 0.30 : 0.12) * GAME.dt;
             const newAngle = current + Math.max(-turnRate, Math.min(turnRate, diff));
             this.vx = Math.cos(newAngle) * this.speed;
             this.vy = Math.sin(newAngle) * this.speed;
@@ -742,28 +763,51 @@ class Bullet {
         if(this.y < -50 || this.x < 0 || this.x > canvas.width) this.active = false;
         
         for(let e of enemies) {
+            if(!e || e.hp <= 0) continue;
+            if (this.pierceChain && this.hitTargets.includes(e)) continue;
             let dist = Math.hypot(this.x - e.x, this.y - e.y);
             const bigArcRadius = this.sizeMult > 1 ? 20 * this.sizeMult : 5 * this.sizeMult;
             if(dist < e.size + bigArcRadius) {
                 e.hp -= this.dmg;
                 playSfx('hit', 0.4);
-                GAME.shake = Math.max(GAME.shake, e.rank === 'BOSS' ? 4 : 2.5); 
+                GAME.shake = Math.max(GAME.shake, e.rank === 'BOSS' ? 4 : 2.5);
                 createParticles(this.x, this.y, this.color, 3);
-                if(!this.piercing) this.active = false;
                 if(e.hp <= 0 && !e.deadProcessed) {
                     e.deadProcessed = true;
                     playSfx('die', 0.4);
-                    GAME.shake = Math.max(GAME.shake, e.rank === 'BOSS' ? 14 : 7); 
+                    GAME.shake = Math.max(GAME.shake, e.rank === 'BOSS' ? 14 : 7);
                     createRainbowExplosion(e.x, e.y, e.rank === 'BOSS' ? 80 : 40);
                     if(e.rank === 'BOSS') {
                         GAME.essence += Math.floor(5 * GAME.floor * 0.8);
                     } else {
                         GAME.essence += (1 + GAME.floor);
                     }
-                    GAME.enemiesKilled++; 
+                    GAME.enemiesKilled++;
                     if(GAME.target === e) GAME.target = null;
                 }
-                if(!this.piercing) break;
+                if(this.pierceChain) {
+                    this.hitTargets.push(e);
+                    this.hitCount++;
+                    if (this.hitCount >= this.maxPierce) {
+                        this.active = false;
+                        break;
+                    }
+                    let next = null, bestD = Infinity;
+                    for (let cand of enemies) {
+                        if(!cand || cand.hp <= 0 || this.hitTargets.includes(cand)) continue;
+                        const d2 = (cand.x - this.x)**2 + (cand.y - this.y)**2;
+                        if(d2 < bestD) { bestD = d2; next = cand; }
+                    }
+                    if (next) {
+                        this.target = next;
+                    } else {
+                        this.active = false;
+                        break;
+                    }
+                } else {
+                    this.active = false;
+                    break;
+                }
             }
         }
     }
@@ -795,7 +839,6 @@ class Bullet {
     }
 }
 
-/* --- SYSTEMS --- */
 function findClosestEnemy(x, y) {
     let closest = null;
     let minD = Infinity;
@@ -860,6 +903,33 @@ function renderBar(x, y, w, h, pct, color) {
     ctx.fillStyle = color;
     ctx.fillRect(x, y, Math.max(0, w * pct), h);
 }
+function drawSegmentedRing(cx, cy, radius, trackColor, segCount, segGapRad, lineWidth, progressPct, progressColor) {
+    const full = Math.PI * 2;
+    const pct = Math.max(0, Math.min(1, progressPct));
+    const per = full / segCount;
+    const arc = Math.max(0, per - segGapRad);
+    const fillLimit = -Math.PI/2 + full * pct;
+    ctx.lineWidth = lineWidth;
+    ctx.lineCap = 'butt';
+    for (let i = 0; i < segCount; i++) {
+        const segStart = -Math.PI/2 + i * per + segGapRad * 0.5;
+        const segEnd = segStart + arc;
+        if (segEnd <= fillLimit) {
+            ctx.strokeStyle = progressColor;
+            ctx.beginPath(); ctx.arc(cx, cy, radius, segStart, segEnd); ctx.stroke();
+            continue;
+        }
+        if (segStart >= fillLimit) {
+            ctx.strokeStyle = trackColor;
+            ctx.beginPath(); ctx.arc(cx, cy, radius, segStart, segEnd); ctx.stroke();
+            continue;
+        }
+        ctx.strokeStyle = progressColor;
+        ctx.beginPath(); ctx.arc(cx, cy, radius, segStart, fillLimit); ctx.stroke();
+        ctx.strokeStyle = trackColor;
+        ctx.beginPath(); ctx.arc(cx, cy, radius, fillLimit, segEnd); ctx.stroke();
+    }
+}
 
 const bgSpace = new Image(); bgSpace.src = 'images/space.png';
 const bgStars = new Image(); bgStars.src = 'images/stars.png';
@@ -876,7 +946,7 @@ function drawBackground() {
         if (canDraw(bgSpace)) {
             ctx.drawImage(bgSpace, 0, 0, canvas.width, canvas.height);
         }
-    } catch (_) { /* ignore draw errors and keep fallback */ }
+    } catch (_) { }
 
     try {
         if (canDraw(bgStars)) {
@@ -889,7 +959,7 @@ function drawBackground() {
             }
             ctx.restore();
         }
-    } catch (_) { /* ignore */ }
+    } catch (_) { }
 
     try {
         if (canDraw(bgStars2)) {
@@ -902,7 +972,7 @@ function drawBackground() {
             }
             ctx.restore();
         }
-    } catch (_) { /* ignore */ }
+    } catch (_) { }
 }
 
 
@@ -1156,6 +1226,13 @@ function loop() {
 
 
 const input = { left:false, right:false, up:false, down:false };
+input.joystickActive = false;
+input.jIdentifier = null;
+input.jStartX = 0; input.jStartY = 0;
+input.jCurX = 0; input.jCurY = 0;
+input.jVecX = 0; input.jVecY = 0;
+input.jMagnitude = 0;
+input.jMoved = false;
 window.addEventListener('keydown', (e) => {
     if(e.key === 'ArrowLeft' || e.key === 'a') input.left = true;
     if(e.key === 'ArrowRight' || e.key === 'd') input.right = true;
@@ -1225,19 +1302,110 @@ canvas.addEventListener('mousedown', (e) => {
     }
 });
 
+function handleTap(x, y) {
+    let clickedEnemy = false;
+    for(let e of enemies) {
+        if(Math.hypot(e.x - x, e.y - y) < e.size + 10) { GAME.target = e; clickedEnemy = true; break; }
+    }
+    if(!clickedEnemy) {
+        for(let p of party) {
+            if(Math.hypot(p.x - x, p.y - y) < 30 && p.ultCharge >= 100) activateUlt(p);
+        }
+    }
+}
+
+canvas.addEventListener('touchstart', (e) => {
+    if (GAME.state !== 'PLAY') return;
+    if (!e.changedTouches.length) return;
+    const rect = canvas.getBoundingClientRect();
+    const t = e.changedTouches[0];
+    input.jIdentifier = t.identifier;
+    const x = t.clientX - rect.left;
+    const y = t.clientY - rect.top;
+    input.jStartX = x; input.jStartY = y; input.jCurX = x; input.jCurY = y;
+    input.jVecX = 0; input.jVecY = 0; input.jMagnitude = 0; input.jMoved = false;
+    input.joystickActive = true;
+    if (gameWrapper) {
+        joyBase.style.left = `${x}px`; joyBase.style.top = `${y}px`;
+        joyStick.style.left = `${x}px`; joyStick.style.top = `${y}px`;
+        joyBase.classList.remove('joystick-hidden');
+        joyStick.classList.remove('joystick-hidden');
+    }
+    e.preventDefault();
+},{passive:false});
+
+canvas.addEventListener('touchmove', (e) => {
+    if (!input.joystickActive) return;
+    const rect = canvas.getBoundingClientRect();
+    const t = Array.from(e.changedTouches).find(tt => tt.identifier === input.jIdentifier);
+    if(!t) return;
+    const x = t.clientX - rect.left;
+    const y = t.clientY - rect.top;
+    input.jCurX = x; input.jCurY = y;
+    let dx = x - input.jStartX;
+    let dy = y - input.jStartY;
+    const dist = Math.hypot(dx, dy);
+    if (dist > 14) input.jMoved = true;
+    const maxR = 60;
+    const clamped = Math.min(dist, maxR);
+    const scale = dist === 0 ? 0 : clamped / dist;
+    dx *= scale; dy *= scale;
+    input.jVecX = dx / maxR; input.jVecY = dy / maxR; input.jMagnitude = clamped / maxR;
+    if (gameWrapper) {
+        joyStick.style.left = `${input.jStartX + dx}px`;
+        joyStick.style.top = `${input.jStartY + dy}px`;
+    }
+    e.preventDefault();
+},{passive:false});
+
+function endTouch(identifier, clientX, clientY) {
+    if (!input.joystickActive || identifier !== input.jIdentifier) return;
+    if (gameWrapper) {
+        joyBase.classList.add('joystick-hidden');
+        joyStick.classList.add('joystick-hidden');
+    }
+    const wasMoved = input.jMoved;
+    input.joystickActive = false;
+    input.jIdentifier = null;
+    input.jVecX = 0; input.jVecY = 0; input.jMagnitude = 0; input.jMoved = false;
+    if (!wasMoved) {
+        const rect = canvas.getBoundingClientRect();
+        const x = clientX - rect.left;
+        const y = clientY - rect.top;
+        handleTap(x, y);
+    }
+}
+
+canvas.addEventListener('touchend', (e) => {
+    for(const t of e.changedTouches) endTouch(t.identifier, t.clientX, t.clientY);
+},{passive:false});
+canvas.addEventListener('touchcancel', (e) => {
+    for(const t of e.changedTouches) endTouch(t.identifier, t.clientX, t.clientY);
+},{passive:false});
+
 function applyPlayerMovement() {
     const p = party[0];
     if(!p || p.hp <= 0) return;
+    if (p.entering) return;
     let mvx = 0, mvy = 0;
-    if(input.left) mvx -= 1;
-    if(input.right) mvx += 1;
-    if(input.up) mvy -= 1;
-    if(input.down) mvy += 1;
-    if(mvx !== 0 || mvy !== 0) {
+    const baseSpeed = 3.2;
+    if (input.joystickActive) {
+        mvx = input.jVecX;
+        mvy = input.jVecY;
         const len = Math.hypot(mvx, mvy) || 1;
-        const speed = 2.25;
-        p.x += (mvx/len) * speed;
-        p.y += (mvy/len) * speed;
+        const magScale = 0.5 + 0.5 * Math.min(1, input.jMagnitude);
+        p.x += (mvx/len) * baseSpeed * magScale;
+        p.y += (mvy/len) * baseSpeed * magScale;
+    } else {
+        if(input.left) mvx -= 1;
+        if(input.right) mvx += 1;
+        if(input.up) mvy -= 1;
+        if(input.down) mvy += 1;
+        if(mvx !== 0 || mvy !== 0) {
+            const len = Math.hypot(mvx, mvy) || 1;
+            p.x += (mvx/len) * baseSpeed;
+            p.y += (mvy/len) * baseSpeed;
+        }
     }
     p.x = Math.max(20, Math.min(canvas.width - 20, p.x));
     p.y = Math.max(20, Math.min(C.laneY - 20, p.y));
@@ -1272,10 +1440,21 @@ function activateUlt(pet) {
     }
 
     const base = 6 + meta.dmgLvl;
-    const ultimateDamage = Math.round(base * chargeBoost);
-    enemies.forEach(e => { 
-        e.hp -= ultimateDamage; 
-        createParticles(e.x, e.y, '#f00', 6); 
+    const peakDamage = Math.round(base * chargeBoost);
+    const bloomBase = 120;
+    const effectiveRadius = bloomBase * 2.1;
+    enemies.forEach(e => {
+        if (!e || e.hp <= 0) return;
+        const dx = e.x - pet.x;
+        const dy = e.y - pet.y;
+        const dist = Math.hypot(dx, dy);
+        if (dist <= effectiveRadius + e.size) {
+            const t = Math.min(1, Math.max(0, dist / effectiveRadius));
+            const falloff = 1 - Math.pow(t, 0.65);
+            const dmg = Math.max(1, Math.round(peakDamage * falloff));
+            e.hp -= dmg;
+            createParticles(e.x, e.y, '#f00', 6);
+        }
     });
     spawnUltBloom(pet.x, pet.y, C.colors[pet.type.toLowerCase()] || '#ff00ff');
 }
@@ -1442,6 +1621,12 @@ function spawnUltBloom(x, y, baseColor) {
 function startGame() {
     if(activeFrame) { cancelAnimationFrame(activeFrame); activeFrame = null; }
     party = [ new Pet('Lydia', null, true) ];
+    const p0 = party[0];
+    p0.x = canvas.width / 2;
+    p0.y = canvas.height + 40;
+    p0.targetX = canvas.width / 2;
+    p0.targetY = Math.min(C.laneY - 90, canvas.height - 120);
+    p0.entering = true;
     const supportN = Math.max(0, meta.supportCount || 0);
     const sniperTrait = C.traits.find(t => t.id === 'sniper');
     for (let i = 0; i < supportN; i++) {
@@ -1525,6 +1710,15 @@ function resume() {
     GAME.awaitingDraft = false;
     GAME.postBossTimer = 0;
     GAME.deathTimer = 0;
+
+    if (party[0]) {
+        const p0 = party[0];
+        p0.x = canvas.width / 2;
+        p0.y = canvas.height + 40;
+        p0.targetX = canvas.width / 2;
+        p0.targetY = Math.min(C.laneY - 90, canvas.height - 120);
+        p0.entering = true;
+    }
     loop();
 }
 
@@ -1558,8 +1752,14 @@ function gameOver() {
     localStorage.setItem('neonTowerSave', JSON.stringify(meta));
     const go = document.getElementById('game-over');
     if(go) {
-        document.getElementById('final-floor').innerText = GAME.floor;
-        document.getElementById('banked-essence').innerText = meta.essence;
+        const finalFloorEl = document.getElementById('final-floor');
+        const totalKillsEl = document.getElementById('total-kills');
+        const essenceEarnedEl = document.getElementById('essence-earned');
+        const totalEssenceEl = document.getElementById('total-essence');
+        if (finalFloorEl) finalFloorEl.innerText = GAME.floor;
+        if (totalKillsEl) totalKillsEl.innerText = GAME.enemiesKilled || 0;
+        if (essenceEarnedEl) essenceEarnedEl.innerText = GAME.essence || 0;
+        if (totalEssenceEl) totalEssenceEl.innerText = meta.essence || 0;
         go.classList.remove('hidden');
     }
     activeAudio.forEach(a => { try { a.pause(); a.currentTime = 0; } catch(e){} });
