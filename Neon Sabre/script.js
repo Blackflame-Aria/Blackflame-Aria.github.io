@@ -566,11 +566,9 @@ class Enemy {
                     radius: 10.5,
                     age: 0,
                     growthDuration: 2,
-                    // simple trail for boss bullets only
                     trail: [],
                     trailMax: 10,
                     update() {
-                        // record previous position for trail before moving
                         this.trail.push({ x: this.x, y: this.y, r: this.radius });
                         if (this.trail.length > this.trailMax) this.trail.shift();
 
@@ -594,7 +592,6 @@ class Enemy {
                         if(this.y > canvas.height+30 || this.x < -30 || this.x > canvas.width+30) this.active = false;
                     },
                     draw() {
-                        // draw trail (subtle glow, no dashes)
                         if (this.trail && this.trail.length) {
                             ctx.save();
                             ctx.globalCompositeOperation = 'lighter';
@@ -609,7 +606,6 @@ class Enemy {
                             }
                             ctx.restore();
                         }
-                        // draw current projectile
                         ctx.fillStyle = this.color;
                         ctx.beginPath(); ctx.arc(this.x, this.y, this.radius, 0, Math.PI*2); ctx.fill();
                     }
@@ -970,7 +966,6 @@ function drawSegmentedRing(cx, cy, radius, trackColor, segCount, segGapRad, line
             remainingAngle = 0;
         }
     }
-    // ensure we don't leak dashed settings elsewhere
     ctx.setLineDash([]);
 }
 
