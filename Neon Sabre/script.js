@@ -520,7 +520,7 @@ class Enemy {
     constructor(isBoss) {
         const BASE_HP = 20; 
         const HP_SCALING = 10; 
-        const BASE_SPEED = 1.0; 
+        const BASE_SPEED = 1.1; 
         const SPEED_SCALING = 0.08; 
         this.rank = isBoss ? 'BOSS' : 'minion';
         this.type = ['Lydia', 'Cybil', 'Sofia'][Math.floor(Math.random()*3)];
@@ -907,27 +907,38 @@ function drawSegmentedRing(cx, cy, radius, trackColor, segCount, segGapRad, line
     const full = Math.PI * 2;
     const pct = Math.max(0, Math.min(1, progressPct));
     const per = full / segCount;
-    const arc = Math.max(0, per - segGapRad);
-    const fillLimit = -Math.PI/2 + full * pct;
+    const segArcSpan = Math.max(0, per - segGapRad);
+    const base = -Math.PI / 2;
     ctx.lineWidth = lineWidth;
     ctx.lineCap = 'butt';
+
+    ctx.strokeStyle = trackColor;
     for (let i = 0; i < segCount; i++) {
-        const segStart = -Math.PI/2 + i * per + segGapRad * 0.5;
-        const segEnd = segStart + arc;
-        if (segEnd <= fillLimit) {
-            ctx.strokeStyle = progressColor;
-            ctx.beginPath(); ctx.arc(cx, cy, radius, segStart, segEnd); ctx.stroke();
-            continue;
+        const start = base + i * per + segGapRad * 0.5;
+        const end = start + segArcSpan;
+        ctx.beginPath();
+        ctx.arc(cx, cy, radius, start, end);
+        ctx.stroke();
+    }
+
+    let remainingAngle = full * pct; 
+    if (remainingAngle <= 0) return;
+    ctx.strokeStyle = progressColor;
+    for (let i = 0; i < segCount && remainingAngle > 0; i++) {
+        const start = base + i * per + segGapRad * 0.5;
+        const end = start + segArcSpan;
+        const span = segArcSpan;
+        if (remainingAngle >= span) {
+            ctx.beginPath();
+            ctx.arc(cx, cy, radius, start, end);
+            ctx.stroke();
+            remainingAngle -= span;
+        } else {
+            ctx.beginPath();
+            ctx.arc(cx, cy, radius, start, start + remainingAngle);
+            ctx.stroke();
+            remainingAngle = 0;
         }
-        if (segStart >= fillLimit) {
-            ctx.strokeStyle = trackColor;
-            ctx.beginPath(); ctx.arc(cx, cy, radius, segStart, segEnd); ctx.stroke();
-            continue;
-        }
-        ctx.strokeStyle = progressColor;
-        ctx.beginPath(); ctx.arc(cx, cy, radius, segStart, fillLimit); ctx.stroke();
-        ctx.strokeStyle = trackColor;
-        ctx.beginPath(); ctx.arc(cx, cy, radius, fillLimit, segEnd); ctx.stroke();
     }
 }
 
@@ -1388,7 +1399,7 @@ function applyPlayerMovement() {
     if(!p || p.hp <= 0) return;
     if (p.entering) return;
     let mvx = 0, mvy = 0;
-    const baseSpeed = 3.2;
+    const baseSpeed = 5;
     if (input.joystickActive) {
         mvx = input.jVecX;
         mvy = input.jVecY;
