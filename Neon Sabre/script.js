@@ -476,8 +476,11 @@ class Pet {
         const ultR = isPlayer ? 23 : 20;
 
         const hpPct = Math.max(0, Math.min(1, this.hp / this.maxHp));
-        drawSegmentedRing(this.x, this.y, healthR, '#300', 12, 0.12, 3, hpPct, '#f00');
-        drawSegmentedRing(this.x, this.y, ultR, '#111', 15, 0.10, 5, ultPct, C.colors[this.type.toLowerCase()] || '#f0f');
+        const mobile = (window.innerWidth <= 768) || ('ontouchstart' in window);
+        const hpGap = mobile ? 0.08 : 0.12;
+        drawSegmentedRing(this.x, this.y, healthR, '#300', 12, hpGap, 3, hpPct, '#f00');
+        const ultGap = mobile ? 0.06 : 0.10;
+        drawSegmentedRing(this.x, this.y, ultR, '#111', 15, ultGap, 5, ultPct, C.colors[this.type.toLowerCase()] || '#f0f');
 
         if (this.beamActive) {
             let t = null;
@@ -652,7 +655,9 @@ class Enemy {
         const segCount = (this.rank === 'BOSS' ? 36 : 24);
         const segGap = (this.rank === 'BOSS' ? 0.04 : 0.10);
         const segWidth = (this.rank === 'BOSS' ? 6 : 4);
-        drawSegmentedRing(this.x, this.y, ringR, '#400', segCount, segGap, segWidth, hpPct, '#f00');
+        const isMobile = (window.innerWidth <= 768) || ('ontouchstart' in window);
+        const enemyGap = isMobile ? Math.max(0.03, segGap * 0.7) : segGap;
+        drawSegmentedRing(this.x, this.y, ringR, '#400', segCount, enemyGap, segWidth, hpPct, '#f00');
     }
 }
 
@@ -686,6 +691,7 @@ class PowerupEntity {
         ctx.beginPath();
         ctx.arc(this.x, this.y, this.size + 6, 0, Math.PI*2);
         ctx.stroke();
+        ctx.setLineDash([]);
     }
 }
 
@@ -911,6 +917,7 @@ function drawSegmentedRing(cx, cy, radius, trackColor, segCount, segGapRad, line
     const base = -Math.PI / 2;
     ctx.lineWidth = lineWidth;
     ctx.lineCap = 'butt';
+    ctx.setLineDash([]);
 
     ctx.strokeStyle = trackColor;
     for (let i = 0; i < segCount; i++) {
@@ -940,6 +947,8 @@ function drawSegmentedRing(cx, cy, radius, trackColor, segCount, segGapRad, line
             remainingAngle = 0;
         }
     }
+    // ensure we don't leak dashed settings elsewhere
+    ctx.setLineDash([]);
 }
 
 const bgSpace = new Image(); bgSpace.src = 'images/space.png';

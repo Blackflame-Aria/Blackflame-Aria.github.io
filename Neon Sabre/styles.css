@@ -1,3 +1,37 @@
+html, body {
+    height: 100%;
+}
+
+#game-wrapper {
+    position: relative;
+    width: 100vw;
+    height: 100vh;
+    overflow: hidden; 
+}
+
+#game-wrapper canvas {
+    display: block;
+    width: 100vw;
+    height: 100vh;
+}
+
+.hud-fixed {
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    display: flex;
+    justify-content: center;
+    gap: 12px;
+    padding: 10px;
+    z-index: 1000;
+}
+
+@media (max-width: 768px) {
+    .hud-fixed button, .hud-fixed .btn {
+        transform: scale(0.9);
+    }
+}
 @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Share+Tech+Mono&display=swap');
 
 :root {
@@ -235,7 +269,7 @@ canvas {
 h1 { 
     font-size: 40px; 
     margin: 0; 
-    margin-top: 60px;
+    margin-top: 9aw0px;
     letter-spacing: 2px;
     text-shadow: #f0f 0 0 10px; 
 }
