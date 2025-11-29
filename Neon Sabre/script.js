@@ -566,7 +566,14 @@ class Enemy {
                     radius: 10.5,
                     age: 0,
                     growthDuration: 2,
+                    // simple trail for boss bullets only
+                    trail: [],
+                    trailMax: 10,
                     update() {
+                        // record previous position for trail before moving
+                        this.trail.push({ x: this.x, y: this.y, r: this.radius });
+                        if (this.trail.length > this.trailMax) this.trail.shift();
+
                         this.x += this.vx * GAME.dt;
                         this.y += this.vy * GAME.dt;
                         this.age += GAME.dt / 60;
@@ -587,6 +594,22 @@ class Enemy {
                         if(this.y > canvas.height+30 || this.x < -30 || this.x > canvas.width+30) this.active = false;
                     },
                     draw() {
+                        // draw trail (subtle glow, no dashes)
+                        if (this.trail && this.trail.length) {
+                            ctx.save();
+                            ctx.globalCompositeOperation = 'lighter';
+                            for (let i = 0; i < this.trail.length; i++) {
+                                const p = this.trail[i];
+                                const t = i / this.trail.length;
+                                const a = 0.06 + 0.20 * t;
+                                ctx.fillStyle = hexToRgba(this.color, a);
+                                ctx.beginPath();
+                                ctx.arc(p.x, p.y, Math.max(6, p.r * 0.55), 0, Math.PI * 2);
+                                ctx.fill();
+                            }
+                            ctx.restore();
+                        }
+                        // draw current projectile
                         ctx.fillStyle = this.color;
                         ctx.beginPath(); ctx.arc(this.x, this.y, this.radius, 0, Math.PI*2); ctx.fill();
                     }

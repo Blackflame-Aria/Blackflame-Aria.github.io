@@ -99,7 +99,7 @@ h2 {
     border: 2px solid #f0f;
     width: 100%;
     max-width: 480px;
-    height: 720px;
+    height: 100%;
 }
 
 canvas {
@@ -269,7 +269,7 @@ canvas {
 h1 { 
     font-size: 40px; 
     margin: 0; 
-    margin-top: 9aw0px;
+    margin-top: 50px;
     letter-spacing: 2px;
     text-shadow: #f0f 0 0 10px; 
 }
