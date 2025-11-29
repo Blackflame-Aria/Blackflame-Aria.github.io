@@ -861,39 +861,48 @@ function renderBar(x, y, w, h, pct, color) {
     ctx.fillRect(x, y, Math.max(0, w * pct), h);
 }
 
-const bgSpace = new Image(); bgSpace.src = 'images/Space.png';
+const bgSpace = new Image(); bgSpace.src = 'images/space.png';
 const bgStars = new Image(); bgStars.src = 'images/stars.png';
 const bgStars2 = new Image(); bgStars2.src = 'images/stars2.png';
 let starsOffset = 0;
 let stars2Offset = 0;
 function drawBackground() {
-    if(bgSpace.complete) {
-        ctx.drawImage(bgSpace, 0, 0, canvas.width, canvas.height);
-    } else {
-        ctx.fillStyle = '#08080c';
-        ctx.fillRect(0,0,canvas.width,canvas.height);
-    }
+    ctx.fillStyle = '#08080c';
+    ctx.fillRect(0,0,canvas.width,canvas.height);
 
-    if(bgStars.complete) {
-        const h = bgStars.height || 64;
-        starsOffset = (starsOffset + 0.6) % h;
-        ctx.save();
-        ctx.globalAlpha = 0.55;
-        for(let y = -h + starsOffset; y < canvas.height; y += h) {
-            ctx.drawImage(bgStars, 0, y, canvas.width, h);
+    const canDraw = (img) => !!(img && img.complete && (img.naturalWidth || 0) > 0);
+
+    try {
+        if (canDraw(bgSpace)) {
+            ctx.drawImage(bgSpace, 0, 0, canvas.width, canvas.height);
         }
-        ctx.restore();
-    }
-    if(bgStars2.complete) {
-        const h2 = bgStars2.height || 64;
-        stars2Offset = (stars2Offset + 1.0) % h2;
-        ctx.save();
-        ctx.globalAlpha = 0.75; 
-        for(let y = -h2 + stars2Offset; y < canvas.height; y += h2) {
-            ctx.drawImage(bgStars2, 0, y, canvas.width, h2);
+    } catch (_) { /* ignore draw errors and keep fallback */ }
+
+    try {
+        if (canDraw(bgStars)) {
+            const h = bgStars.naturalHeight || bgStars.height || 64;
+            starsOffset = (starsOffset + 0.6) % h;
+            ctx.save();
+            ctx.globalAlpha = 0.55;
+            for (let y = -h + starsOffset; y < canvas.height; y += h) {
+                ctx.drawImage(bgStars, 0, y, canvas.width, h);
+            }
+            ctx.restore();
         }
-        ctx.restore();
-    }
+    } catch (_) { /* ignore */ }
+
+    try {
+        if (canDraw(bgStars2)) {
+            const h2 = bgStars2.naturalHeight || bgStars2.height || 64;
+            stars2Offset = (stars2Offset + 1.0) % h2;
+            ctx.save();
+            ctx.globalAlpha = 0.75;
+            for (let y = -h2 + stars2Offset; y < canvas.height; y += h2) {
+                ctx.drawImage(bgStars2, 0, y, canvas.width, h2);
+            }
+            ctx.restore();
+        }
+    } catch (_) { /* ignore */ }
 }
 
 
