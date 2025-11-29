@@ -567,7 +567,7 @@ class Enemy {
                     age: 0,
                     growthDuration: 2,
                     trail: [],
-                    trailMax: 10,
+                    trailMax: 12,
                     update() {
                         this.trail.push({ x: this.x, y: this.y, r: this.radius });
                         if (this.trail.length > this.trailMax) this.trail.shift();
@@ -598,10 +598,13 @@ class Enemy {
                             for (let i = 0; i < this.trail.length; i++) {
                                 const p = this.trail[i];
                                 const t = i / this.trail.length;
-                                const a = 0.06 + 0.20 * t;
+                                const a = 0.06 + 0.22 * t;
                                 ctx.fillStyle = hexToRgba(this.color, a);
+                                const baseR = Math.max(6, p.r * 0.55);
+                                const headBoost = 1.0 + 0.35 * t;
+                                const trailR = baseR * headBoost;
                                 ctx.beginPath();
-                                ctx.arc(p.x, p.y, Math.max(6, p.r * 0.55), 0, Math.PI * 2);
+                                ctx.arc(p.x, p.y, trailR, 0, Math.PI * 2);
                                 ctx.fill();
                             }
                             ctx.restore();
