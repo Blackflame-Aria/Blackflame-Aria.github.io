@@ -97,7 +97,7 @@ function fitCanvas() {
     canvas.width = maxW;
     const wrapperH = wrapper ? wrapper.clientHeight : 700;
     canvas.height = wrapperH;
-    C.laneY = Math.round(canvas.height * 0.88);
+    C.laneY = Math.round(canvas.height * 0.84);
 }
 window.addEventListener('resize', fitCanvas);
 fitCanvas();
@@ -986,6 +986,15 @@ function drawSegmentedRing(cx, cy, radius, trackColor, segCount, segGapRad, line
     ctx.setLineDash([]);
 }
 
+function toCanvasCoords(clientX, clientY) {
+    const rect = canvas.getBoundingClientRect();
+    const scaleX = canvas.width / rect.width;
+    const scaleY = canvas.height / rect.height;
+    const x = (clientX - rect.left) * scaleX;
+    const y = (clientY - rect.top) * scaleY;
+    return { x, y };
+}
+
 const bgSpace = new Image(); bgSpace.src = 'images/space.png';
 const bgStars = new Image(); bgStars.src = 'images/stars.png';
 const bgStars2 = new Image(); bgStars2.src = 'images/stars2.png';
@@ -1333,9 +1342,7 @@ window.addEventListener('keyup', (e) => {
 
 canvas.addEventListener('mousedown', (e) => {
     if(GAME.state !== 'PLAY') return;
-    const rect = canvas.getBoundingClientRect();
-    const x = e.clientX - rect.left;
-    const y = e.clientY - rect.top;
+    const { x, y } = toCanvasCoords(e.clientX, e.clientY);
 
     playSfx('click', 0.3);
 
@@ -1372,11 +1379,9 @@ function handleTap(x, y) {
 canvas.addEventListener('touchstart', (e) => {
     if (GAME.state !== 'PLAY') return;
     if (!e.changedTouches.length) return;
-    const rect = canvas.getBoundingClientRect();
     const t = e.changedTouches[0];
     input.jIdentifier = t.identifier;
-    const x = t.clientX - rect.left;
-    const y = t.clientY - rect.top;
+    const { x, y } = toCanvasCoords(t.clientX, t.clientY);
     input.jStartX = x; input.jStartY = y; input.jCurX = x; input.jCurY = y;
     input.jVecX = 0; input.jVecY = 0; input.jMagnitude = 0; input.jMoved = false;
     input.joystickActive = true;
@@ -1391,11 +1396,9 @@ canvas.addEventListener('touchstart', (e) => {
 
 canvas.addEventListener('touchmove', (e) => {
     if (!input.joystickActive) return;
-    const rect = canvas.getBoundingClientRect();
     const t = Array.from(e.changedTouches).find(tt => tt.identifier === input.jIdentifier);
     if(!t) return;
-    const x = t.clientX - rect.left;
-    const y = t.clientY - rect.top;
+    const { x, y } = toCanvasCoords(t.clientX, t.clientY);
     input.jCurX = x; input.jCurY = y;
     let dx = x - input.jStartX;
     let dy = y - input.jStartY;
@@ -1424,9 +1427,7 @@ function endTouch(identifier, clientX, clientY) {
     input.jIdentifier = null;
     input.jVecX = 0; input.jVecY = 0; input.jMagnitude = 0; input.jMoved = false;
     if (!wasMoved) {
-        const rect = canvas.getBoundingClientRect();
-        const x = clientX - rect.left;
-        const y = clientY - rect.top;
+        const { x, y } = toCanvasCoords(clientX, clientY);
         handleTap(x, y);
     }
 }
