@@ -1,25 +1,24 @@
-html, body {
-    height: 100%;
-}
+html, body { height:100%; }
 
 #game-wrapper {
-    position: relative;
-    width: 100vw;
-    height: 100vh;
-    overflow: hidden; 
-}
-
-#game-wrapper canvas {
+    position: absolute;
+    width: 480px;
+    height: 854px;
+    aspect-ratio: 9 / 16;
+    overflow: hidden;
+    border: 2px solid #f0f;
     display: block;
-    width: 100vw;
-    height: 100vh;
+    touch-action: none;
 }
+#game-wrapper canvas { width:100%; height:100%; display:block; }
 
 .hud-fixed {
-    position: fixed;
-    left: 0;
-    right: 0;
-    bottom: 0;
+    position: relative;
+    left: 50%;
+    right: 50%;
+    bottom: 50%;
+    top: 50%;
+    transform: translate(-50%, -50%);
     display: flex;
     justify-content: center;
     gap: 12px;
@@ -50,7 +49,8 @@ body {
     display: flex;
     justify-content: center;
     align-items: center;
-    min-height: 100dvh;
+    height: 100dvh;
+    width: 100dvw;
     overflow-x: hidden;
     overflow-y: auto;
     -webkit-overflow-scrolling: touch;
@@ -91,16 +91,6 @@ h2 {
     z-index: 10;
 }
 
-#game-wrapper {
-    position: relative;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    border: 2px solid #f0f;
-    width: 100%;
-    max-width: 480px;
-    height: 95%;
-}
 
 canvas {
     background: #08080c;
@@ -269,7 +259,7 @@ canvas {
 h1 { 
     font-size: 40px; 
     margin: 0; 
-    margin-top: 80px;
+    margin-top: 120px;
     letter-spacing: 2px;
     text-shadow: #f0f 0 0 10px; 
 }
@@ -279,13 +269,13 @@ h1 {
     font-size: 14px; 
     letter-spacing: 4px; }
 
-.shop-grid { 
-    display: flex; 
-    flex-direction: column; 
-    gap: 10px; 
-    margin-bottom: 14px; 
-    width: 88%; 
-    max-width: 360px; 
+.shop-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 12px;
+    margin-bottom: 14px;
+    width: 88%;
+    max-width: 520px;
 }
 .shop-item {
     background: rgba(255,255,255,0.06);
@@ -344,7 +334,7 @@ h1 {
     background: transparent;
     border: 1px solid #ff0;
     color: #ff0;
-    padding: 10px 20px;
+    padding: 15px 20px;
     cursor: pointer;
     margin-top: 20px;
     font-family: 'Orbitron';

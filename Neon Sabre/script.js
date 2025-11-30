@@ -1,5 +1,7 @@
 const canvas = document.getElementById('gameCanvas');
 const ctx = canvas.getContext('2d');
+const BASE_W = 480;
+const BASE_H = 854; 
 
 const GAME = {
     state: 'MENU',
@@ -91,13 +93,17 @@ const C = {
 };
 
 function fitCanvas() {
-    const wrapper = document.getElementById('game-wrapper');
-    const wrapperW = wrapper ? wrapper.clientWidth : Math.min(window.innerWidth - 20, 480);
-    const maxW = Math.min(wrapperW, 480);
-    canvas.width = maxW;
-    const wrapperH = wrapper ? wrapper.clientHeight : 700;
-    canvas.height = wrapperH;
-    C.laneY = Math.round(canvas.height * 0.84);
+    canvas.width = BASE_W;
+    canvas.height = BASE_H;
+    const scaleW = window.innerWidth / BASE_W;
+    const scaleH = window.innerHeight / BASE_H;
+    const fitScale = Math.min(scaleW, scaleH);
+    const scale = Math.min(1, fitScale);
+    if (gameWrapper) {
+        gameWrapper.style.transformOrigin = 'center center';
+        gameWrapper.style.transform = `scale(${scale})`;
+    }
+    C.laneY = Math.round(BASE_H * 0.84);
 }
 window.addEventListener('resize', fitCanvas);
 fitCanvas();
@@ -988,8 +994,8 @@ function drawSegmentedRing(cx, cy, radius, trackColor, segCount, segGapRad, line
 
 function toCanvasCoords(clientX, clientY) {
     const rect = canvas.getBoundingClientRect();
-    const scaleX = canvas.width / rect.width;
-    const scaleY = canvas.height / rect.height;
+    const scaleX = BASE_W / rect.width;
+    const scaleY = BASE_H / rect.height;
     const x = (clientX - rect.left) * scaleX;
     const y = (clientY - rect.top) * scaleY;
     return { x, y };
