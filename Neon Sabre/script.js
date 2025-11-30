@@ -303,10 +303,12 @@ class Pet {
         if (total > 1 && idx !== 0) {
             const spacing = 50;
             const center = canvas.width / 2;
-            const side = (idx % 2 === 1) ? -1 : 1; 
-            const order = Math.ceil(idx / 2);    
+            const side = (idx % 2 === 1) ? -1 : 1;
+            const order = Math.ceil(idx / 2);
             const targetX = center + side * order * spacing;
+            const targetY = Math.max(0, C.laneY - 60);
             this.x += (targetX - this.x) * 0.12;
+            this.y += (targetY - this.y) * 0.12;
         }
         this.recoil *= 0.6;
 
@@ -521,10 +523,10 @@ class Pet {
 
 class Enemy {
     constructor(isBoss) {
-        const BASE_HP = 20; 
+        const BASE_HP = 25; 
         const HP_SCALING = 10; 
-        const BASE_SPEED = 1.1; 
-        const SPEED_SCALING = 0.08; 
+        const BASE_SPEED = 1.25; 
+        const SPEED_SCALING = 0.1; 
         this.rank = isBoss ? 'BOSS' : 'minion';
         this.type = ['Lydia', 'Cybil', 'Sofia'][Math.floor(Math.random()*3)];
         
@@ -533,7 +535,7 @@ class Enemy {
         this.x = Math.random() * (canvas.width - 60) + 30;
         this.y = C.spawnY;
         
-        this.speed = isBoss ? (0.3 + GAME.floor * 0.02) : BASE_SPEED + (GAME.floor * SPEED_SCALING);
+        this.speed = isBoss ? (0.3 + GAME.floor * 0.05) : BASE_SPEED + (GAME.floor * SPEED_SCALING);
         
         this.size = isBoss ? 40 : 14;
         this.wobble = Math.random() * Math.PI;
@@ -720,6 +722,7 @@ class PowerupEntity {
 class Bullet {
     constructor(x, y, target, dmg, type, spread, lockOnTarget = null, opts = {}) {
         this.x = x; this.y = y;
+        this.prevX = x; this.prevY = y;
         this.dmg = dmg;
         this.color = C.colors[type.toLowerCase()];
         this.active = true;
@@ -754,7 +757,7 @@ class Bullet {
             angle += (Math.random() - 0.5) * BASE_SPREAD;
         }
 
-        this.speed = 12;
+        this.speed = 15;
         this.vx = Math.cos(angle) * this.speed;
         this.vy = Math.sin(angle) * this.speed;
         
@@ -781,6 +784,7 @@ class Bullet {
             this.vy = Math.sin(newAngle) * this.speed;
         }
 
+        this.prevX = this.x; this.prevY = this.y;
         this.x += this.vx * GAME.dt;
         this.y += this.vy * GAME.dt;
 
@@ -793,9 +797,19 @@ class Bullet {
         for(let e of enemies) {
             if(!e || e.hp <= 0) continue;
             if (this.pierceChain && this.hitTargets.includes(e)) continue;
-            let dist = Math.hypot(this.x - e.x, this.y - e.y);
-            const bigArcRadius = this.sizeMult > 1 ? 20 * this.sizeMult : 5 * this.sizeMult;
-            if(dist < e.size + bigArcRadius) {
+            const ax = this.prevX, ay = this.prevY;
+            const bx = this.x, by = this.y;
+            const ex = e.x, ey = e.y;
+            const abx = bx - ax, aby = by - ay;
+            const abLen2 = abx*abx + aby*aby || 1;
+            const apx = ex - ax, apy = ey - ay;
+            let tProj = (apx*abx + apy*aby) / abLen2;
+            tProj = Math.max(0, Math.min(1, tProj));
+            const closestX = ax + abx * tProj;
+            const closestY = ay + aby * tProj;
+            const dist = Math.hypot(ex - closestX, ey - closestY);
+            const hitPad = this.pierceChain ? Math.max(this.width || 3, 8) : Math.max(5 * this.sizeMult, this.width || 3);
+            if(dist < e.size + hitPad) {
                 e.hp -= this.dmg;
                 playSfx('hit', 0.4);
                 GAME.shake = Math.max(GAME.shake, e.rank === 'BOSS' ? 4 : 2.5);
@@ -1250,7 +1264,7 @@ function loop() {
         GAME.shootAmbientTimer -= realSec;
         if (GAME.shootAmbientTimer <= 0) {
             playSfx('shoot', 0.2);
-            GAME.shootAmbientTimer = 0.15;
+            GAME.shootAmbientTimer = 0.35;
         }
     } else {
         GAME.shootAmbientTimer = 0;
@@ -1719,8 +1733,22 @@ function showDraft() {
         `;
         d.onclick = () => {
             playSfx('click', 0.2);
-            party.push(new Pet(type, trait, false));
-            if(party.length > 5) party.shift();
+            const newbie = new Pet(type, trait, false);
+            let placed = false;
+            for (let s = 1; s < Math.max(party.length, 5); s++) {
+                if (!party[s] || (party[s] && party[s].hp <= 0)) {
+                    party[s] = newbie;
+                    placed = true;
+                    break;
+                }
+            }
+            if (!placed) {
+                if (party.length < 5) {
+                    party.push(newbie);
+                } else {
+                    party[party.length - 1] = newbie;
+                }
+            }
             resume();
         };
         con.appendChild(d);
@@ -1731,7 +1759,7 @@ function showDraft() {
 function resume() {
     GAME.floor++;
     GAME.enemiesRequired = 10 + (GAME.floor - 1);
-    GAME.bossQuota = 1 + Math.floor((GAME.floor - 1) / 5);
+    GAME.bossQuota = 1 + Math.floor(GAME.floor / 5);
     GAME.powerupQuota = 1 + Math.floor((GAME.floor - 1) / 5);
     GAME.bossesSpawned = 0;
     GAME.powerupsSpawned = 0;

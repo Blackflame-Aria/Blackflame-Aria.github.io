@@ -99,7 +99,7 @@ h2 {
     border: 2px solid #f0f;
     width: 100%;
     max-width: 480px;
-    height: 100%;
+    height: 95%;
 }
 
 canvas {
@@ -107,7 +107,7 @@ canvas {
     display: block;
     cursor: crosshair;
     width: 100%;
-    height: 100%;
+    height: 90%;
 }
 
 .joystick-base {
@@ -269,7 +269,7 @@ canvas {
 h1 { 
     font-size: 40px; 
     margin: 0; 
-    margin-top: 15%;
+    margin-top: 25%;
     letter-spacing: 2px;
     text-shadow: #f0f 0 0 10px; 
 }
