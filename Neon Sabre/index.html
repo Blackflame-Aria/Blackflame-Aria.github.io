@@ -29,11 +29,13 @@
             <div id="boss-warning" class="hidden">WARNING: TITAN DETECTED</div>
             <div id="powerup-warning" class="hidden">POWER-UP ACQUIRED</div>
 
-            <div id="restart-row">
-                <div class="bottom-buttons">
-                    <button class="secondary-btn" onclick="togglePause()" id="pause-btn">PAUSE</button>
-                    <button class="secondary-btn" onclick="location.reload()">RESTART</button>
-                </div>
+            <div id="bottom-controls">
+                <button class="secondary-btn corner-btn left" onclick="togglePause()" id="pause-btn" aria-label="Pause">
+                    ၊၊
+                </button>
+                <button class="secondary-btn corner-btn right" onclick="restartRun()" aria-label="Restart">
+                    ⟳
+                </button>
             </div>
 
             <div id="start-screen" class="modal">

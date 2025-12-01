@@ -303,21 +303,19 @@ class Pet {
 
         if (total > 1 && idx !== 0) {
             const centerX = canvas.width / 2;
-            const spacingX = 44; 
-            const row1Y = Math.max(0, C.laneY - 30);
-            const row2Y = Math.max(0, C.laneY - 60);
-
-            const altIndex = idx - 1;  
-            const row = (altIndex < 8) ? 0 : 1;
-            const posInRow = altIndex % 8;  
-            const isLeft = (posInRow < 4);
-            const offsetIndex = isLeft ? posInRow : (posInRow - 4);
-            const dir = isLeft ? -1 : 1;   
-            const targetX = centerX + dir * (spacingX * (offsetIndex + 1));
-            const targetY = (row === 0) ? row1Y : row2Y;
-
-            this.x += (targetX - this.x) * 0.14;
-            this.y += (targetY - this.y) * 0.14;
+            const spacingX = 44;
+            const rowY = Math.max(0, C.laneY - 40);
+            const altIndex = idx - 1; 
+            const maxSlots = 10;
+            if (altIndex < maxSlots) {
+                const k = Math.floor((altIndex + 1) / 2);
+                const sign = (altIndex % 2 === 1) ? -1 : 1; 
+                const offset = (altIndex === 0) ? 0 : sign * k;
+                const targetX = centerX + (offset * spacingX);
+                const targetY = rowY;
+                this.x += (targetX - this.x) * 0.14;
+                this.y += (targetY - this.y) * 0.14;
+            }
         }
         this.recoil *= 0.6;
 
@@ -514,12 +512,17 @@ class Pet {
         if (this.ultCharge >= 100) {
             ctx.save();
             ctx.globalCompositeOperation = 'lighter';
-            ctx.shadowBlur = 16;
             const glow = C.colors[this.type.toLowerCase()] || '#f0f';
-            ctx.strokeStyle = glow;
-            ctx.lineWidth = 4;
-            ctx.beginPath(); ctx.arc(this.x, this.y, ultR + 6, 0, Math.PI*2); ctx.stroke();
-            ctx.shadowBlur = 0;
+            const inner = ultR + 0;
+            const outer = ultR + 10;
+            const grad = ctx.createRadialGradient(this.x, this.y, inner, this.x, this.y, outer);
+            grad.addColorStop(0.0, hexToRgba(glow, 0.0));
+            grad.addColorStop(0.6, hexToRgba(glow, 0.45));
+            grad.addColorStop(1.0, hexToRgba(glow, 0.0));
+            ctx.fillStyle = grad;
+            ctx.beginPath();
+            ctx.arc(this.x, this.y, outer, 0, Math.PI*2);
+            ctx.fill();
             ctx.restore();
         }
 
@@ -1010,7 +1013,7 @@ function hexToRgba(hex,a){
 }
 
 function renderBar(x, y, w, h, pct, color) {
-    ctx.fillStyle = '#333';
+    ctx.fillStyle = '#f0f';
     ctx.fillRect(x, y, w, h);
     ctx.fillStyle = color;
     ctx.fillRect(x, y, Math.max(0, w * pct), h);
@@ -1484,7 +1487,7 @@ canvas.addEventListener('touchstart', (e) => {
     const t = e.changedTouches[0];
     input.jIdentifier = t.identifier;
     const { x, y } = toCanvasCoords(t.clientX, t.clientY);
-    const baseX = canvas.width/2;
+    const baseX = JOY.radius + 30; 
     const baseY = C.laneY;
     const distToCenter = Math.hypot(x - baseX, y - baseY);
     if (distToCenter <= JOY.radius) {
@@ -1504,14 +1507,14 @@ canvas.addEventListener('touchmove', (e) => {
     if(!t) return;
     const { x, y } = toCanvasCoords(t.clientX, t.clientY);
     input.jCurX = x; input.jCurY = y;
-    const baseX = canvas.width/2;
+    const baseX = JOY.radius + 30; 
     const baseY = C.laneY;
     input.jStartX = baseX; input.jStartY = baseY;
     let dx = x - baseX;
     let dy = y - baseY;
     const dist = Math.hypot(dx, dy);
     if (dist > 14) input.jMoved = true;
-    const maxR = 60;
+    const maxR = JOY.radius;
     const clamped = Math.min(dist, maxR);
     const scale = dist === 0 ? 0 : clamped / dist;
     dx *= scale; dy *= scale;
@@ -1603,10 +1606,10 @@ function activateUlt(pet) {
     if (tid === 'gatling') { pet.beamActive = true; pet.beamTime = 10; pet.beamSfxTimer = 0; pet.beamSfxBurstLeft = 10; return; }
     if (tid === 'shotgun') { activateShotgunUlt(pet, chargeBoost); return; }
 
-    const base = (6 + meta.dmgLvl) * 2;
+    const base = (6 + meta.dmgLvl) * 3;
     const peakDamage = Math.round(base * chargeBoost);
     const bloomBase = 120;
-    const effectiveRadius = bloomBase * 2.1;
+    const effectiveRadius = (bloomBase * 2.1) * 1.5; 
     enemies.forEach(e => {
         if (!e || e.hp <= 0) return;
         const dx = e.x - pet.x;
@@ -1796,7 +1799,7 @@ function createMuzzleFlash(x, y, color) {
 }
 
 function spawnUltBloom(x, y, baseColor) {
-    const r = 120;
+    const r = 180; 
     const innerColors = ['#ff0000', '#ff6699', '#ffffff'];
     blooms.push({ x, y, radius: r*0.8, maxRadius: r*2.6, ringRadius: r*1.6, life:1.4, maxLife:1.4, pulse:0, colors: innerColors });
     const outerColors = ['#551a00', '#330033', '#000000'];
@@ -2137,7 +2140,7 @@ function triggerTraitUlt(traitId) {
     return false;
 }
 
-const JOY = { stickX:0, stickY:0, radius:60 };
+const JOY = { stickX:0, stickY:0, radius:100 }; 
 function updateKeyboardStick() {
     if(input.joystickActive) {
         JOY.stickX = input.jVecX * JOY.radius;
@@ -2160,7 +2163,7 @@ function updateKeyboardStick() {
 }
 
 function drawJoystickOverlay() {
-    const baseX = canvas.width/2;
+    const baseX = JOY.radius + 20; 
     const baseY = C.laneY;
     ctx.save();
     ctx.globalCompositeOperation = 'source-over';
@@ -2179,102 +2182,108 @@ function drawJoystickOverlay() {
 }
 
 const ULT_BUTTONS = [
-    { trait:'sniper', label:'BOMB', offsetY:-60, color:'#0ff' },
-    { trait:'gatling', label:'BEAM', offsetY:0, color:'#ff0' },
-    { trait:'shotgun', label:'BURST', offsetY:60, color:'#f0f' }
-];
-const ULT_BTN_RADIUS = 25;
-const DEF_ULT_BTN_RADIUS = 30;
-
-function detectUltButton(x, y) {
-    const cxRight = canvas.width - 50;
-    const cyMid = Math.max(70, Math.min(canvas.height-70, C.laneY));
-    const baseX = canvas.width/2;
-    const defCx = baseX + (cxRight - baseX) * 0.5;
-    const defCy = cyMid;
-    if (Math.hypot(x - defCx, y - defCy) <= DEF_ULT_BTN_RADIUS) return 'default';
-
-    for(const b of ULT_BUTTONS) {
-        const cx = canvas.width - 60; 
-        const cy = Math.max(70, Math.min(canvas.height-70, C.laneY + b.offsetY));
-        const d = Math.hypot(x - cx, y - cy);
-        if(d <= ULT_BTN_RADIUS) return b.trait;
+    { 
+        trait:'sniper', 
+        label:'BOMB', 
+        offsetY:0,
+        color:'#0ff' 
+    },
+    { 
+        trait:'gatling', 
+        label:'BEAM', 
+        offsetY:0, 
+        color:'#ff0' 
+    },
+    { 
+        trait:'shotgun', 
+        label:'BURST', 
+        offsetY:0, 
+        color:'#0f0' 
     }
-    return null;
+];
+const ULT_BTN_RADIUS = 32;
+const DEF_ULT_BTN_RADIUS = 36;
+
+const ALL_ULTS = [
+    { id:'default', label:'BLAST', color:'#f0f' },
+    { id:'sniper', label:'BOMB', color:'#0ff' },
+    { id:'gatling', label:'BEAM', color:'#ff0' },
+    { id:'shotgun', label:'BURST', color:'#0f0' }
+];
+function getUltCircleCenter() {
+    const cx = canvas.width - (JOY.radius + 30);
+    const cy = C.laneY;
+    return { cx, cy };
+}
+function computeUltButtonPositions() {
+    const { cx, cy } = getUltCircleCenter();
+    const maxBtnR = Math.max(DEF_ULT_BTN_RADIUS, ULT_BTN_RADIUS);
+    const innerR = Math.max(24, JOY.radius - (maxBtnR + 8));
+    const byId = (id) => ALL_ULTS.find(u => u.id === id);
+    return [
+        { x: cx,           y: cy - innerR, ult: byId('default') },
+        { x: cx + innerR,  y: cy,          ult: byId('sniper') },  
+        { x: cx,           y: cy + innerR, ult: byId('shotgun') }  
+    ];
+}
+function detectUltButton(x, y) {
+    const pos = computeUltButtonPositions();
+    const SELECT_R = 70; 
+    let best = null; let bestDist = Infinity;
+    for (const p of pos) {
+        const d = Math.hypot(x - p.x, y - p.y);
+        if (d <= SELECT_R && d < bestDist) { best = p; bestDist = d; }
+    }
+    return best ? best.ult.id : null;
 }
 
 function drawUltButtons() {
     ctx.save();
     ctx.lineWidth = 5;
     const pulseT = performance.now()/500;
-    const cxRight = canvas.width - 50;
-    const cyMid = Math.max(70, Math.min(canvas.height-70, C.laneY));
-    const baseX = canvas.width/1.7;
-    const defCx = baseX + (cxRight - baseX) * 0.5;
-    const defCy = cyMid;
-    const main = party[0];
-    let defPct = 0, defReady = false;
-    if (main) {
-        defPct = Math.min(1, main.ultCharge/100);
-        defReady = main.ultCharge >= 100;
-    }
+    const { cx, cy } = getUltCircleCenter();
     ctx.beginPath();
-    ctx.fillStyle = 'rgba(30,30,40,0.55)';
+    ctx.fillStyle = 'rgba(30,30,40,0.35)';
     ctx.strokeStyle = '#222';
-    ctx.arc(defCx, defCy, DEF_ULT_BTN_RADIUS, 0, Math.PI*2); ctx.fill(); ctx.stroke();
-    if (defPct > 0) {
-        ctx.beginPath();
-        ctx.strokeStyle = '#f0f';
-        ctx.lineWidth = 4;
-        ctx.arc(defCx, defCy, DEF_ULT_BTN_RADIUS-4, -Math.PI/2, -Math.PI/2 + defPct*Math.PI*2);
-        ctx.stroke();
-    }
-    if (defReady) {
-        const glowAlpha = 0.55 + 0.35*Math.sin(pulseT*2);
-        ctx.beginPath();
-        ctx.lineWidth = 6 + 3*Math.sin(pulseT*3);
-        ctx.strokeStyle = `rgba(255,255,255,${glowAlpha})`;
-        ctx.arc(defCx, defCy, DEF_ULT_BTN_RADIUS, 0, Math.PI*2);
-        ctx.stroke();
-    }
-    ctx.fillStyle = defReady ? '#f0f' : '#faf';
-    ctx.font = 'bold 14px monospace';
-    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-    ctx.fillText('BLAST', defCx, defCy);
+    ctx.arc(cx, cy, JOY.radius, 0, Math.PI*2); ctx.fill(); ctx.stroke();
 
-    for(const b of ULT_BUTTONS) {
-        const cx = canvas.width - 50; 
-        const cy = Math.max(70, Math.min(canvas.height-70, C.laneY + b.offsetY));
-        const units = traitUnits(b.trait);
-        let pct = 0;
-        let anyReady = false;
-        for(const {p} of units) {
-            pct = Math.max(pct, Math.min(1, p.ultCharge/100));
-            if(p.ultCharge >= 100) anyReady = true;
+    const positions = computeUltButtonPositions();
+    for (const pos of positions) {
+        let pct = 0; let anyReady = false;
+        if (pos.ult.id === 'default') {
+            const main = party[0];
+            if (main) { pct = Math.min(1, main.ultCharge/100); anyReady = main.ultCharge >= 100; }
+        } else {
+            const units = traitUnits(pos.ult.id);
+            for (const {p} of units) {
+                pct = Math.max(pct, Math.min(1, p.ultCharge/100));
+                if (p.ultCharge >= 100) anyReady = true;
+            }
         }
+        const radius = pos.ult.id === 'default' ? DEF_ULT_BTN_RADIUS : ULT_BTN_RADIUS;
         ctx.beginPath();
         ctx.fillStyle = 'rgba(30,30,40,0.55)';
         ctx.strokeStyle = '#222';
-        ctx.arc(cx, cy, ULT_BTN_RADIUS, 0, Math.PI*2); ctx.fill(); ctx.stroke();
-        if(pct > 0) {
+        ctx.arc(pos.x, pos.y, radius, 0, Math.PI*2); ctx.fill(); ctx.stroke();
+        if (pct > 0) {
             ctx.beginPath();
-            ctx.strokeStyle = b.color;
+            ctx.strokeStyle = pos.ult.color;
             ctx.lineWidth = 4;
-            ctx.arc(cx, cy, ULT_BTN_RADIUS-4, -Math.PI/2, -Math.PI/2 + pct*Math.PI*2);
+            ctx.arc(pos.x, pos.y, radius-4, -Math.PI/2, -Math.PI/2 + pct*Math.PI*2);
             ctx.stroke();
         }
-        if(anyReady) {
-            const glowAlpha = 0.55 + 0.35*Math.sin(pulseT*2 + (b.offsetY*0.02));
+        if (anyReady) {
+            const glowAlpha = 0.55 + 0.35*Math.sin(pulseT*2);
             ctx.beginPath();
             ctx.lineWidth = 6 + 3*Math.sin(pulseT*3);
-            ctx.strokeStyle = `rgba(255,255,255,${glowAlpha})`;
-            ctx.arc(cx, cy, ULT_BTN_RADIUS, 0, Math.PI*2);
+            ctx.strokeStyle = hexToRgba(pos.ult.color, glowAlpha);
+            ctx.arc(pos.x, pos.y, radius, 0, Math.PI*2);
             ctx.stroke();
         }
         ctx.fillStyle = anyReady ? '#fff' : '#888';
         ctx.font = 'bold 14px monospace';
         ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-        ctx.fillText(b.label, cx, cy);
+        ctx.fillText(pos.ult.label, pos.x, pos.y);
     }
     ctx.restore();
 }

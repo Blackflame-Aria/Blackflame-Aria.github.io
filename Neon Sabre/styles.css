@@ -135,15 +135,26 @@ canvas {
     }
 }
 
-#restart-row {
+#bottom-controls {
     position: absolute;
-    left: 0;
-    right: 0;
-    bottom: 10px;
-    text-align: center;
-    pointer-events: all;
+    left: 0; right: 0; bottom: 8px;
+    width: 100%; height: 0;
+    pointer-events: none;
 }
-.bottom-buttons { display:flex; gap:12px; justify-content:center; }
+.corner-btn {
+    position: absolute;
+    bottom: 0;
+    pointer-events: all;
+    width: 50px;
+    height: 50px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    line-height: 0;
+    padding: 0;
+}
+.corner-btn.left { left: 8px; }
+.corner-btn.right { right: 8px; }
 
 #ui-layer {
     position: absolute;
@@ -152,6 +163,9 @@ canvas {
     pointer-events: none;
 }
 
+#pause-btn {
+    font-size: 40px;
+}
 #player-aura {
     position: absolute;
     width: 82px;
