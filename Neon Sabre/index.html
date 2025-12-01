@@ -4,7 +4,6 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>NEON SABRE</title>
-    
     <meta name="description" content="Play Demo">
     <meta property="og:title" content="Neon Sabre">
     <meta property="og:description" content="Play Demo">
@@ -18,7 +17,8 @@
     <div class="scanlines"></div>
 
     <div id="game-wrapper">
-        <canvas id="gameCanvas" width="450" height="700"></canvas>
+        <canvas id="gameCanvas"></canvas>
+        <div id="player-aura" class="hidden"></div>
         
         <div id="ui-layer">
             <div class="hud-top">
@@ -90,8 +90,10 @@
                     <div class="control-line">WASD/ARROWS = move player</div>
                     <div class="control-line">Q / Tap = Lock-on target</div>
                     <div class="control-line">Space = Pause</div>
-                    <div class="control-line">E = Ultimate</div>
-                    <div class="control-line">1-9 = Drone ultimates</div>
+                    <div class="control-line">E = Blast Ultimate</div>
+                    <div class="control-line">1 = Heavy Cannon</div>
+                    <div class="control-line">2 = Rapid Fire</div>
+                    <div class="control-line">3 = Broadfire</div>
                 </div>
             </div>
 

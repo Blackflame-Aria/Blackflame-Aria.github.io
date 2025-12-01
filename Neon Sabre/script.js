@@ -66,14 +66,6 @@ let textPopups = [];
 let blooms = [];
 
 const gameWrapper = document.getElementById('game-wrapper');
-const joyBase = document.createElement('div');
-joyBase.className = 'joystick-base joystick-hidden';
-const joyStick = document.createElement('div');
-joyStick.className = 'joystick-stick joystick-hidden';
-if (gameWrapper) {
-    gameWrapper.appendChild(joyBase);
-    gameWrapper.appendChild(joyStick);
-}
 
 const C = {
     laneY: 600,
@@ -95,13 +87,15 @@ const C = {
 function fitCanvas() {
     canvas.width = BASE_W;
     canvas.height = BASE_H;
-    const scaleW = window.innerWidth / BASE_W;
-    const scaleH = window.innerHeight / BASE_H;
-    const fitScale = Math.min(scaleW, scaleH);
+    const availW = Math.min(window.innerWidth, document.documentElement.clientWidth || window.innerWidth, (window.visualViewport && window.visualViewport.width) || window.innerWidth);
+    const availH = Math.min(window.innerHeight, document.documentElement.clientHeight || window.innerHeight, (window.visualViewport && window.visualViewport.height) || window.innerHeight);
+    const wrapperW = gameWrapper ? gameWrapper.offsetWidth : BASE_W;
+    const wrapperH = gameWrapper ? gameWrapper.offsetHeight : BASE_H;
+    const fitScale = Math.min(availW / wrapperW, availH / wrapperH);
     const scale = Math.min(1, fitScale);
     if (gameWrapper) {
         gameWrapper.style.transformOrigin = 'center center';
-        gameWrapper.style.transform = `scale(${scale})`;
+        gameWrapper.style.transform = `translate(-50%, -50%) scale(${scale})`;
     }
     C.laneY = Math.round(BASE_H * 0.84);
 }
@@ -153,7 +147,7 @@ function playSfx(sound, volume = 1) {
     if (sfx[sound]) {
         if (sound === 'shoot') {
             const now = Date.now();
-            if (now - GAME.lastShootSfxTime < 140) return;
+            if (now - GAME.lastShootSfxTime < 500) return;
             GAME.lastShootSfxTime = now;
             const pool = sfxPool.shoot;
             if (pool.length) {
@@ -267,6 +261,7 @@ class Pet {
 
         this.hp = baseHp;
         this.maxHp = baseHp;
+        this.hpDisplay = this.hp; 
         this.dmg = baseDmg;
         this.cooldownMax = baseRate;
         this.cooldown = 0;
@@ -307,16 +302,33 @@ class Pet {
         }
 
         if (total > 1 && idx !== 0) {
-            const spacing = 50;
-            const center = canvas.width / 2;
-            const side = (idx % 2 === 1) ? -1 : 1;
-            const order = Math.ceil(idx / 2);
-            const targetX = center + side * order * spacing;
-            const targetY = Math.max(0, C.laneY - 60);
-            this.x += (targetX - this.x) * 0.12;
-            this.y += (targetY - this.y) * 0.12;
+            const centerX = canvas.width / 2;
+            const spacingX = 44; 
+            const row1Y = Math.max(0, C.laneY - 30);
+            const row2Y = Math.max(0, C.laneY - 60);
+
+            const altIndex = idx - 1;  
+            const row = (altIndex < 8) ? 0 : 1;
+            const posInRow = altIndex % 8;  
+            const isLeft = (posInRow < 4);
+            const offsetIndex = isLeft ? posInRow : (posInRow - 4);
+            const dir = isLeft ? -1 : 1;   
+            const targetX = centerX + dir * (spacingX * (offsetIndex + 1));
+            const targetY = (row === 0) ? row1Y : row2Y;
+
+            this.x += (targetX - this.x) * 0.14;
+            this.y += (targetY - this.y) * 0.14;
         }
         this.recoil *= 0.6;
+
+        if (this.hpDisplay === undefined) this.hpDisplay = this.hp;
+        if (this.hpDisplay > this.hp) {
+            const diff = this.hpDisplay - this.hp;
+            const step = Math.max(diff * 0.18 * GAME.dt, 0.6 * GAME.dt);
+            this.hpDisplay = Math.max(this.hp, this.hpDisplay - step);
+        } else if (this.hpDisplay < this.hp) {
+            this.hpDisplay = this.hp;
+        }
 
         if(this.cooldown > 0) this.cooldown -= GAME.dt;
         const chargeMult = 1 + (meta.chargeLvl || 0) * 0.20;
@@ -363,7 +375,7 @@ class Pet {
                 }
                 if (t) {
                     const msElapsed = GAME.dt * 10;
-                    const dmg = msElapsed * 0.05;
+                    const dmg = msElapsed * 0.08;
                     const ang = Math.atan2(t.y - this.y, t.x - this.x);
                     const dirX = Math.cos(ang), dirY = Math.sin(ang);
                     const maxLen = Math.max(canvas.width, canvas.height) * 1.5;
@@ -438,9 +450,10 @@ class Pet {
             let dmg = this.dmg;
             let bulletSizeMult = 1;
             let piercing = false;
-            if (this.powerup.type === 'BIG') { dmg *= 3; bulletSizeMult = 3; }
+            let shape = 'round';
+            if (this.powerup.type === 'BIG') { dmg *= 3; bulletSizeMult = 3; shape = 'crescent'; }
             if (this.powerup.type === 'PIERCE') { piercing = true; }
-            bullets.push(new Bullet(this.x, this.y - 10, target, dmg, this.type, spread, GAME.target, { bulletSizeMult, piercing }));
+            bullets.push(new Bullet(this.x, this.y - 10, target, dmg, this.type, spread, GAME.target, { bulletSizeMult, piercing, shape }));
         }
         
         if(this.trait.id === 'sniper') GAME.shake = 4;
@@ -480,15 +493,35 @@ class Pet {
             }
 
         const isPlayer = (party[0] === this);
-        const healthR = isPlayer ? 18: 16;
-        const ultR = isPlayer ? 23 : 20;
+        const healthR = isPlayer ? 16 : 14;
+        const ultR = isPlayer ? 21 : 18;
 
-        const hpPct = Math.max(0, Math.min(1, this.hp / this.maxHp));
+        const hpPct = Math.max(0, Math.min(1, (this.hpDisplay !== undefined ? this.hpDisplay : this.hp) / this.maxHp));
         const mobile = (window.innerWidth <= 768) || ('ontouchstart' in window);
-        const hpGap = mobile ? 0.08 : 0.12;
-        drawSegmentedRing(this.x, this.y, healthR, '#300', 12, hpGap, 3, hpPct, '#f00');
-        const ultGap = mobile ? 0.06 : 0.10;
-        drawSegmentedRing(this.x, this.y, ultR, '#111', 15, ultGap, 5, ultPct, C.colors[this.type.toLowerCase()] || '#f0f');
+        function drawSolidRing(rad, track, progColor, pct, width) {
+            const base = -Math.PI/2;
+            ctx.lineWidth = width;
+            ctx.lineCap = 'round';
+            ctx.strokeStyle = track;
+            ctx.beginPath(); ctx.arc(this.x, this.y, rad, 0, Math.PI*2); ctx.stroke();
+            const capped = Math.max(0, Math.min(1, pct));
+            ctx.strokeStyle = progColor;
+            ctx.beginPath(); ctx.arc(this.x, this.y, rad, base, base + capped * Math.PI*2); ctx.stroke();
+        }
+        drawSolidRing.call(this, healthR, '#300', '#f00', hpPct, 3);
+        drawSolidRing.call(this, ultR, '#111', (C.colors[this.type.toLowerCase()] || '#f0f'), ultPct, 5);
+
+        if (this.ultCharge >= 100) {
+            ctx.save();
+            ctx.globalCompositeOperation = 'lighter';
+            ctx.shadowBlur = 16;
+            const glow = C.colors[this.type.toLowerCase()] || '#f0f';
+            ctx.strokeStyle = glow;
+            ctx.lineWidth = 4;
+            ctx.beginPath(); ctx.arc(this.x, this.y, ultR + 6, 0, Math.PI*2); ctx.stroke();
+            ctx.shadowBlur = 0;
+            ctx.restore();
+        }
 
         if (this.beamActive) {
             let t = null;
@@ -538,6 +571,7 @@ class Enemy {
         
         this.maxHp = isBoss ? GAME.floor * 250 : BASE_HP + (GAME.floor * HP_SCALING);
         this.hp = this.maxHp;
+        this.hpDisplay = this.hp; 
         this.x = Math.random() * (canvas.width - 60) + 30;
         this.y = C.spawnY;
         
@@ -570,12 +604,13 @@ class Enemy {
                     vx: Math.cos(ang) * spd,
                     vy: Math.sin(ang) * spd,
                     dmg: 20, enemyShot: true, color: '#f00', active: true,
-                    baseRadius: 10.5,
-                    radius: 10.5,
+                    baseRadius: 18, 
+                    radius: 18,
                     age: 0,
-                    growthDuration: 2,
+                    growthDuration: 2.6,
                     trail: [],
                     trailMax: 12,
+                    rot: 0,
                     update() {
                         this.trail.push({ x: this.x, y: this.y, r: this.radius });
                         if (this.trail.length > this.trailMax) this.trail.shift();
@@ -583,8 +618,9 @@ class Enemy {
                         this.x += this.vx * GAME.dt;
                         this.y += this.vy * GAME.dt;
                         this.age += GAME.dt / 60;
+                        this.rot -= 0.1 * GAME.dt; 
                         const progress = Math.min(1, this.age / this.growthDuration);
-                        this.radius = this.baseRadius + (this.baseRadius * 2) * progress;
+                        this.radius = this.baseRadius + (this.baseRadius * 2.8) * progress; 
                         if(party.length === 0) { this.active = false; return; }
                         for(let p of party) {
                             if(!p || p.hp <= 0) continue;
@@ -600,25 +636,24 @@ class Enemy {
                         if(this.y > canvas.height+30 || this.x < -30 || this.x > canvas.width+30) this.active = false;
                     },
                     draw() {
+                        ctx.save();
+                        ctx.globalCompositeOperation = 'lighter';
                         if (this.trail && this.trail.length) {
-                            ctx.save();
-                            ctx.globalCompositeOperation = 'lighter';
                             for (let i = 0; i < this.trail.length; i++) {
                                 const p = this.trail[i];
                                 const t = i / this.trail.length;
-                                const a = 0.06 + 0.22 * t;
-                                ctx.fillStyle = hexToRgba(this.color, a);
-                                const baseR = Math.max(6, p.r * 0.55);
-                                const headBoost = 1.0 + 0.35 * t;
-                                const trailR = baseR * headBoost;
-                                ctx.beginPath();
-                                ctx.arc(p.x, p.y, trailR, 0, Math.PI * 2);
-                                ctx.fill();
+                                const alpha = 0.08 + 0.18 * t;
+                                ctx.globalAlpha = alpha;
+                                const s = Math.max(6, p.r * (0.5 + 0.3*t));
+                                ctx.drawImage(fireballImg, this.x - s/2, this.y - s/2, s, s);
                             }
-                            ctx.restore();
+                            ctx.globalAlpha = 1;
                         }
-                        ctx.fillStyle = this.color;
-                        ctx.beginPath(); ctx.arc(this.x, this.y, this.radius, 0, Math.PI*2); ctx.fill();
+                        ctx.translate(this.x, this.y);
+                        ctx.rotate(this.rot);
+                        const s = Math.max(12, this.radius * 1.2);
+                        ctx.drawImage(fireballImg, -s/2, -s/2, s, s);
+                        ctx.restore();
                     }
                 });
             }
@@ -642,6 +677,14 @@ class Enemy {
         }
 
         if(this.y > C.laneY - 10) return 'CRASH';
+        if (this.hpDisplay === undefined) this.hpDisplay = this.hp;
+        if (this.hpDisplay > this.hp) {
+            const diff = this.hpDisplay - this.hp;
+            const step = Math.max(diff * 0.18 * GAME.dt, 0.6 * GAME.dt);
+            this.hpDisplay = Math.max(this.hp, this.hpDisplay - step);
+        } else if (this.hpDisplay < this.hp) {
+            this.hpDisplay = this.hp;
+        }
         return 'ALIVE';
     }
 
@@ -679,15 +722,30 @@ class Enemy {
             ctx.setLineDash([]);
         }
 
-        const hpPct = Math.max(0, Math.min(1, this.hp / this.maxHp));
-        const ringR = (this.rank === 'BOSS') ? this.size + 16 : this.size + 6;
-        ctx.lineWidth = (this.rank === 'BOSS') ? 6 : 4;
-        const segCount = (this.rank === 'BOSS' ? 36 : 24);
-        const segGap = (this.rank === 'BOSS' ? 0.04 : 0.10);
-        const segWidth = (this.rank === 'BOSS' ? 6 : 4);
-        const isMobile = (window.innerWidth <= 768) || ('ontouchstart' in window);
-        const enemyGap = isMobile ? Math.max(0.03, segGap * 0.7) : segGap;
-        drawSegmentedRing(this.x, this.y, ringR, '#400', segCount, enemyGap, segWidth, hpPct, '#f00');
+        const hpPct = Math.max(0, Math.min(1, (this.hpDisplay !== undefined ? this.hpDisplay : this.hp) / this.maxHp));
+        const ringR = (this.rank === 'BOSS') ? this.size + 18 : this.size + 8;
+        const lineW = (this.rank === 'BOSS') ? 7 : 5;
+        const baseAng = -Math.PI / 2;
+        const fullCirc = Math.PI * 2;
+        ctx.lineWidth = lineW;
+        ctx.lineCap = 'butt';
+        if (hpPct > 0) {
+            ctx.strokeStyle = '#f00';
+            ctx.beginPath();
+            if (hpPct >= 1) {
+                ctx.arc(this.x, this.y, ringR, 0, fullCirc);
+            } else {
+                ctx.arc(this.x, this.y, ringR, baseAng, baseAng + hpPct * fullCirc);
+            }
+            ctx.stroke();
+        }
+        const missingPct = 1 - hpPct;
+        if (missingPct > 0) {
+            ctx.strokeStyle = '#300';
+            ctx.beginPath();
+            ctx.arc(this.x, this.y, ringR, baseAng + hpPct * fullCirc, baseAng + fullCirc);
+            ctx.stroke();
+        }
     }
 }
 
@@ -700,6 +758,7 @@ class PowerupEntity {
         this.wobble = Math.random() * Math.PI;
         const colors = ['#0ff', '#0ff', '#0ff', '#0ff', '#0ff'];
         this.color = colors[Math.floor(Math.random()*colors.length)];
+        this.pickupRadius = this.size + 28;
     }
     update() {
         this.y += this.speed * GAME.dt;
@@ -739,6 +798,7 @@ class Bullet {
         this.target = target;
         this.lockOnTarget = lockOnTarget;
         this.piercing = !!opts.piercing;
+        this.shape = opts.shape || 'round';
         this.pierceChain = this.piercing;
         this.hitCount = 0;
         this.maxPierce = 3;
@@ -861,18 +921,22 @@ class Bullet {
     }
 
     draw() {
-        const isBig = this.sizeMult > 1.0;
-        if (isBig) {
+        const isCrescent = (this.shape === 'crescent');
+        if (isCrescent) {
             const ang = Math.atan2(this.vy, this.vx);
-            const arcRadius = 20 * this.sizeMult; 
-            const arcSpan = 1.1;
+            const outerR = 18 * this.sizeMult;
+            const innerR = outerR * 0.65;
+            const span = 2.8; 
+            const start = ang - span/2;
+            const end = ang + span/2;
             ctx.save();
             ctx.globalCompositeOperation = 'lighter';
-            ctx.strokeStyle = this.color;
-            ctx.lineWidth = Math.max(this.width, 10 * this.sizeMult);
+            ctx.fillStyle = this.color;
             ctx.beginPath();
-            ctx.arc(this.x, this.y, arcRadius, ang - arcSpan/2, ang + arcSpan/2);
-            ctx.stroke();
+            ctx.arc(this.x, this.y, outerR, start, end);
+            ctx.arc(this.x, this.y, innerR, end, start, true);
+            ctx.closePath();
+            ctx.fill();
             ctx.restore();
         } else {
             ctx.globalCompositeOperation = 'lighter';
@@ -953,7 +1017,7 @@ function renderBar(x, y, w, h, pct, color) {
 }
 function drawSegmentedRing(cx, cy, radius, trackColor, segCount, segGapRad, lineWidth, progressPct, progressColor) {
     const full = Math.PI * 2;
-    const pct = Math.max(0, Math.min(1, progressPct));
+    const pct = Math.max(0, Math.min(0.985, progressPct));
     const per = full / segCount;
     const segArcSpan = Math.max(0, per - segGapRad);
     const base = -Math.PI / 2;
@@ -1004,6 +1068,7 @@ function toCanvasCoords(clientX, clientY) {
 const bgSpace = new Image(); bgSpace.src = 'images/space.png';
 const bgStars = new Image(); bgStars.src = 'images/stars.png';
 const bgStars2 = new Image(); bgStars2.src = 'images/stars2.png';
+const fireballImg = new Image(); fireballImg.src = 'images/Fireball.png';
 let starsOffset = 0;
 let stars2Offset = 0;
 function drawBackground() {
@@ -1098,11 +1163,11 @@ function loop() {
         }, 1500);
     }
     if (GAME.powerupsSpawned < GAME.powerupQuota) {
-        if(GAME.spawnTimer <= 0) {
-            let intervalSec = Math.max(0.5, (100 / 60));
-            powerups.push(new PowerupEntity());
+        GAME.powerupSpawnTimer -= GAME.dt / 60;
+        if (GAME.powerupSpawnTimer <= 0) {
+            spawnSpacedPowerup();
             GAME.powerupsSpawned++;
-            GAME.spawnTimer = intervalSec;
+            GAME.powerupSpawnTimer = 6 + (powerups.length * 2) + Math.random()*1.5; 
         }
     }
     if (GAME.bossesSpawned >= GAME.bossQuota && !bossIsPresent && GAME.enemiesKilled >= GAME.enemiesRequired + GAME.bossQuota && !GAME.awaitingDraft) {
@@ -1145,8 +1210,9 @@ function loop() {
         const res = powerups[i].update();
         const p = party[0];
         if (p && p.hp > 0) {
+            const hitR = powerups[i].pickupRadius || (powerups[i].size + (p.size || 12));
             const d = Math.hypot(powerups[i].x - p.x, powerups[i].y - p.y);
-            if (d < (powerups[i].size + (p.size || 12))) {
+            if (d < hitR) {
                 grantRandomPowerup(p);
                 powerups.splice(i,1);
                 continue;
@@ -1158,7 +1224,8 @@ function loop() {
             let granted = false;
             for(let b of bullets) {
                 const d = Math.hypot(b.x - powerups[i].x, b.y - powerups[i].y);
-                if (d < powerups[i].size + Math.max(5, (b.width||3))) {
+                const bulletPickupR = powerups[i].pickupRadius ? powerups[i].pickupRadius * 0.75 : (powerups[i].size + Math.max(5, (b.width||3)));
+                if (d < bulletPickupR) {
                     grantRandomPowerup(party[0]);
                     granted = true;
                     b.active = false;
@@ -1175,6 +1242,9 @@ function loop() {
         if (ally && ally.hp <= 0 && !ally.deadProcessed) {
             ally.deadProcessed = true;
             stopGunAudio();
+            createRainbowExplosion(ally.x, ally.y, 40);
+            playSfx('die', 0.4);
+            if (GAME.target === ally) GAME.target = null;
         }
     }
 
@@ -1182,6 +1252,13 @@ function loop() {
         if (GAME.deathTimer <= 0) {
             GAME.deathTimer = 3; 
             stopGunAudio();
+            const p0 = party[0];
+            if (p0 && !p0.deadProcessed) {
+                p0.deadProcessed = true;
+                createRainbowExplosion(p0.x, p0.y, 60);
+                playSfx('die', 0.5);
+                if (GAME.target === p0) GAME.target = null;
+            }
         }
     } else {
         applyPlayerMovement();
@@ -1261,6 +1338,11 @@ function loop() {
     ctx.lineWidth = 3;
     ctx.beginPath(); ctx.moveTo(6, C.laneY); ctx.lineTo(canvas.width-6, C.laneY); ctx.stroke();
 
+    updateKeyboardStick();
+    drawJoystickOverlay();
+    drawUltButtons();
+    updatePlayerAura();
+
     updateUI();
 
     const hasGat = party.some(p => p && p.hp > 0 && p.trait && p.trait.id === 'gatling');
@@ -1304,6 +1386,9 @@ input.jVecX = 0; input.jVecY = 0;
 input.jMagnitude = 0;
 input.jMoved = false;
 window.addEventListener('keydown', (e) => {
+    if([' ','Spacebar','q','Q','e','E','1','2','3','4','5','6','7','8','9','ArrowLeft','ArrowRight','ArrowUp','ArrowDown','a','s','d','w'].includes(e.key)) {
+        try { e.preventDefault(); } catch(_){}
+    }
     if(e.key === 'ArrowLeft' || e.key === 'a') input.left = true;
     if(e.key === 'ArrowRight' || e.key === 'd') input.right = true;
     if(e.key === 'ArrowUp' || e.key === 'w') input.up = true;
@@ -1326,18 +1411,9 @@ window.addEventListener('keydown', (e) => {
             activateUlt(p);
         }
     }
-    if(e.key === '1') {
-        const p = party[1];
-        if(p && p.ultCharge >= 100) activateUlt(p);
-    }
-    if(e.key === '2') {
-        const p = party[2];
-        if(p && p.ultCharge >= 100) activateUlt(p);
-    }
-    if(e.key === '3') {
-        const p = party[3];
-        if(p && p.ultCharge >= 100) activateUlt(p);
-    }
+    if(e.key === '1') { triggerTraitUlt('sniper'); }
+    if(e.key === '2') { triggerTraitUlt('gatling'); }
+    if(e.key === '3') { triggerTraitUlt('shotgun'); }
 });
 window.addEventListener('keyup', (e) => {
     if(e.key === 'ArrowLeft' || e.key === 'a') input.left = false;
@@ -1349,37 +1425,57 @@ window.addEventListener('keyup', (e) => {
 canvas.addEventListener('mousedown', (e) => {
     if(GAME.state !== 'PLAY') return;
     const { x, y } = toCanvasCoords(e.clientX, e.clientY);
-
+    const traitClicked = detectUltButton(x, y);
+    if(traitClicked) {
+        playSfx('click', 0.3);
+        if (traitClicked === 'default') {
+            const p = party[0];
+            if (p && p.ultCharge >= 100) activateUlt(p);
+        } else {
+            triggerTraitUlt(traitClicked);
+        }
+        return;
+    }
     playSfx('click', 0.3);
-
-    let clickedEnemy = false;
-    for(let e of enemies) {
-        if(Math.hypot(e.x - x, e.y - y) < e.size + 10) {
-            GAME.target = e;
-            clickedEnemy = true;
-            break;
-        }
+    const selectionR = 60;
+    let best = null; let bestDist = Infinity; let bestType = null; let bestPet = null;
+    for(let en of enemies) {
+        const d = Math.hypot(en.x - x, en.y - y);
+        if(d <= en.size + selectionR && d < bestDist) { best = en; bestDist = d; bestType = 'enemy'; }
     }
-
-    if(!clickedEnemy) {
-        for(let p of party) {
-            if(Math.hypot(p.x - x, p.y - y) < 30 && p.ultCharge >= 100) {
-                activateUlt(p);
-            }
-        }
+    for(let p of party) {
+        if(!p || p.hp<=0 || p.ultCharge < 100) continue;
+        const d = Math.hypot(p.x - x, p.y - y);
+        if(d <= selectionR && d < bestDist) { bestPet = p; bestDist = d; bestType = 'pet'; }
     }
+    if(bestType === 'enemy' && best) { GAME.target = best; }
+    else if(bestType === 'pet' && bestPet) { activateUlt(bestPet); }
 });
 
 function handleTap(x, y) {
-    let clickedEnemy = false;
-    for(let e of enemies) {
-        if(Math.hypot(e.x - x, e.y - y) < e.size + 10) { GAME.target = e; clickedEnemy = true; break; }
-    }
-    if(!clickedEnemy) {
-        for(let p of party) {
-            if(Math.hypot(p.x - x, p.y - y) < 30 && p.ultCharge >= 100) activateUlt(p);
+    const traitClicked = detectUltButton(x, y);
+    if(traitClicked) {
+        if (traitClicked === 'default') {
+            const p = party[0];
+            if (p && p.ultCharge >= 100) activateUlt(p);
+        } else {
+            triggerTraitUlt(traitClicked);
         }
+        return;
     }
+    const selectionR = 60; 
+    let best = null; let bestDist = Infinity; let bestType = null; let bestPet = null;
+    for(let en of enemies) {
+        const d = Math.hypot(en.x - x, en.y - y);
+        if(d <= en.size + selectionR && d < bestDist) { best = en; bestDist = d; bestType = 'enemy'; }
+    }
+    for(let p of party) {
+        if(!p || p.hp<=0 || p.ultCharge < 100) continue;
+        const d = Math.hypot(p.x - x, p.y - y);
+        if(d <= selectionR && d < bestDist) { bestPet = p; bestDist = d; bestType = 'pet'; }
+    }
+    if(bestType === 'enemy' && best) { GAME.target = best; }
+    else if(bestType === 'pet' && bestPet) { activateUlt(bestPet); }
 }
 
 canvas.addEventListener('touchstart', (e) => {
@@ -1388,14 +1484,16 @@ canvas.addEventListener('touchstart', (e) => {
     const t = e.changedTouches[0];
     input.jIdentifier = t.identifier;
     const { x, y } = toCanvasCoords(t.clientX, t.clientY);
-    input.jStartX = x; input.jStartY = y; input.jCurX = x; input.jCurY = y;
-    input.jVecX = 0; input.jVecY = 0; input.jMagnitude = 0; input.jMoved = false;
-    input.joystickActive = true;
-    if (gameWrapper) {
-        joyBase.style.left = `${x}px`; joyBase.style.top = `${y}px`;
-        joyStick.style.left = `${x}px`; joyStick.style.top = `${y}px`;
-        joyBase.classList.remove('joystick-hidden');
-        joyStick.classList.remove('joystick-hidden');
+    const baseX = canvas.width/2;
+    const baseY = C.laneY;
+    const distToCenter = Math.hypot(x - baseX, y - baseY);
+    if (distToCenter <= JOY.radius) {
+        input.jStartX = baseX; input.jStartY = baseY; input.jCurX = x; input.jCurY = y;
+        input.jVecX = 0; input.jVecY = 0; input.jMagnitude = 0; input.jMoved = false;
+        input.joystickActive = true;
+    } else {
+        input.joystickActive = false;
+        handleTap(x, y);
     }
     e.preventDefault();
 },{passive:false});
@@ -1406,8 +1504,11 @@ canvas.addEventListener('touchmove', (e) => {
     if(!t) return;
     const { x, y } = toCanvasCoords(t.clientX, t.clientY);
     input.jCurX = x; input.jCurY = y;
-    let dx = x - input.jStartX;
-    let dy = y - input.jStartY;
+    const baseX = canvas.width/2;
+    const baseY = C.laneY;
+    input.jStartX = baseX; input.jStartY = baseY;
+    let dx = x - baseX;
+    let dy = y - baseY;
     const dist = Math.hypot(dx, dy);
     if (dist > 14) input.jMoved = true;
     const maxR = 60;
@@ -1415,19 +1516,11 @@ canvas.addEventListener('touchmove', (e) => {
     const scale = dist === 0 ? 0 : clamped / dist;
     dx *= scale; dy *= scale;
     input.jVecX = dx / maxR; input.jVecY = dy / maxR; input.jMagnitude = clamped / maxR;
-    if (gameWrapper) {
-        joyStick.style.left = `${input.jStartX + dx}px`;
-        joyStick.style.top = `${input.jStartY + dy}px`;
-    }
     e.preventDefault();
 },{passive:false});
 
 function endTouch(identifier, clientX, clientY) {
     if (!input.joystickActive || identifier !== input.jIdentifier) return;
-    if (gameWrapper) {
-        joyBase.classList.add('joystick-hidden');
-        joyStick.classList.add('joystick-hidden');
-    }
     const wasMoved = input.jMoved;
     input.joystickActive = false;
     input.jIdentifier = null;
@@ -1449,28 +1542,50 @@ function applyPlayerMovement() {
     const p = party[0];
     if(!p || p.hp <= 0) return;
     if (p.entering) return;
-    let mvx = 0, mvy = 0;
-    const baseSpeed = 5;
+    if (typeof p.vx !== 'number') p.vx = 0;
+    if (typeof p.vy !== 'number') p.vy = 0;
+    let dirX = 0, dirY = 0, magnitude = 0;
     if (input.joystickActive) {
-        mvx = input.jVecX;
-        mvy = input.jVecY;
-        const len = Math.hypot(mvx, mvy) || 1;
-        const magScale = 0.5 + 0.5 * Math.min(1, input.jMagnitude);
-        p.x += (mvx/len) * baseSpeed * magScale;
-        p.y += (mvy/len) * baseSpeed * magScale;
+        dirX = input.jVecX; dirY = input.jVecY;
+        magnitude = Math.min(1, Math.max(0, input.jMagnitude));
     } else {
-        if(input.left) mvx -= 1;
-        if(input.right) mvx += 1;
-        if(input.up) mvy -= 1;
-        if(input.down) mvy += 1;
-        if(mvx !== 0 || mvy !== 0) {
-            const len = Math.hypot(mvx, mvy) || 1;
-            p.x += (mvx/len) * baseSpeed;
-            p.y += (mvy/len) * baseSpeed;
-        }
+        if(input.left) dirX -= 1;
+        if(input.right) dirX += 1;
+        if(input.up) dirY -= 1;
+        if(input.down) dirY += 1;
+        const len = Math.hypot(dirX, dirY);
+        if (len > 0) { dirX /= len; dirY /= len; magnitude = 1; }
     }
-    p.x = Math.max(20, Math.min(canvas.width - 20, p.x));
-    p.y = Math.max(20, Math.min(C.laneY - 20, p.y));
+
+    const accel = 0.8;   
+    const maxSpeed = 7;  
+    const friction = .3; 
+
+    if (magnitude > 0.01) {
+        p.vx += dirX * accel * magnitude;
+        p.vy += dirY * accel * magnitude;
+    } else {
+        p.vx *= (1 - friction);
+        p.vy *= (1 - friction);
+        if (Math.abs(p.vx) < 0.02) p.vx = 0;
+        if (Math.abs(p.vy) < 0.02) p.vy = 0;
+    }
+
+    const sp = Math.hypot(p.vx, p.vy);
+    if (sp > maxSpeed) {
+        const s = maxSpeed / sp;
+        p.vx *= s; p.vy *= s;
+    }
+
+    p.x += p.vx;
+    p.y += p.vy;
+
+    const minX = 20, maxX = canvas.width - 20;
+    const minY = 20, maxY = C.laneY - 20;
+    if (p.x < minX) { p.x = minX; if (p.vx < 0) p.vx = 0; }
+    if (p.x > maxX) { p.x = maxX; if (p.vx > 0) p.vx = 0; }
+    if (p.y < minY) { p.y = minY; if (p.vy < 0) p.vy = 0; }
+    if (p.y > maxY) { p.y = maxY; if (p.vy > 0) p.vy = 0; }
 }
 
 function activateUlt(pet) {
@@ -1483,25 +1598,12 @@ function activateUlt(pet) {
 
     const chargeBoost = 1 + (meta.chargeLvl || 0) * 0.20;
 
-    if (pet.trait && pet.trait.id === 'sniper') {
-        activateSniperUlt(pet, chargeBoost);
-        return;
-    }
+    const tid = (pet.trait && pet.trait.id) ? pet.trait.id.toLowerCase() : 'none';
+    if (tid === 'sniper') { activateSniperUlt(pet, chargeBoost); return; }
+    if (tid === 'gatling') { pet.beamActive = true; pet.beamTime = 10; pet.beamSfxTimer = 0; pet.beamSfxBurstLeft = 10; return; }
+    if (tid === 'shotgun') { activateShotgunUlt(pet, chargeBoost); return; }
 
-    if (pet.trait && pet.trait.id === 'gatling') {
-        pet.beamActive = true;
-        pet.beamTime = 10;
-        pet.beamSfxTimer = 0;
-        pet.beamSfxBurstLeft = 10;
-        return;
-    }
-
-    if (pet.trait && pet.trait.id === 'shotgun') {
-        activateShotgunUlt(pet, chargeBoost);
-        return;
-    }
-
-    const base = 6 + meta.dmgLvl;
+    const base = (6 + meta.dmgLvl) * 2;
     const peakDamage = Math.round(base * chargeBoost);
     const bloomBase = 120;
     const effectiveRadius = bloomBase * 2.1;
@@ -1516,6 +1618,13 @@ function activateUlt(pet) {
             const dmg = Math.max(1, Math.round(peakDamage * falloff));
             e.hp -= dmg;
             createParticles(e.x, e.y, '#f00', 6);
+            if (e.hp <= 0 && !e.deadProcessed) {
+                e.deadProcessed = true;
+                playSfx('die', 0.4);
+                createRainbowExplosion(e.x, e.y, e.rank === 'BOSS' ? 80 : 40);
+                GAME.enemiesKilled++;
+                if (GAME.target === e) GAME.target = null;
+            }
         }
     });
     spawnUltBloom(pet.x, pet.y, C.colors[pet.type.toLowerCase()] || '#ff00ff');
@@ -1546,12 +1655,26 @@ function activateSniperUlt(pet, chargeBoost) {
                 const d = Math.hypot(this.x - e.x, this.y - e.y);
                 if (d < this.radius + e.size) {
                     e.hp -= mainDamage;
+                    if (e.hp <= 0 && !e.deadProcessed) {
+                        e.deadProcessed = true;
+                        playSfx('die', 0.4);
+                        createRainbowExplosion(e.x, e.y, e.rank === 'BOSS' ? 80 : 40);
+                        GAME.enemiesKilled++;
+                        if (GAME.target === e) GAME.target = null;
+                    }
                     for (let j = 0; j < enemies.length; j++) {
                         const o = enemies[j];
                         const dd = Math.hypot(this.x - o.x, this.y - o.y);
                         if (dd <= splashRadius) {
                             o.hp -= splashDamage;
                             createParticles(o.x, o.y, '#08f', 8);
+                            if (o.hp <= 0 && !o.deadProcessed) {
+                                o.deadProcessed = true;
+                                playSfx('die', 0.4);
+                                createRainbowExplosion(o.x, o.y, o.rank === 'BOSS' ? 80 : 40);
+                                GAME.enemiesKilled++;
+                                if (GAME.target === o) GAME.target = null;
+                            }
                         }
                     }
                     GAME.shake = Math.max(GAME.shake, 20);
@@ -1689,12 +1812,12 @@ function startGame() {
     p0.targetX = canvas.width / 2;
     p0.targetY = Math.min(C.laneY - 90, canvas.height - 120);
     p0.entering = true;
-    const supportN = Math.max(0, meta.supportCount || 0);
+    const supportN = Math.min(8, Math.max(0, meta.supportCount || 0));
     const sniperTrait = C.traits.find(t => t.id === 'sniper');
     for (let i = 0; i < supportN; i++) {
         const alt = new Pet('Cybil', sniperTrait, false);
         alt.hp = 100; alt.maxHp = 100;
-        party.push(alt);
+        if (party.length < 9) party.push(alt);
     }
     enemies = []; bullets = []; powerups = []; particles = [];
     GAME.floor = 1; 
@@ -1706,6 +1829,7 @@ function startGame() {
     GAME.powerupQuota = 1; 
     GAME.bossesSpawned = 0;
     GAME.powerupsSpawned = 0;
+    GAME.powerupSpawnTimer = 0;
     bossSpawnedThisFloor = false;
     GAME.state = 'PLAY';
     document.getElementById('game-over')?.classList.add('hidden');
@@ -1742,7 +1866,7 @@ function showDraft() {
             playSfx('click', 0.2);
             const newbie = new Pet(type, trait, false);
             let placed = false;
-            for (let s = 1; s < Math.max(party.length, 5); s++) {
+            for (let s = 1; s <= 8; s++) {
                 if (!party[s] || (party[s] && party[s].hp <= 0)) {
                     party[s] = newbie;
                     placed = true;
@@ -1750,7 +1874,7 @@ function showDraft() {
                 }
             }
             if (!placed) {
-                if (party.length < 5) {
+                if (party.length < 9) {
                     party.push(newbie);
                 } else {
                     party[party.length - 1] = newbie;
@@ -1769,7 +1893,8 @@ function resume() {
     GAME.bossQuota = 1 + Math.floor(GAME.floor / 5);
     GAME.powerupQuota = 1 + Math.floor((GAME.floor - 1) / 5);
     GAME.bossesSpawned = 0;
-    GAME.powerupsSpawned = 0;
+    GAME.powerupsSpawned = 0; 
+    GAME.powerupSpawnTimer = 0;
     GAME.enemiesSpawned = 0;
     GAME.enemiesKilled = 0; 
     GAME.target = null;
@@ -1988,3 +2113,206 @@ function buyUpgrade(type) {
 }
 
 updateUI();
+
+const traitCycle = { sniper: -1, gatling: -1, shotgun: -1 };
+
+function traitUnits(traitId) {
+    return party.map((p,i)=>({p,i}))
+        .filter(o => o.p && o.p.hp > 0 && o.p.trait && o.p.trait.id === traitId);
+}
+
+function triggerTraitUlt(traitId) {
+    const units = traitUnits(traitId);
+    if(!units.length) return false;
+    let start = (traitCycle[traitId] + 1) % units.length;
+    for(let offset=0; offset<units.length; offset++) {
+        const idx = (start + offset) % units.length;
+        const {p} = units[idx];
+        if(p.ultCharge >= 100) {
+            activateUlt(p);
+            traitCycle[traitId] = idx;
+            return true;
+        }
+    }
+    return false;
+}
+
+const JOY = { stickX:0, stickY:0, radius:60 };
+function updateKeyboardStick() {
+    if(input.joystickActive) {
+        JOY.stickX = input.jVecX * JOY.radius;
+        JOY.stickY = input.jVecY * JOY.radius;
+        return;
+    }
+    let dx = 0, dy = 0;
+    if(input.left) dx -= 1;
+    if(input.right) dx += 1;
+    if(input.up) dy -= 1;
+    if(input.down) dy += 1;
+    const len = Math.hypot(dx, dy);
+    let targetX = 0, targetY = 0;
+    if(len > 0) { targetX = (dx/len) * JOY.radius; targetY = (dy/len) * JOY.radius; }
+    const lerp = 0.25;
+    JOY.stickX += (targetX - JOY.stickX) * lerp;
+    JOY.stickY += (targetY - JOY.stickY) * lerp;
+    if(Math.abs(JOY.stickX) < 0.5) JOY.stickX = 0;
+    if(Math.abs(JOY.stickY) < 0.5) JOY.stickY = 0;
+}
+
+function drawJoystickOverlay() {
+    const baseX = canvas.width/2;
+    const baseY = C.laneY;
+    ctx.save();
+    ctx.globalCompositeOperation = 'source-over';
+    ctx.lineWidth = 4;
+    ctx.beginPath();
+    ctx.strokeStyle = '#222';
+    ctx.fillStyle = 'rgba(100,0,100,0.35)';
+    ctx.arc(baseX, baseY, JOY.radius, 0, Math.PI*2); ctx.fill(); ctx.stroke();
+    const sx = baseX + JOY.stickX * 0.65;
+    const sy = baseY + JOY.stickY * 0.65;
+    ctx.beginPath();
+    ctx.fillStyle = '#000';
+    ctx.strokeStyle = 'rgba(155,155,155,0.5)';
+    ctx.arc(sx, sy, 16, 0, Math.PI*2); ctx.fill(); ctx.stroke();
+    ctx.restore();
+}
+
+const ULT_BUTTONS = [
+    { trait:'sniper', label:'BOMB', offsetY:-60, color:'#0ff' },
+    { trait:'gatling', label:'BEAM', offsetY:0, color:'#ff0' },
+    { trait:'shotgun', label:'BURST', offsetY:60, color:'#f0f' }
+];
+const ULT_BTN_RADIUS = 25;
+const DEF_ULT_BTN_RADIUS = 30;
+
+function detectUltButton(x, y) {
+    const cxRight = canvas.width - 50;
+    const cyMid = Math.max(70, Math.min(canvas.height-70, C.laneY));
+    const baseX = canvas.width/2;
+    const defCx = baseX + (cxRight - baseX) * 0.5;
+    const defCy = cyMid;
+    if (Math.hypot(x - defCx, y - defCy) <= DEF_ULT_BTN_RADIUS) return 'default';
+
+    for(const b of ULT_BUTTONS) {
+        const cx = canvas.width - 60; 
+        const cy = Math.max(70, Math.min(canvas.height-70, C.laneY + b.offsetY));
+        const d = Math.hypot(x - cx, y - cy);
+        if(d <= ULT_BTN_RADIUS) return b.trait;
+    }
+    return null;
+}
+
+function drawUltButtons() {
+    ctx.save();
+    ctx.lineWidth = 5;
+    const pulseT = performance.now()/500;
+    const cxRight = canvas.width - 50;
+    const cyMid = Math.max(70, Math.min(canvas.height-70, C.laneY));
+    const baseX = canvas.width/1.7;
+    const defCx = baseX + (cxRight - baseX) * 0.5;
+    const defCy = cyMid;
+    const main = party[0];
+    let defPct = 0, defReady = false;
+    if (main) {
+        defPct = Math.min(1, main.ultCharge/100);
+        defReady = main.ultCharge >= 100;
+    }
+    ctx.beginPath();
+    ctx.fillStyle = 'rgba(30,30,40,0.55)';
+    ctx.strokeStyle = '#222';
+    ctx.arc(defCx, defCy, DEF_ULT_BTN_RADIUS, 0, Math.PI*2); ctx.fill(); ctx.stroke();
+    if (defPct > 0) {
+        ctx.beginPath();
+        ctx.strokeStyle = '#f0f';
+        ctx.lineWidth = 4;
+        ctx.arc(defCx, defCy, DEF_ULT_BTN_RADIUS-4, -Math.PI/2, -Math.PI/2 + defPct*Math.PI*2);
+        ctx.stroke();
+    }
+    if (defReady) {
+        const glowAlpha = 0.55 + 0.35*Math.sin(pulseT*2);
+        ctx.beginPath();
+        ctx.lineWidth = 6 + 3*Math.sin(pulseT*3);
+        ctx.strokeStyle = `rgba(255,255,255,${glowAlpha})`;
+        ctx.arc(defCx, defCy, DEF_ULT_BTN_RADIUS, 0, Math.PI*2);
+        ctx.stroke();
+    }
+    ctx.fillStyle = defReady ? '#f0f' : '#faf';
+    ctx.font = 'bold 14px monospace';
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.fillText('BLAST', defCx, defCy);
+
+    for(const b of ULT_BUTTONS) {
+        const cx = canvas.width - 50; 
+        const cy = Math.max(70, Math.min(canvas.height-70, C.laneY + b.offsetY));
+        const units = traitUnits(b.trait);
+        let pct = 0;
+        let anyReady = false;
+        for(const {p} of units) {
+            pct = Math.max(pct, Math.min(1, p.ultCharge/100));
+            if(p.ultCharge >= 100) anyReady = true;
+        }
+        ctx.beginPath();
+        ctx.fillStyle = 'rgba(30,30,40,0.55)';
+        ctx.strokeStyle = '#222';
+        ctx.arc(cx, cy, ULT_BTN_RADIUS, 0, Math.PI*2); ctx.fill(); ctx.stroke();
+        if(pct > 0) {
+            ctx.beginPath();
+            ctx.strokeStyle = b.color;
+            ctx.lineWidth = 4;
+            ctx.arc(cx, cy, ULT_BTN_RADIUS-4, -Math.PI/2, -Math.PI/2 + pct*Math.PI*2);
+            ctx.stroke();
+        }
+        if(anyReady) {
+            const glowAlpha = 0.55 + 0.35*Math.sin(pulseT*2 + (b.offsetY*0.02));
+            ctx.beginPath();
+            ctx.lineWidth = 6 + 3*Math.sin(pulseT*3);
+            ctx.strokeStyle = `rgba(255,255,255,${glowAlpha})`;
+            ctx.arc(cx, cy, ULT_BTN_RADIUS, 0, Math.PI*2);
+            ctx.stroke();
+        }
+        ctx.fillStyle = anyReady ? '#fff' : '#888';
+        ctx.font = 'bold 14px monospace';
+        ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+        ctx.fillText(b.label, cx, cy);
+    }
+    ctx.restore();
+}
+
+function spawnSpacedPowerup() {
+    const minSpacing = 160;
+    let attempts = 12;
+    let px = 0;
+    let py = C.spawnY;
+    while(attempts-- > 0) {
+        const candX = Math.random() * (canvas.width - 60) + 30;
+        let ok = true;
+        for(const p of powerups) {
+            const d = Math.hypot(candX - p.x, py - p.y);
+            if (d < minSpacing) { ok = false; break; }
+        }
+        if (ok) { px = candX; break; }
+    }
+    const pu = new PowerupEntity();
+    pu.x = px; pu.y = py; 
+    powerups.push(pu);
+}
+
+function updatePlayerAura() {
+    const aura = document.getElementById('player-aura');
+    if(!aura) return;
+    const p = party[0];
+    if(!p || p.hp <= 0) {
+        aura.classList.remove('active');
+        return;
+    }
+    aura.style.left = p.x + 'px';
+    aura.style.top = p.y + 'px';
+    if(p.ultCharge >= 100) {
+        const col = C.colors[p.type.toLowerCase()] || '#ff00ff';
+        aura.style.setProperty('--aura-color', col);
+        aura.classList.add('active');
+    } else {
+        aura.classList.remove('active');
+    }
+}
