@@ -363,6 +363,13 @@ h1 {
     border-color: var(--neon-blue); 
     box-shadow: 0 0 15px var(--neon-blue); 
 }
+.shop-item.disabled {
+    opacity: 0.45;
+    pointer-events: none;
+    filter: grayscale(0.4);
+    box-shadow: none;
+    border-color: #555;
+}
 .shop-label { 
     font-size: 13px;
     margin-bottom: 4px; 
@@ -496,6 +503,7 @@ h4 {
     position: relative;
     transition: 0.2s;
 }
+.card .card-cost { position: absolute; right: 10px; top: 10px; }
 .card:hover {
     z-index: 2; 
     border-color: var(--neon-blue); 

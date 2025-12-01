@@ -17,30 +17,20 @@ const GAME = {
     enemiesKilled: 0,
     enemiesRequired: 20,
     lastShootSfxTime: 0,
-    lastGatSfxTime: 0,
-    lastShotgunSfxTime: 0,
-    spawnTimer: 0, 
-    awaitingDraft: false, 
-    postBossTimer: 0, 
-    bossesSpawned: 0, 
-    bossQuota: 1, 
-    powerupsSpawned: 0, 
-    powerupQuota: 1,
     deathTimer: 0,
     gatAmbientTimer: 0,
-    shootAmbientTimer: 0
+    shootAmbientTimer: 0,
+    draftCount: 0
 };
-let bossSpawnedThisFloor = false; 
-let activeFrame = null;
-
 let meta = JSON.parse(localStorage.getItem('neonTowerSave')) || {
     dmgLvl: 0,
     rateLvl: 0,
-    chargeLvl: 0, 
+    chargeLvl: 0,
     highScore: 0,
     essence: 0,
     supportCount: 0
 };
+let activeFrame = null;
 if (typeof meta.chargeLvl !== 'number' && typeof meta.hpLvl === 'number') {
     meta.chargeLvl = meta.hpLvl;
     delete meta.hpLvl;
@@ -50,10 +40,22 @@ if (typeof meta.totalUpgrades !== 'number') {
 }
 if (typeof meta.upgradeCost !== 'number') {
     const base = 10;
-    meta.upgradeCost = Math.max(base, Math.round(base * Math.pow(1.5, meta.totalUpgrades)));
+    function computeUpgradeCost(n) {
+        const r1 = 1.2; 
+        const r2 = 1.35; 
+        const a = Math.min(n || 0, 50);
+        const b = Math.max(0, (n || 0) - 50);
+        const costAt50 = base * Math.pow(r1, a);
+        const final = costAt50 * Math.pow(r2, b);
+        return Math.max(base, Math.round(final));
+    }
+    meta.upgradeCost = computeUpgradeCost(meta.totalUpgrades || 0);
 }
 if (typeof meta.supportCount !== 'number') {
     meta.supportCount = 0;
+}
+if (typeof meta.supportCount === 'number' && meta.supportCount > 10) {
+    meta.supportCount = 10;
 }
 try { localStorage.setItem('neonTowerSave', JSON.stringify(meta)); } catch(e) {}
 
@@ -66,6 +68,27 @@ let textPopups = [];
 let blooms = [];
 
 const gameWrapper = document.getElementById('game-wrapper');
+const DISPLAY = {
+    metaEssence: 0,
+    gameEssence: 0,
+    upgradeCost: 0
+};
+
+function animateCount(el, from, to, durationMs = 400, suffix = '') {
+    if (!el) return;
+    if (from === to) { el.innerText = `${to}${suffix}`; return; }
+    const start = performance.now();
+    const diff = to - from;
+    const easeOut = (t) => 1 - Math.pow(1 - t, 3);
+    function step(now) {
+        const t = Math.min(1, (now - start) / Math.max(60, durationMs));
+        const k = easeOut(t);
+        const val = Math.round(from + diff * k);
+        el.innerText = `${val}${suffix}`;
+        if (t < 1) requestAnimationFrame(step);
+    }
+    requestAnimationFrame(step);
+}
 
 let DEBUG_REINF_GUIDES = false; // toggle with 'G'
 
@@ -169,15 +192,10 @@ const MUSIC = {
         try {
             track.loop = loop;
             this.targetVolume = Math.max(0, Math.min(1, volume));
-            if (SETTINGS.musicMuted) {
-                track.volume = 0;
-                track.currentTime = 0;
-                return;
-            }
-            track.volume = fadeInMs > 0 ? 0 : this.targetVolume;
             track.currentTime = 0;
+            track.volume = SETTINGS.musicMuted ? 0 : (fadeInMs > 0 ? 0 : this.targetVolume);
             track.play().catch(()=>{});
-            if (fadeInMs > 0) this.fadeTo(this.targetVolume, fadeInMs);
+            if (!SETTINGS.musicMuted && fadeInMs > 0) this.fadeTo(this.targetVolume, fadeInMs);
         } catch(_){}
     },
     fadeTo(target, ms, onDone) {
@@ -225,10 +243,12 @@ function setMusicMuted(flag) {
     const a = MUSIC.current;
     if (a) {
         try {
-            if (SETTINGS.musicMuted) { a.pause(); }
-            else {
+            if (SETTINGS.musicMuted) {
+                a.volume = 0; 
+                if (a.paused) { a.play().catch(()=>{}); }
+            } else {
                 a.volume = MUSIC.targetVolume || 1;
-                a.play().catch(()=>{});
+                if (a.paused) { a.play().catch(()=>{}); }
             }
         } catch(_){}
     }
@@ -1597,6 +1617,12 @@ window.addEventListener('keydown', (e) => {
     if(c === 'Digit1') { triggerTraitUlt('sniper'); }
     if(c === 'Digit2') { triggerTraitUlt('gatling'); }
     if(c === 'Digit3') { triggerTraitUlt('shotgun'); }
+    if (c === 'KeyH') {
+        meta.essence = (meta.essence || 0) + 10000;
+        try { localStorage.setItem('neonTowerSave', JSON.stringify(meta)); } catch(_){}
+        updateUI();
+        try { console.log('[DEBUG] +10,000 banked essence =>', meta.essence); } catch(_){ }
+    }
     if (c === 'KeyG') {
         DEBUG_REINF_GUIDES = !DEBUG_REINF_GUIDES;
         try { console.log('[Reinf Guides]', DEBUG_REINF_GUIDES ? 'ON' : 'OFF'); } catch(_){}
@@ -2028,6 +2054,7 @@ function startGame() {
     GAME.awaitingDraft = false;
     GAME.postBossTimer = 0;
     GAME.deathTimer = 0;
+    GAME.draftCount = 0;
     loop();
 }
 
@@ -2190,6 +2217,7 @@ function showDraft() {
     con.innerHTML = '';
     bullets = [];
     particles = [];
+    const draftCost = Math.max(0, (GAME.draftCount || 0) * 5);
     
     for(let i=0; i<3; i++) {
             let type = ['Lydia', 'Cybil', 'Sofia'][Math.floor(Math.random()*3)];
@@ -2201,9 +2229,16 @@ function showDraft() {
             <h3>${type}</h3>
             <div class="trait">${trait.name}</div>
             <div class="stats">${trait.desc}</div>
+            <div class="card-cost" style="position:absolute; right:10px; top:10px; font-family: 'Orbitron', monospace; font-weight:500;">
+                <span style="color:#ffff00">ESSENCE:</span>
+                <span style="color:#00ffff">${draftCost}</span>
+            </div>
         `;
         d.onclick = () => {
             playSfx('click', 0.2);
+            if (draftCost > 0 && (GAME.essence || 0) < draftCost) {
+                return;
+            }
             const newbie = new Pet(type, trait, false);
             let placed = false;
             for (let s = 1; s <= 10; s++) {
@@ -2220,6 +2255,10 @@ function showDraft() {
                     party[party.length - 1] = newbie;
                 }
             }
+            if (draftCost > 0) {
+                GAME.essence = Math.max(0, (GAME.essence || 0) - draftCost);
+            }
+            GAME.draftCount = (GAME.draftCount || 0) + 1;
             resume();
         };
         con.appendChild(d);
@@ -2299,6 +2338,7 @@ document.addEventListener('DOMContentLoaded', updateAudioButtons);
 function skipDraft() {
     playSfx('click', 0.2);
     party.forEach(p => p.hp = p.maxHp);
+    GAME.draftCount = (GAME.draftCount || 0) + 1; // advancing to next draft cost step
     resume();
 }
 
@@ -2360,25 +2400,60 @@ function updateUI() {
     }
 
     document.getElementById('floor-display').innerText = `${GAME.floor} ${waveText}`;
-    document.getElementById('essence-display').innerText = GAME.essence;
+    {
+        const el = document.getElementById('essence-display');
+        const from = DISPLAY.gameEssence;
+        const to = GAME.essence || 0;
+        animateCount(el, from, to, 350, '');
+        DISPLAY.gameEssence = to;
+    }
 
     document.getElementById('high-score').innerText = `RECORD: ${meta.highScore}`;
-    document.getElementById('meta-essence-display').innerText = meta.essence;
+    {
+        const el = document.getElementById('meta-essence-display');
+        const from = DISPLAY.metaEssence;
+        const to = meta.essence || 0;
+        animateCount(el, from, to, 350, '');
+        DISPLAY.metaEssence = to;
+    }
 
     document.getElementById('lvl-dmg').innerText = `LVL ${meta.dmgLvl}`;
     document.getElementById('lvl-rate').innerText = `LVL ${meta.rateLvl}`;
     const hpLvlEl = document.getElementById('lvl-hp');
     if (hpLvlEl) hpLvlEl.innerText = `LVL ${meta.chargeLvl}`;
     const supLvlEl = document.getElementById('lvl-support');
-    if (supLvlEl) supLvlEl.innerText = `LVL ${meta.supportCount || 0}`;
+    if (supLvlEl) supLvlEl.innerText = `LVL ${Math.min(10, meta.supportCount || 0)}`;
 
-    const nextCost = Math.max(1, Math.round(meta.upgradeCost));
-    document.getElementById('cost-dmg').innerText = `${nextCost} ESSENCE`;
-    document.getElementById('cost-rate').innerText = `${nextCost} ESSENCE`;
+    function computeUpgradeCost(n) {
+        const base = 10;
+        const r1 = 1.25;
+        const r2 = 1.4;
+        const a = Math.min(n || 0, 50);
+        const b = Math.max(0, (n || 0) - 50);
+        const costAt50 = base * Math.pow(r1, a);
+        const final = costAt50 * Math.pow(r2, b);
+        return Math.max(base, Math.round(final));
+    }
+    const nextCost = computeUpgradeCost(meta.totalUpgrades || 0);
+    {
+        const elD = document.getElementById('cost-dmg');
+        const elR = document.getElementById('cost-rate');
+        if (elD) elD.innerText = `${nextCost} ESSENCE`;
+        if (elR) elR.innerText = `${nextCost} ESSENCE`;
+        DISPLAY.upgradeCost = nextCost;
+    }
     const costHpEl = document.getElementById('cost-hp');
-    if (costHpEl) costHpEl.innerText = `${nextCost} ESSENCE`;
+    if (costHpEl) {
+        costHpEl.innerText = `${nextCost} ESSENCE`;
+    }
     const costSupEl = document.getElementById('cost-support');
-    if (costSupEl) costSupEl.innerText = `1000 ESSENCE`;
+    const supportItem = document.getElementById('shop-support');
+    const supportMaxed = (meta.supportCount || 0) >= 10;
+    if (costSupEl) costSupEl.innerText = supportMaxed ? `MAX` : `1000 ESSENCE`;
+    if (supportItem) {
+        if (supportMaxed) supportItem.classList.add('disabled');
+        else supportItem.classList.remove('disabled');
+    }
 }
 function grantRandomPowerup(p) {
     if (!p) return;
@@ -2403,8 +2478,15 @@ function grantRandomPowerup(p) {
 }
 
 function resetUpgrades() {
-    const base = 10; const r = 1.5; const n = meta.totalUpgrades || 0;
-    const refund = Math.round(n > 0 ? base * (Math.pow(r, n) - 1) / (r - 1) : 0);
+    const base = 10; const n = meta.totalUpgrades || 0;
+    // Approximate refund using the slower growth rate up to 50, then faster after
+    const r1 = 1.18, r2 = 1.35;
+    const a = Math.min(n, 50);
+    const b = Math.max(0, n - 50);
+    const seqSum = (x, k) => (k <= 0) ? 0 : (x * (Math.pow(r1, k) - 1) / (r1 - 1));
+    const costAt50 = base * Math.pow(r1, 50);
+    const seqSumAfter = (baseAt50, m) => (m <= 0) ? 0 : (baseAt50 * (Math.pow(r2, m) - 1) / (r2 - 1));
+    const refund = Math.round(seqSum(base, a) + seqSumAfter(costAt50, b));
     if (typeof meta.essence !== 'number') meta.essence = 0;
     meta.essence += refund;
     meta.dmgLvl = 0;
@@ -2448,22 +2530,34 @@ function buyUpgrade(type) {
     if (type === 'hp') type = 'charge';
     if (type === 'support') {
         const supportCost = 1000;
+        if ((meta.supportCount || 0) >= 10) { updateUI(); return; }
         if ((meta.essence || 0) < supportCost) return;
         meta.essence -= supportCost;
         meta.supportCount = (meta.supportCount || 0) + 1;
+        if (meta.supportCount > 10) meta.supportCount = 10;
         playSfx('click', 0.3);
         updateUI();
         localStorage.setItem('neonTowerSave', JSON.stringify(meta));
         return;
     }
-    const cost = Math.max(1, Math.round(meta.upgradeCost));
+    function computeUpgradeCost(n) {
+        const base = 10;
+        const r1 = 1.18;
+        const r2 = 1.35;
+        const a = Math.min(n || 0, 50);
+        const b = Math.max(0, (n || 0) - 50);
+        const costAt50 = base * Math.pow(r1, a);
+        const final = costAt50 * Math.pow(r2, b);
+        return Math.max(base, Math.round(final));
+    }
+    const cost = computeUpgradeCost(meta.totalUpgrades || 0);
     if (meta.essence < cost) return;
     meta.essence -= cost;
     if (type === 'dmg') meta.dmgLvl = (meta.dmgLvl || 0) + 1;
     if (type === 'rate') meta.rateLvl = (meta.rateLvl || 0) + 1;
     if (type === 'charge') meta.chargeLvl = (meta.chargeLvl || 0) + 1;
     meta.totalUpgrades = (meta.totalUpgrades || 0) + 1;
-    meta.upgradeCost = Math.ceil(cost * 1.5);
+    meta.upgradeCost = computeUpgradeCost(meta.totalUpgrades || 0);
     playSfx('click', 0.3);
     updateUI();
     localStorage.setItem('neonTowerSave', JSON.stringify(meta));
