@@ -130,11 +130,25 @@ loadAudioSettings();
 const bgm = {
     waltuh: new Audio('sfx/Waltuh.mp3'),
     waltuhLoop: new Audio('sfx/Waltuh-loop.mp3'),
+    waltuhLoop2: new Audio('sfx/Waltuh-loop2.mp3'),
+    rustyLoop: new Audio('sfx/Rusty-loop.mp3'),
     rusty: new Audio('sfx/Rusty.mp3')
 };
 bgm.waltuh.preload = 'auto';
 bgm.waltuhLoop.preload = 'auto';
+bgm.waltuhLoop2.preload = 'auto';
+bgm.rustyLoop.preload = 'auto';
 bgm.rusty.preload = 'auto';
+
+function pickTrackForSector(sector) {
+    if (sector <= 1) return 'waltuh';
+    if (sector === 2) return 'waltuhLoop';
+    const r = ((sector - 3) % 10 + 10) % 10; 
+    if (r <= 1) return 'waltuhLoop2'; 
+    if (r <= 3) return 'rustyLoop'; 
+    if (r <= 6) return 'rusty';
+    return 'waltuhLoop';
+}
 
 const MUSIC = {
     current: null,
@@ -2238,8 +2252,8 @@ function resume() {
         p0.targetY = Math.min(C.laneY - 90, canvas.height - 120);
         p0.entering = true;
     }
-    const loopTrack = (GAME.floor >= 5) ? 'rusty' : 'waltuhLoop';
-    MUSIC.play(loopTrack, { fadeInMs: 0, loop: true, volume: .2 });
+    const trackName = pickTrackForSector(GAME.floor);
+    MUSIC.play(trackName, { fadeInMs: 0, loop: true, volume: .2 });
     loop();
 }
 
