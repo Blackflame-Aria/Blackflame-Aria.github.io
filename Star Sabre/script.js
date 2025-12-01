@@ -67,6 +67,8 @@ let blooms = [];
 
 const gameWrapper = document.getElementById('game-wrapper');
 
+let DEBUG_REINF_GUIDES = false; // toggle with 'G'
+
 const C = {
     laneY: 600,
     spawnY: -60,
@@ -235,6 +237,7 @@ function setMusicMuted(flag) {
 }
 function toggleMusicMute() { setMusicMuted(!SETTINGS.musicMuted); }
 window.toggleMusicMute = toggleMusicMute;
+window.toggleReinfDebug = function(){ DEBUG_REINF_GUIDES = !DEBUG_REINF_GUIDES; return DEBUG_REINF_GUIDES; };
 
 const sfxPool = {
     shoot: [],
@@ -426,19 +429,19 @@ class Pet {
 
         if (total > 1 && idx !== 0) {
             const centerX = canvas.width / 2;
-            const spacingX = 56;
             const rowY = Math.max(0, C.laneY - 40);
-            const altIndex = idx - 1; 
-            const maxSlots = 10;
-            if (altIndex < maxSlots) {
-                const k = Math.floor((altIndex + 1) / 2);
-                const sign = (altIndex % 2 === 1) ? -1 : 1; 
-                const offset = (altIndex === 0) ? 0 : sign * k;
-                const targetX = centerX + (offset * spacingX);
-                const targetY = rowY;
-                this.x += (targetX - this.x) * 0.14;
-                this.y += (targetY - this.y) * 0.14;
-            }
+            const supportIdx = Math.max(0, Math.min(9, idx - 1)); 
+            const supportCount = Math.max(1, Math.min(10, total - 1));
+                const minInset = 32; 
+                const availWidth = Math.max(0, (canvas.width - minInset * 2));
+                const defaultSpacing = 56;
+                const spacingX = supportCount > 1 ? Math.min(defaultSpacing, availWidth / (supportCount - 1)) : defaultSpacing;
+            const totalWidth = spacingX * (supportCount - 1);
+            const startX = centerX - totalWidth / 2;
+            const targetX = startX + supportIdx * spacingX;
+            const targetY = rowY;
+            this.x += (targetX - this.x) * 0.14;
+            this.y += (targetY - this.y) * 0.14;
         }
         this.recoil *= 0.6;
 
@@ -1524,6 +1527,7 @@ function loop() {
     drawJoystickOverlay();
     drawUltButtons();
     updatePlayerAura();
+    drawReinforcementDebugOverlay();
 
     updateUI();
 
@@ -1593,6 +1597,10 @@ window.addEventListener('keydown', (e) => {
     if(c === 'Digit1') { triggerTraitUlt('sniper'); }
     if(c === 'Digit2') { triggerTraitUlt('gatling'); }
     if(c === 'Digit3') { triggerTraitUlt('shotgun'); }
+    if (c === 'KeyG') {
+        DEBUG_REINF_GUIDES = !DEBUG_REINF_GUIDES;
+        try { console.log('[Reinf Guides]', DEBUG_REINF_GUIDES ? 'ON' : 'OFF'); } catch(_){}
+    }
 });
 window.addEventListener('keyup', (e) => {
     const c = e.code;
@@ -1992,12 +2000,12 @@ function startGame() {
     p0.targetX = canvas.width / 2;
     p0.targetY = Math.min(C.laneY - 90, canvas.height - 120);
     p0.entering = true;
-    const supportN = Math.min(8, Math.max(0, meta.supportCount || 0));
+    const supportN = Math.min(10, Math.max(0, meta.supportCount || 0));
     const sniperTrait = C.traits.find(t => t.id === 'sniper');
     for (let i = 0; i < supportN; i++) {
         const alt = new Pet('Cybil', sniperTrait, false);
         alt.hp = 100; alt.maxHp = 100;
-        if (party.length < 9) party.push(alt);
+        if (party.length < 11) party.push(alt);
     }
     enemies = []; bullets = []; powerups = []; particles = [];
     GAME.floor = 1; 
@@ -2198,7 +2206,7 @@ function showDraft() {
             playSfx('click', 0.2);
             const newbie = new Pet(type, trait, false);
             let placed = false;
-            for (let s = 1; s <= 8; s++) {
+            for (let s = 1; s <= 10; s++) {
                 if (!party[s] || (party[s] && party[s].hp <= 0)) {
                     party[s] = newbie;
                     placed = true;
@@ -2206,7 +2214,7 @@ function showDraft() {
                 }
             }
             if (!placed) {
-                if (party.length < 9) {
+                if (party.length < 11) {
                     party.push(newbie);
                 } else {
                     party[party.length - 1] = newbie;
@@ -2563,6 +2571,37 @@ function drawJoystickOverlay() {
     drawArrow(JOY_ARROWS.left,  sx - arrowDist, sy, strengthFor(-1, 0));
     drawArrow(JOY_ARROWS.right, sx + arrowDist, sy, strengthFor(1, 0));
     drawArrow(JOY_ARROWS.down,  sx, sy + arrowDist, strengthFor(0, 1));
+    ctx.restore();
+}
+
+function drawReinforcementDebugOverlay() {
+    if (!DEBUG_REINF_GUIDES) return;
+    const maxSlots = 10;
+    const centerX = canvas.width / 2;
+    const rowY = Math.max(0, C.laneY - 40);
+    const minInset = 32;
+    const availWidth = Math.max(0, (canvas.width - minInset * 2));
+    const defaultSpacing = 56;
+    const spacingX = Math.min(defaultSpacing, availWidth / (maxSlots - 1));
+    const totalWidth = spacingX * (maxSlots - 1);
+    const startX = centerX - totalWidth / 2;
+    ctx.save();
+    ctx.lineWidth = 2;
+    for (let i = 0; i < maxSlots; i++) {
+        const x = startX + i * spacingX;
+        const occupied = !!(party[i + 1] && party[i + 1].hp > 0);
+        ctx.beginPath();
+        ctx.strokeStyle = occupied ? 'rgba(0,255,180,0.9)' : 'rgba(255,255,255,0.35)';
+        ctx.fillStyle = occupied ? 'rgba(0,255,180,0.18)' : 'rgba(255,255,255,0.08)';
+        ctx.arc(x, rowY, 12, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.stroke();
+        ctx.fillStyle = occupied ? '#0ff' : '#aaa';
+        ctx.font = '10px monospace';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(String(i + 1), x, rowY);
+    }
     ctx.restore();
 }
 
