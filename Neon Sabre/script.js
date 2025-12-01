@@ -303,7 +303,7 @@ class Pet {
 
         if (total > 1 && idx !== 0) {
             const centerX = canvas.width / 2;
-            const spacingX = 44;
+            const spacingX = 56;
             const rowY = Math.max(0, C.laneY - 40);
             const altIndex = idx - 1; 
             const maxSlots = 10;
@@ -513,16 +513,27 @@ class Pet {
             ctx.save();
             ctx.globalCompositeOperation = 'lighter';
             const glow = C.colors[this.type.toLowerCase()] || '#f0f';
-            const inner = ultR + 0;
-            const outer = ultR + 10;
+            const inner = ultR - 2;
+            const outer = ultR + 12;
             const grad = ctx.createRadialGradient(this.x, this.y, inner, this.x, this.y, outer);
-            grad.addColorStop(0.0, hexToRgba(glow, 0.0));
-            grad.addColorStop(0.6, hexToRgba(glow, 0.45));
-            grad.addColorStop(1.0, hexToRgba(glow, 0.0));
+            grad.addColorStop(0.00, hexToRgba(glow, 0.55));
+            grad.addColorStop(0.35, hexToRgba(glow, 0.38));
+            grad.addColorStop(0.70, hexToRgba(glow, 0.22));
+            grad.addColorStop(1.00, hexToRgba(glow, 0.0));
             ctx.fillStyle = grad;
             ctx.beginPath();
             ctx.arc(this.x, this.y, outer, 0, Math.PI*2);
             ctx.fill();
+            ctx.lineWidth = 7;
+            ctx.strokeStyle = hexToRgba(glow, 0.85);
+            ctx.beginPath();
+            ctx.arc(this.x, this.y, ultR, 0, Math.PI*2);
+            ctx.stroke();
+            ctx.lineWidth = 3;
+            ctx.strokeStyle = hexToRgba('#fff', 0.6);
+            ctx.beginPath();
+            ctx.arc(this.x, this.y, ultR - 4, 0, Math.PI*2);
+            ctx.stroke();
             ctx.restore();
         }
 
@@ -1337,7 +1348,7 @@ function loop() {
 
     if(GAME.shake > 0) ctx.restore();
 
-    ctx.strokeStyle = '#333';
+    ctx.strokeStyle = '#808';
     ctx.lineWidth = 3;
     ctx.beginPath(); ctx.moveTo(6, C.laneY); ctx.lineTo(canvas.width-6, C.laneY); ctx.stroke();
 
@@ -1931,11 +1942,11 @@ function togglePause() {
     if(GAME.state === 'PLAY') {
         if(activeFrame) { cancelAnimationFrame(activeFrame); activeFrame = null; }
         GAME.state = 'PAUSE';
-        if(btn) btn.textContent = 'RESUME';
+        if(btn) btn.textContent = '▶';
     } else if (GAME.state === 'PAUSE') {
         GAME.lastTs = performance.now();
         GAME.state = 'PLAY';
-        if(btn) btn.textContent = 'PAUSE';
+        if(btn) btn.textContent = '⏸';
         loop();
     }
 }
@@ -1978,8 +1989,7 @@ function gameOver() {
 }
 
 function restartRun() {
-    GAME.state = 'MENU';
-    startGame();
+    location.reload();
 }
 window.restartRun = restartRun;
 
@@ -2169,14 +2179,14 @@ function drawJoystickOverlay() {
     ctx.globalCompositeOperation = 'source-over';
     ctx.lineWidth = 4;
     ctx.beginPath();
-    ctx.strokeStyle = '#222';
-    ctx.fillStyle = 'rgba(100,0,100,0.35)';
+    ctx.strokeStyle = '#808';
+    ctx.fillStyle = 'rgba(255,0,255,0.15)';
     ctx.arc(baseX, baseY, JOY.radius, 0, Math.PI*2); ctx.fill(); ctx.stroke();
     const sx = baseX + JOY.stickX * 0.65;
     const sy = baseY + JOY.stickY * 0.65;
     ctx.beginPath();
     ctx.fillStyle = '#000';
-    ctx.strokeStyle = 'rgba(155,155,155,0.5)';
+    ctx.strokeStyle = 'rgba(255,0,255,0.5)';
     ctx.arc(sx, sy, 16, 0, Math.PI*2); ctx.fill(); ctx.stroke();
     ctx.restore();
 }
@@ -2221,7 +2231,8 @@ function computeUltButtonPositions() {
     const innerR = Math.max(24, JOY.radius - (maxBtnR + 8));
     const byId = (id) => ALL_ULTS.find(u => u.id === id);
     return [
-        { x: cx,           y: cy - innerR, ult: byId('default') },
+        { x: cx,           y: cy - innerR, ult: byId('default') }, 
+        { x: cx - innerR,  y: cy,          ult: byId('gatling') }, 
         { x: cx + innerR,  y: cy,          ult: byId('sniper') },  
         { x: cx,           y: cy + innerR, ult: byId('shotgun') }  
     ];
@@ -2243,8 +2254,8 @@ function drawUltButtons() {
     const pulseT = performance.now()/500;
     const { cx, cy } = getUltCircleCenter();
     ctx.beginPath();
-    ctx.fillStyle = 'rgba(30,30,40,0.35)';
-    ctx.strokeStyle = '#222';
+    ctx.fillStyle = 'rgba(255,0,255,0.12)';
+    ctx.strokeStyle = '#808';
     ctx.arc(cx, cy, JOY.radius, 0, Math.PI*2); ctx.fill(); ctx.stroke();
 
     const positions = computeUltButtonPositions();
