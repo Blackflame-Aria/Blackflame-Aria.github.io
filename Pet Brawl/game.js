@@ -1453,6 +1453,9 @@
         }catch(e){}
         try{ if(state.enemy && state.enemy.isBoss && state.enemy.id){ markBossDefeated(state.enemy.id); updateBossPanelUI(); } }catch(e){}
         state._winPopupTimeoutId = setTimeout(()=>{ try{ state._winPopupTimeoutId = null; showWinPopup(); }catch(e){} }, 1200);
+      } else if(state.player && state.enemy && state.player.hp <= 0 && state.enemy.hp > 0){
+        try{ if(state._losePopupTimeoutId) clearTimeout(state._losePopupTimeoutId); }catch(e){}
+        state._losePopupTimeoutId = setTimeout(()=>{ try{ state._losePopupTimeoutId = null; showLosePopup(); }catch(e){} }, 1200);
       }
     }catch(e){ console.error(e); }
   }
@@ -1464,6 +1467,35 @@
     const popup = document.createElement('div'); popup.className = 'win-popup';
     const img = document.createElement('img'); img.alt = 'Won';
     img.src = 'Images/won.gif';
+    const closeBtn = document.createElement('button'); closeBtn.className = 'close-btn'; closeBtn.innerHTML = 'Close';
+    popup.appendChild(img);
+    popup.appendChild(closeBtn);
+    overlay.appendChild(popup);
+    document.body.appendChild(overlay);
+
+    function removePopup(){
+      try{ popup.classList.add('closing'); overlay.classList.add('closing'); }catch(e){}
+      const onAnimEnd = function(){
+        try{ document.body.removeChild(overlay); }catch(e){}
+        try{ document.removeEventListener('keydown', onKey); }catch(e){}
+        popup.removeEventListener('animationend', onAnimEnd);
+      };
+      popup.addEventListener('animationend', onAnimEnd);
+    }
+    function onKey(ev){ if(ev.key === 'Escape'){ ev.stopPropagation(); removePopup(); } }
+
+    overlay.addEventListener('click', (ev)=>{ if(ev.target === overlay) removePopup(); });
+    closeBtn.addEventListener('click', ()=> removePopup());
+    document.addEventListener('keydown', onKey);
+  }
+
+  function showLosePopup(){
+    try{ if(state._losePopupTimeoutId){ clearTimeout(state._losePopupTimeoutId); state._losePopupTimeoutId = null; } }catch(e){}
+    if(document.getElementById('lose-overlay')) return;
+    const overlay = document.createElement('div'); overlay.className = 'modal-overlay'; overlay.id = 'lose-overlay';
+    const popup = document.createElement('div'); popup.className = 'win-popup';
+    const img = document.createElement('img'); img.alt = 'Lost';
+    img.src = 'Images/lost.png';
     const closeBtn = document.createElement('button'); closeBtn.className = 'close-btn'; closeBtn.innerHTML = 'Close';
     popup.appendChild(img);
     popup.appendChild(closeBtn);
@@ -2203,10 +2235,12 @@
   }
   $back.addEventListener('click',()=>{ 
     try{ if(state._winPopupTimeoutId){ clearTimeout(state._winPopupTimeoutId); state._winPopupTimeoutId = null; } }catch(e){}
+    try{ if(state._losePopupTimeoutId){ clearTimeout(state._losePopupTimeoutId); state._losePopupTimeoutId = null; } }catch(e){}
     playSound('restart'); $battle.classList.add('hidden'); $setup.classList.remove('hidden'); 
   });
   $back.addEventListener('click', ()=>{ 
     try{ if(state._winPopupTimeoutId){ clearTimeout(state._winPopupTimeoutId); state._winPopupTimeoutId = null; } }catch(e){}
+    try{ if(state._losePopupTimeoutId){ clearTimeout(state._losePopupTimeoutId); state._losePopupTimeoutId = null; } }catch(e){}
     try{ document.body.classList.remove('battle-visible'); }catch(e){} 
   });
   $restart.addEventListener('click',()=>{ 

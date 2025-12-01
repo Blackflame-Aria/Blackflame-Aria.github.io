@@ -110,9 +110,117 @@ const sfx = {
     die: new Audio('sfx/die.wav'),     
     click: new Audio('sfx/click.wav'),  
     powerup: new Audio('sfx/powerup.wav'),
-    shotgun: new Audio('sfx/shotgun.wav')
+    shotgun: new Audio('sfx/shotgun.wav'),
+    launch: new Audio('sfx/launch.wav')
 };
 const activeAudio = [];
+const SETTINGS = { sfxMuted: false, musicMuted: false };
+function loadAudioSettings() {
+    try {
+        const raw = localStorage.getItem('neonAudio');
+        if (raw) {
+            const obj = JSON.parse(raw);
+            if (typeof obj.sfxMuted === 'boolean') SETTINGS.sfxMuted = obj.sfxMuted;
+            if (typeof obj.musicMuted === 'boolean') SETTINGS.musicMuted = obj.musicMuted;
+        }
+    } catch(_){}
+}
+loadAudioSettings();
+
+const bgm = {
+    waltuh: new Audio('sfx/Waltuh.mp3'),
+    waltuhLoop: new Audio('sfx/Waltuh-loop.mp3'),
+    rusty: new Audio('sfx/Rusty.mp3')
+};
+bgm.waltuh.preload = 'auto';
+bgm.waltuhLoop.preload = 'auto';
+bgm.rusty.preload = 'auto';
+
+const MUSIC = {
+    current: null,
+    name: null,
+    targetVolume: 1,
+    _fadeTimer: null,
+    play(name, opts = {}) {
+        const track = bgm[name];
+        if (!track) return;
+        this.stop();
+        this.current = track;
+        this.name = name;
+        const volume = typeof opts.volume === 'number' ? opts.volume : 1;
+        const fadeInMs = typeof opts.fadeInMs === 'number' ? opts.fadeInMs : 0;
+        const loop = (opts.loop !== undefined) ? !!opts.loop : true;
+        try {
+            track.loop = loop;
+            this.targetVolume = Math.max(0, Math.min(1, volume));
+            if (SETTINGS.musicMuted) {
+                track.volume = 0;
+                track.currentTime = 0;
+                return;
+            }
+            track.volume = fadeInMs > 0 ? 0 : this.targetVolume;
+            track.currentTime = 0;
+            track.play().catch(()=>{});
+            if (fadeInMs > 0) this.fadeTo(this.targetVolume, fadeInMs);
+        } catch(_){}
+    },
+    fadeTo(target, ms, onDone) {
+        const a = this.current; if (!a) { if(onDone) onDone(); return; }
+        const startVol = a.volume;
+        const endVol = Math.max(0, Math.min(1, target));
+        const dur = Math.max(10, ms || 0);
+        const start = performance.now();
+        if (this._fadeTimer) { clearInterval(this._fadeTimer); this._fadeTimer = null; }
+        this._fadeTimer = setInterval(() => {
+            const t = Math.min(1, (performance.now() - start) / dur);
+            const v = startVol + (endVol - startVol) * t;
+            try { a.volume = v; } catch(_){}
+            if (t >= 1) {
+                clearInterval(this._fadeTimer); this._fadeTimer = null;
+                if (onDone) onDone();
+            }
+        }, 30);
+    },
+    stop(opts = {}) {
+        const a = this.current; if (!a) return;
+        const fadeOutMs = typeof opts.fadeOutMs === 'number' ? opts.fadeOutMs : 0;
+        if (fadeOutMs > 0) {
+            this.fadeTo(0, fadeOutMs, () => { try { a.pause(); a.currentTime = 0; } catch(_){} this.current = null; this.name = null; });
+        } else {
+            try { a.pause(); a.currentTime = 0; } catch(_){}
+            this.current = null; this.name = null;
+        }
+    }
+};
+
+function setSfxMuted(flag) {
+    SETTINGS.sfxMuted = !!flag;
+    if (SETTINGS.sfxMuted) {
+        stopAllAudio();
+    }
+    try { localStorage.setItem('neonAudio', JSON.stringify({ sfxMuted: SETTINGS.sfxMuted, musicMuted: SETTINGS.musicMuted })); } catch(_){}
+    updateAudioButtons();
+}
+function toggleSfxMute() { setSfxMuted(!SETTINGS.sfxMuted); }
+window.toggleSfxMute = toggleSfxMute;
+
+function setMusicMuted(flag) {
+    SETTINGS.musicMuted = !!flag;
+    const a = MUSIC.current;
+    if (a) {
+        try {
+            if (SETTINGS.musicMuted) { a.pause(); }
+            else {
+                a.volume = MUSIC.targetVolume || 1;
+                a.play().catch(()=>{});
+            }
+        } catch(_){}
+    }
+    try { localStorage.setItem('neonAudio', JSON.stringify({ sfxMuted: SETTINGS.sfxMuted, musicMuted: SETTINGS.musicMuted })); } catch(_){}
+    updateAudioButtons();
+}
+function toggleMusicMute() { setMusicMuted(!SETTINGS.musicMuted); }
+window.toggleMusicMute = toggleMusicMute;
 
 const sfxPool = {
     shoot: [],
@@ -143,6 +251,7 @@ const sfxIndex = { shoot: 0, gat: 0, beam: 0 };
 })();
 
 function playSfx(sound, volume = 1) {
+    if (SETTINGS.sfxMuted) return;
     if (GAME.state !== 'PLAY') return;
     if (sfx[sound]) {
         if (sound === 'shoot') {
@@ -639,7 +748,8 @@ class Enemy {
                         for(let p of party) {
                             if(!p || p.hp <= 0) continue;
                             const d = Math.hypot(this.x - p.x, this.y - p.y);
-                            if(d < (p.size || 12) + this.radius) {
+                            const hitR = Math.max(6, this.radius * 0.6);
+                            if(d < (p.size || 12) + hitR) {
                                 p.hp -= this.dmg;
                                 playSfx('hit', 0.4);
                                 GAME.shake = Math.max(GAME.shake, 5);
@@ -724,16 +834,16 @@ class Enemy {
             const r = this.size + extra;
             ctx.lineWidth = (this.rank === 'BOSS') ? 4 : 4;
             ctx.strokeStyle = '#f0f';
-            const pulse = 1 + Math.sin(GAME.time * 0.03) * 0.1;
             ctx.save();
             ctx.translate(this.x, this.y);
-            ctx.scale(pulse, pulse);
             ctx.setLineDash([12, 8]);
+            ctx.lineDashOffset = -(GAME.time * 1);
             ctx.beginPath();
             ctx.arc(0, 0, r, 0, Math.PI * 2);
             ctx.stroke();
             ctx.restore();
             ctx.setLineDash([]);
+            ctx.lineDashOffset = 0;
         }
 
         const hpPct = Math.max(0, Math.min(1, (this.hpDisplay !== undefined ? this.hpDisplay : this.hp) / this.maxHp));
@@ -813,6 +923,11 @@ class Bullet {
         this.lockOnTarget = lockOnTarget;
         this.piercing = !!opts.piercing;
         this.shape = opts.shape || 'round';
+        if (this.shape === 'crescent') {
+            this.multiHitWindow = 0.005; 
+            this.multiHitTimer = 0;
+            this.multiHitRemaining = 1; 
+        }
         this.pierceChain = this.piercing;
         this.hitCount = 0;
         this.maxPierce = 3;
@@ -874,22 +989,45 @@ class Bullet {
 
         if(this.y < -50 || this.x < 0 || this.x > canvas.width) this.active = false;
         
+        const secDelta = GAME.dt / 60;
         for(let e of enemies) {
             if(!e || e.hp <= 0) continue;
-            if (this.pierceChain && this.hitTargets.includes(e)) continue;
-            const ax = this.prevX, ay = this.prevY;
-            const bx = this.x, by = this.y;
-            const ex = e.x, ey = e.y;
-            const abx = bx - ax, aby = by - ay;
-            const abLen2 = abx*abx + aby*aby || 1;
-            const apx = ex - ax, apy = ey - ay;
-            let tProj = (apx*abx + apy*aby) / abLen2;
-            tProj = Math.max(0, Math.min(1, tProj));
-            const closestX = ax + abx * tProj;
-            const closestY = ay + aby * tProj;
-            const dist = Math.hypot(ex - closestX, ey - closestY);
-            const hitPad = this.pierceChain ? Math.max(this.width || 3, 8) : Math.max(5 * this.sizeMult, this.width || 3);
-            if(dist < e.size + hitPad) {
+            if ((this.pierceChain || this.shape === 'crescent') && this.hitTargets.includes(e)) continue;
+
+            let hit = false;
+            if (this.shape === 'crescent') {
+                const outerR = 18 * this.sizeMult;
+                const innerR = outerR * 0.65;
+                const span = 2.8; 
+                const halfSpan = span / 2;
+                const ex = e.x, ey = e.y;
+                const dx = ex - this.x, dy = ey - this.y;
+                const r = Math.hypot(dx, dy);
+                if (r <= outerR + e.size && r >= Math.max(0, innerR - e.size)) {
+                    const dirA = Math.atan2(this.vy, this.vx);
+                    let ang = Math.atan2(dy, dx) - dirA;
+                    while (ang > Math.PI) ang -= Math.PI * 2;
+                    while (ang < -Math.PI) ang += Math.PI * 2;
+                    const angularPad = 0.20; 
+                    if (Math.abs(ang) <= halfSpan + angularPad) hit = true;
+                }
+            } else {
+                const ax = this.prevX, ay = this.prevY;
+                const bx = this.x, by = this.y;
+                const ex = e.x, ey = e.y;
+                const abx = bx - ax, aby = by - ay;
+                const abLen2 = abx*abx + aby*aby || 1;
+                const apx = ex - ax, apy = ey - ay;
+                let tProj = (apx*abx + apy*aby) / abLen2;
+                tProj = Math.max(0, Math.min(1, tProj));
+                const closestX = ax + abx * tProj;
+                const closestY = ay + aby * tProj;
+                const dist = Math.hypot(ex - closestX, ey - closestY);
+                const hitPad = this.pierceChain ? Math.max(this.width || 3, 8) : Math.max(5 * this.sizeMult, (this.width || 3));
+                if (dist < e.size + hitPad) hit = true;
+            }
+
+            if(hit) {
                 e.hp -= this.dmg;
                 playSfx('hit', 0.4);
                 GAME.shake = Math.max(GAME.shake, e.rank === 'BOSS' ? 4 : 2.5);
@@ -907,6 +1045,8 @@ class Bullet {
                     GAME.enemiesKilled++;
                     if(GAME.target === e) GAME.target = null;
                 }
+                if (this.shape === 'crescent' || this.pierceChain) this.hitTargets.push(e);
+
                 if(this.pierceChain) {
                     this.hitTargets.push(e);
                     this.hitCount++;
@@ -926,11 +1066,23 @@ class Bullet {
                         this.active = false;
                         break;
                     }
+                } else if (this.shape === 'crescent') {
+                    if (this.multiHitRemaining > 0) {
+                        this.multiHitTimer = Math.max(this.multiHitTimer || 0, this.multiHitWindow);
+                        this.multiHitRemaining--;
+                    } else {
+                        this.active = false;
+                        break;
+                    }
                 } else {
                     this.active = false;
                     break;
                 }
             }
+        }
+        if (this.shape === 'crescent' && (this.multiHitTimer || 0) > 0) {
+            this.multiHitTimer -= secDelta;
+            if (this.multiHitTimer <= 0 && this.multiHitRemaining <= 0) this.active = false;
         }
     }
 
@@ -1193,6 +1345,7 @@ function loop() {
         if (GAME.postBossTimer <= 0) {
             GAME.awaitingDraft = false;
             GAME.postBossTimer = 0;
+            MUSIC.stop({ fadeOutMs: 1000 });
             showDraft();
             return;
         }
@@ -1266,6 +1419,7 @@ function loop() {
         if (GAME.deathTimer <= 0) {
             GAME.deathTimer = 3; 
             stopGunAudio();
+            MUSIC.stop({ fadeOutMs: 3000 });
             const p0 = party[0];
             if (p0 && !p0.deadProcessed) {
                 p0.deadProcessed = true;
@@ -1400,40 +1554,38 @@ input.jVecX = 0; input.jVecY = 0;
 input.jMagnitude = 0;
 input.jMoved = false;
 window.addEventListener('keydown', (e) => {
-    if([' ','Spacebar','q','Q','e','E','1','2','3','4','5','6','7','8','9','ArrowLeft','ArrowRight','ArrowUp','ArrowDown','a','s','d','w'].includes(e.key)) {
+    const c = e.code;
+    if(['KeyW','KeyA','KeyS','KeyD','ArrowLeft','ArrowRight','ArrowUp','ArrowDown','Space','KeyQ','KeyE','Digit1','Digit2','Digit3'].includes(c)) {
         try { e.preventDefault(); } catch(_){}
     }
-    if(e.key === 'ArrowLeft' || e.key === 'a') input.left = true;
-    if(e.key === 'ArrowRight' || e.key === 'd') input.right = true;
-    if(e.key === 'ArrowUp' || e.key === 'w') input.up = true;
-    if(e.key === 'ArrowDown' || e.key === 's') input.down = true;
-    if(e.key === ' ' || e.key === 'Spacebar') {
-        if(GAME.state === 'PLAY' || GAME.state === 'PAUSE') {
-            togglePause();
-        }
+    if(c === 'ArrowLeft' || c === 'KeyA') input.left = true;
+    if(c === 'ArrowRight' || c === 'KeyD') input.right = true;
+    if(c === 'ArrowUp' || c === 'KeyW') input.up = true;
+    if(c === 'ArrowDown' || c === 'KeyS') input.down = true;
+    if(c === 'Space') {
+        if(GAME.state === 'PLAY' || GAME.state === 'PAUSE') togglePause();
     }
-    if(e.key === 'q' || e.key === 'Q') {
+    if(c === 'KeyQ') {
         const p = party[0];
         if(p) {
             const t = findClosestEnemy(p.x, p.y);
             if(t) GAME.target = t;
         }
     }
-    if(e.key === 'e' || e.key === 'E') {
+    if(c === 'KeyE') {
         const p = party[0];
-        if(p && p.ultCharge >= 100) {
-            activateUlt(p);
-        }
+        if(p && p.ultCharge >= 100) activateUlt(p);
     }
-    if(e.key === '1') { triggerTraitUlt('sniper'); }
-    if(e.key === '2') { triggerTraitUlt('gatling'); }
-    if(e.key === '3') { triggerTraitUlt('shotgun'); }
+    if(c === 'Digit1') { triggerTraitUlt('sniper'); }
+    if(c === 'Digit2') { triggerTraitUlt('gatling'); }
+    if(c === 'Digit3') { triggerTraitUlt('shotgun'); }
 });
 window.addEventListener('keyup', (e) => {
-    if(e.key === 'ArrowLeft' || e.key === 'a') input.left = false;
-    if(e.key === 'ArrowRight' || e.key === 'd') input.right = false;
-    if(e.key === 'ArrowUp' || e.key === 'w') input.up = false;
-    if(e.key === 'ArrowDown' || e.key === 's') input.down = false;
+    const c = e.code;
+    if(c === 'ArrowLeft' || c === 'KeyA') input.left = false;
+    if(c === 'ArrowRight' || c === 'KeyD') input.right = false;
+    if(c === 'ArrowUp' || c === 'KeyW') input.up = false;
+    if(c === 'ArrowDown' || c === 'KeyS') input.down = false;
 });
 
 canvas.addEventListener('mousedown', (e) => {
@@ -1451,7 +1603,7 @@ canvas.addEventListener('mousedown', (e) => {
         return;
     }
     playSfx('click', 0.3);
-    const selectionR = 60;
+    const selectionR = 90;
     let best = null; let bestDist = Infinity; let bestType = null; let bestPet = null;
     for(let en of enemies) {
         const d = Math.hypot(en.x - x, en.y - y);
@@ -1477,7 +1629,7 @@ function handleTap(x, y) {
         }
         return;
     }
-    const selectionR = 60; 
+    const selectionR = 90; 
     let best = null; let bestDist = Infinity; let bestType = null; let bestPet = null;
     for(let en of enemies) {
         const d = Math.hypot(en.x - x, en.y - y);
@@ -1628,8 +1780,8 @@ function activateUlt(pet) {
         const dist = Math.hypot(dx, dy);
         if (dist <= effectiveRadius + e.size) {
             const t = Math.min(1, Math.max(0, dist / effectiveRadius));
-            const falloff = 1 - Math.pow(t, 0.65);
-            const dmg = Math.max(1, Math.round(peakDamage * falloff));
+            const mul = 0.25 + (1.2 - 0.25) * (1 - t);
+            const dmg = Math.max(1, Math.round(peakDamage * mul));
             e.hp -= dmg;
             createParticles(e.x, e.y, '#f00', 6);
             if (e.hp <= 0 && !e.deadProcessed) {
@@ -1857,6 +2009,158 @@ function startGame() {
     loop();
 }
 
+const LAUNCH = {
+    active: false,
+    startTs: 0,
+    duration: 3000,
+    lastTs: 0,
+    stars: [],
+    starCount: 320,
+    frame: null,
+    overlay: null,
+    octx: null,
+    uiLayer: null,
+    skipAllowed: false,
+    skipFns: [],
+    rumble: null
+};
+
+function beginLaunch() {
+    if (LAUNCH.active) return;
+    const overlay = document.createElement('canvas');
+    overlay.id = 'launch-overlay';
+    overlay.width = BASE_W; overlay.height = BASE_H;
+    Object.assign(overlay.style, {
+        position: 'absolute', left: '0', top: '0', width: '100%', height: '100%', opacity: '.5',
+        pointerEvents: 'none', zIndex: '1'
+    });
+    gameWrapper.appendChild(overlay);
+    const octx = overlay.getContext('2d');
+
+    LAUNCH.active = true;
+    LAUNCH.startTs = performance.now();
+    LAUNCH.lastTs = LAUNCH.startTs;
+    LAUNCH.stars = [];
+    LAUNCH.overlay = overlay;
+    LAUNCH.octx = octx;
+    LAUNCH.uiLayer = document.getElementById('ui-layer');
+    LAUNCH.skipAllowed = false;
+
+    for (let i = 0; i < LAUNCH.starCount; i++) {
+        const w = (Math.random() < 0.7) ? 1 : 2;
+        LAUNCH.stars.push({
+            x: Math.random() * overlay.width,
+            y: -Math.random() * (overlay.height + 200),
+            w,
+            lenMax: 80 + Math.random() * 60,
+            len: w,
+            speed: 260 + Math.random() * 440,
+            spawnDelay: Math.random() * 1500, 
+            alpha: 0.45 + Math.random() * 0.55
+        });
+    }
+
+    const startScreen = document.getElementById('start-screen');
+    if (startScreen) startScreen.style.pointerEvents = 'none';
+
+    const onKey = (e) => { if (LAUNCH.active && LAUNCH.skipAllowed && (e.code === 'Space' || e.code === 'Enter')) { e.preventDefault?.(); endLaunch(true); } };
+    const onClick = (e) => { if (LAUNCH.active && LAUNCH.skipAllowed) { e.preventDefault?.(); endLaunch(true); } };
+    document.addEventListener('keydown', onKey);
+    document.addEventListener('mousedown', onClick);
+    document.addEventListener('touchstart', onClick, { passive: false });
+    LAUNCH.skipFns = [ ['keydown', onKey], ['mousedown', onClick], ['touchstart', onClick] ];
+
+    try { MUSIC.play('waltuh', { loop: true, volume: .2 }); } catch(_){}
+
+    LAUNCH.frame = requestAnimationFrame(launchLoop);
+}
+window.beginLaunch = beginLaunch;
+
+function launchLoop(now) {
+    if (!LAUNCH.active) return;
+    LAUNCH.frame = requestAnimationFrame(launchLoop);
+    const elapsed = now - LAUNCH.startTs;
+    const dt = Math.max(0, now - LAUNCH.lastTs);
+    LAUNCH.lastTs = now;
+    const t = Math.min(1, elapsed / LAUNCH.duration);
+
+    if (!LAUNCH.skipAllowed && elapsed >= 500) LAUNCH.skipAllowed = true;
+
+    const amp = 12 * (t * t);
+    const dx = (Math.random() - 0.5) * 2 * amp;
+    const dy = (Math.random() - 0.5) * 2 * amp;
+    if (LAUNCH.uiLayer) LAUNCH.uiLayer.style.transform = `translate(${dx}px, ${dy}px)`;
+    if (LAUNCH.overlay) LAUNCH.overlay.style.transform = `translate(${dx}px, ${dy}px)`;
+
+    try { sfx.launch.volume = Math.max(0, Math.min(1, 0.1 + 0.9 * t)); } catch(_){}
+
+    const octx = LAUNCH.octx, overlay = LAUNCH.overlay; if (!octx || !overlay) return;
+    octx.clearRect(0,0,overlay.width, overlay.height);
+    octx.save();
+    octx.globalCompositeOperation = 'lighter';
+    const fadeIn = Math.min(1, (elapsed / LAUNCH.duration) / 1);
+    const fadeOut = Math.min(1, ((LAUNCH.duration - elapsed) / LAUNCH.duration) / 1);
+    const fade = Math.max(0, Math.min(1, Math.min(fadeIn, fadeOut)));
+    const dtSec = dt / 1000;
+    for (let i = 0; i < LAUNCH.stars.length; i++) {
+        const s = LAUNCH.stars[i];
+        const starElapsed = Math.max(0, elapsed - (s.spawnDelay || 0));
+        const starT = Math.max(0, Math.min(1, starElapsed / LAUNCH.duration));
+        s.y += s.speed * dtSec;
+        const growEase = starT * starT; 
+        s.len = s.w + (s.lenMax - s.w) * growEase;
+        const alpha = s.alpha * (5 + 5 * fade);
+        if (starT < 0.12) {
+            octx.fillStyle = `rgba(255,100,255,${alpha})`;
+            const thinW = Math.max(.5, s.w * 0.3);
+            octx.fillRect(Math.floor(s.x - thinW / 2), Math.floor(s.y - s.w), thinW, s.w);
+        } else {
+            octx.strokeStyle = `rgba(255,100,255,${alpha})`;
+            octx.lineWidth = s.w;
+            octx.beginPath();
+            octx.moveTo(s.x, s.y - s.len);
+            octx.lineTo(s.x, s.y);
+            octx.stroke();
+        }
+        if (s.y - s.len > overlay.height + 8) {
+            s.x = Math.random() * overlay.width;
+            s.y = -Math.random() * (overlay.height * 0.6 + 120);
+            s.w = (Math.random() < 0.7) ? 1 : 2;
+            s.lenMax = 80 + Math.random() * 60;
+            s.len = s.w;
+            s.speed = 260 + Math.random() * 440;
+            s.spawnDelay = elapsed + Math.random() * 800;
+            s.alpha = 0.45 + Math.random() * 0.55;
+        }
+    }
+    octx.restore();
+
+    if (elapsed >= LAUNCH.duration) {
+        endLaunch(false);
+    }
+}
+
+function endLaunch(skipped) {
+    if (!LAUNCH.active) return;
+    LAUNCH.active = false;
+    if (LAUNCH.frame) { cancelAnimationFrame(LAUNCH.frame); LAUNCH.frame = null; }
+    if (LAUNCH.uiLayer) LAUNCH.uiLayer.style.transform = '';
+    if (LAUNCH.overlay) LAUNCH.overlay.style.transform = '';
+    if (LAUNCH.overlay && LAUNCH.overlay.parentNode) LAUNCH.overlay.parentNode.removeChild(LAUNCH.overlay);
+    LAUNCH.overlay = null; LAUNCH.octx = null; LAUNCH.stars = [];
+    const startScreen = document.getElementById('start-screen');
+    if (startScreen) startScreen.style.pointerEvents = '';
+    for (const [evt, fn] of (LAUNCH.skipFns || [])) {
+        try { document.removeEventListener(evt, fn); } catch(_){}
+    }
+    LAUNCH.skipFns = [];
+    if (skipped) {
+        try { sfx.launch.pause(); sfx.launch.currentTime = 0; } catch(_){}
+    }
+    startGame();
+}
+
+
 function showDraft() {
     GAME.state = 'DRAFT';
     stopAllAudio();
@@ -1934,23 +2238,41 @@ function resume() {
         p0.targetY = Math.min(C.laneY - 90, canvas.height - 120);
         p0.entering = true;
     }
+    const loopTrack = (GAME.floor >= 5) ? 'rusty' : 'waltuhLoop';
+    MUSIC.play(loopTrack, { fadeInMs: 0, loop: true, volume: .2 });
     loop();
 }
 
+const ICONS = {
+    pause: '<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M15.75 5.25v13.5m-7.5-13.5v13.5" /></svg>',
+    play: '<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M5.25 5.653c0-.856.917-1.398 1.667-.986l11.54 6.347a1.125 1.125 0 0 1 0 1.972l-11.54 6.347a1.125 1.125 0 0 1-1.667-.986V5.653Z" /></svg>',
+    sfxOn: '<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M19.114 5.636a9 9 0 0 1 0 12.728M16.463 8.288a5.25 5.25 0 0 1 0 7.424M6.75 8.25l4.72-4.72a.75.75 0 0 1 1.28.53v15.88a.75.75 0 0 1-1.28.53l-4.72-4.72H4.51c-.88 0-1.704-.507-1.938-1.354A9.009 9.009 0 0 1 2.25 12c0-.83.112-1.633.322-2.396C2.806 8.756 3.63 8.25 4.51 8.25H6.75Z" /></svg>',
+    sfxOff: '<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M17.25 9.75 19.5 12m0 0 2.25 2.25M19.5 12l2.25-2.25M19.5 12l-2.25 2.25m-10.5-6 4.72-4.72a.75.75 0 0 1 1.28.53v15.88a.75.75 0 0 1-1.28.53l-4.72-4.72H4.51c-.88 0-1.704-.507-1.938-1.354A9.009 9.009 0 0 1 2.25 12c0-.83.112-1.633.322-2.396C2.806 8.756 3.63 8.25 4.51 8.25H6.75Z" /></svg>',
+    musicOn: '<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="m9 9 10.5-3m0 6.553v3.75a2.25 2.25 0 0 1-1.632 2.163l-1.32.377a1.803 1.803 0 1 1-.99-3.467l2.31-.66a2.25 2.25 0 0 0 1.632-2.163Zm0 0V2.25L9 5.25v10.303m0 0v3.75a2.25 2.25 0 0 1-1.632 2.163l-1.32.377a1.803 1.803 0 1 1-.99-3.467l2.31-.66A2.25 2.25 0 0 0 9 15.553Z" /></svg>',
+    musicOff: '<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M17.25 9.75 19.5 12m0 0 2.25 2.25M19.5 12l2.25-2.25M19.5 12l-2.25 2.25m-10.5-6 4.72-4.72a.75.75 0 0 1 1.28.53v15.88a.75.75 0 0 1-1.28.53l-4.72-4.72H4.51c-.88 0-1.704-.507-1.938-1.354A9.009 9.009 0 0 1 2.25 12c0-.83.112-1.633.322-2.396C2.806 8.756 3.63 8.25 4.51 8.25H6.75Z" /></svg>'
+};
 function togglePause() {
     const btn = document.getElementById('pause-btn');
     if(GAME.state === 'PLAY') {
         if(activeFrame) { cancelAnimationFrame(activeFrame); activeFrame = null; }
         GAME.state = 'PAUSE';
-        if(btn) btn.textContent = '▶';
+        if(btn) { btn.innerHTML = ICONS.play; btn.setAttribute('aria-label','Resume'); }
     } else if (GAME.state === 'PAUSE') {
         GAME.lastTs = performance.now();
         GAME.state = 'PLAY';
-        if(btn) btn.textContent = '⏸';
+        if(btn) { btn.innerHTML = ICONS.pause; btn.setAttribute('aria-label','Pause'); }
         loop();
     }
 }
 window.togglePause = togglePause;
+
+function updateAudioButtons() {
+    const sfxBtn = document.getElementById('sfx-mute-btn');
+    const musBtn = document.getElementById('music-mute-btn');
+    if (sfxBtn) sfxBtn.innerHTML = SETTINGS.sfxMuted ? ICONS.sfxOff : ICONS.sfxOn;
+    if (musBtn) musBtn.innerHTML = SETTINGS.musicMuted ? ICONS.musicOff : ICONS.musicOn;
+}
+document.addEventListener('DOMContentLoaded', updateAudioButtons);
 
 function skipDraft() {
     playSfx('click', 0.2);
@@ -2151,6 +2473,12 @@ function triggerTraitUlt(traitId) {
 }
 
 const JOY = { stickX:0, stickY:0, radius:100 }; 
+const JOY_ARROWS = {
+    up: new Path2D('M4.5 15.75 L12 8.25 L19.5 15.75'),
+    left: new Path2D('M15.75 19.5 L8.25 12 L15.75 4.5'),
+    right: new Path2D('M8.25 4.5 L15.75 12 L8.25 19.5'),
+    down: new Path2D('M19.5 8.25 L12 15.75 L4.5 8.25')
+};
 function updateKeyboardStick() {
     if(input.joystickActive) {
         JOY.stickX = input.jVecX * JOY.radius;
@@ -2188,6 +2516,39 @@ function drawJoystickOverlay() {
     ctx.fillStyle = '#000';
     ctx.strokeStyle = 'rgba(255,0,255,0.5)';
     ctx.arc(sx, sy, 16, 0, Math.PI*2); ctx.fill(); ctx.stroke();
+    const arrowSize = 30;
+    const arrowDist = 26; 
+    const s = arrowSize / 24;
+    let jdx = 0, jdy = 0, jm = 0;
+    if (input.joystickActive) {
+        jdx = input.jVecX; jdy = input.jVecY; jm = Math.min(1, Math.max(0, input.jMagnitude));
+    } else {
+        jdx = (JOY.stickX / JOY.radius) || 0;
+        jdy = (JOY.stickY / JOY.radius) || 0;
+        jm = Math.min(1, Math.hypot(jdx, jdy));
+    }
+    const len = Math.hypot(jdx, jdy) || 1;
+    const ndx = jdx / len, ndy = jdy / len;
+    function strengthFor(dirX, dirY) {
+        const dot = Math.max(0, ndx*dirX + ndy*dirY);
+        return Math.max(0.15, Math.min(1, dot * jm));
+    }
+    function drawArrow(path, cx, cy, k) {
+        ctx.save();
+        ctx.translate(cx, cy);
+        ctx.scale(s, s);
+        ctx.translate(-12, -12);
+        ctx.lineCap = 'round';
+        ctx.lineJoin = 'round';
+        ctx.lineWidth = 2 / s; 
+        ctx.strokeStyle = hexToRgba('#ff00ff', 0.25 + 0.65 * k);
+        ctx.stroke(path);
+        ctx.restore();
+    }
+    drawArrow(JOY_ARROWS.up,    sx, sy - arrowDist, strengthFor(0, -1));
+    drawArrow(JOY_ARROWS.left,  sx - arrowDist, sy, strengthFor(-1, 0));
+    drawArrow(JOY_ARROWS.right, sx + arrowDist, sy, strengthFor(1, 0));
+    drawArrow(JOY_ARROWS.down,  sx, sy + arrowDist, strengthFor(0, 1));
     ctx.restore();
 }
 
@@ -2221,7 +2582,7 @@ const ALL_ULTS = [
     { id:'shotgun', label:'BURST', color:'#0f0' }
 ];
 function getUltCircleCenter() {
-    const cx = canvas.width - (JOY.radius + 30);
+    const cx = canvas.width - (JOY.radius + 20);
     const cy = C.laneY;
     return { cx, cy };
 }
@@ -2239,7 +2600,7 @@ function computeUltButtonPositions() {
 }
 function detectUltButton(x, y) {
     const pos = computeUltButtonPositions();
-    const SELECT_R = 70; 
+    const SELECT_R = 105; 
     let best = null; let bestDist = Infinity;
     for (const p of pos) {
         const d = Math.hypot(x - p.x, y - p.y);

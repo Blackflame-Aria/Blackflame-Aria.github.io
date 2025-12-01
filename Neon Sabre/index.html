@@ -3,11 +3,12 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>NEON SABRE</title>
+    <title>STAR SABRE</title>
     <meta name="description" content="Play Demo">
     <meta property="og:title" content="Neon Sabre">
     <meta property="og:description" content="Play Demo">
     <meta property="og:type" content="website">
+    <link rel="icon" type="image/png" href="images/Fireball.png">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="styles.css">
@@ -30,12 +31,32 @@
             <div id="powerup-warning" class="hidden">POWER-UP ACQUIRED</div>
 
             <div id="bottom-controls">
-                <button class="secondary-btn corner-btn left" onclick="togglePause()" id="pause-btn" aria-label="Pause"><span class="icon-text">⏸</span></button>
-                <button class="secondary-btn corner-btn right" onclick="restartRun()" id="restart-btn" aria-label="Restart"><span class="icon-text">↻</span></button>
+                                <button class="secondary-btn corner-btn left" onclick="togglePause()" id="pause-btn" aria-label="Pause">
+                                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+                                            <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 5.25v13.5m-7.5-13.5v13.5" />
+                                        </svg>
+                                </button>
+                                                                <div class="bottom-center">
+                                                                        <button class="secondary-btn control-btn" id="sfx-mute-btn" onclick="toggleSfxMute()" aria-label="Toggle SFX">
+                                                                                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+                                                                                    <path stroke-linecap="round" stroke-linejoin="round" d="M19.114 5.636a9 9 0 0 1 0 12.728M16.463 8.288a5.25 5.25 0 0 1 0 7.424M6.75 8.25l4.72-4.72a.75.75 0 0 1 1.28.53v15.88a.75.75 0 0 1-1.28.53l-4.72-4.72H4.51c-.88 0-1.704-.507-1.938-1.354A9.009 9.009 0 0 1 2.25 12c0-.83.112-1.633.322-2.396C2.806 8.756 3.63 8.25 4.51 8.25H6.75Z" />
+                                                                                </svg>
+                                                                        </button>
+                                                                        <button class="secondary-btn control-btn" id="music-mute-btn" onclick="toggleMusicMute()" aria-label="Toggle Music">
+                                                                                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+                                                                                    <path stroke-linecap="round" stroke-linejoin="round" d="m9 9 10.5-3m0 6.553v3.75a2.25 2.25 0 0 1-1.632 2.163l-1.32.377a1.803 1.803 0 1 1-.99-3.467l2.31-.66a2.25 2.25 0 0 0 1.632-2.163Zm0 0V2.25L9 5.25v10.303m0 0v3.75a2.25 2.25 0 0 1-1.632 2.163l-1.32.377a1.803 1.803 0 1 1-.99-3.467l2.31-.66A2.25 2.25 0 0 0 9 15.553Z" />
+                                                                                </svg>
+                                                                        </button>
+                                                                </div>
+                                <button class="secondary-btn corner-btn right" onclick="restartRun()" id="restart-btn" aria-label="Restart">
+                                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+                                            <path stroke-linecap="round" stroke-linejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0 3.181 3.183a8.25 8.25 0 0 0 13.803-3.7M4.031 9.865a8.25 8.25 0 0 1 13.803-3.7l3.181 3.182m0-4.991v4.99" />
+                                        </svg>
+                                </button>
             </div>
 
             <div id="start-screen" class="modal">
-                <h1 class="glitch-text" data-text="NEON SABRE">NEON SABRE</h1>
+                <h1 class="glitch-text" data-text="STAR SABRE">STAR SABRE</h1>
                 <h2 class="subtitle">PROJECT: OVERDRIVE</h2>
                 
                 <h2>-UPGRADES-</h2>
@@ -68,7 +89,6 @@
                     <button class="secondary-btn" onclick="openResetConfirm()">RESET UPGRADES</button>
                 </div>
 
-                <!-- Styled Reset Confirmation Modal -->
                 <div id="reset-confirm" class="reset-modal hidden">
                     <div class="reset-dialog">
                         <h4>RESET UPGRADES</h4>
@@ -81,17 +101,17 @@
                 </div>
 
                 <p id="high-score">RECORD: SECTOR 0</p>
-                <button class="mega-btn" onclick="startGame()">LAUNCH</button>
+                <button class="mega-btn" onclick="beginLaunch()">LAUNCH</button>
 
                 <div class="controls-panel">
                     <h4>CONTROLS</h4>
                     <div class="control-line">WASD/ARROWS = move player</div>
                     <div class="control-line">Q / Tap = Lock-on target</div>
                     <div class="control-line">Space = Pause</div>
-                    <div class="control-line">E = Blast Ultimate</div>
-                    <div class="control-line">1 = Heavy Cannon</div>
-                    <div class="control-line">2 = Rapid Fire</div>
-                    <div class="control-line">3 = Broadfire</div>
+                    <div class="control-line">E = BLAST</div>
+                    <div class="control-line">1 = BOMB</div>
+                    <div class="control-line">2 = BEAM</div>
+                    <div class="control-line">3 = BURST</div>
                 </div>
             </div>
 
@@ -110,8 +130,7 @@
                 <p>ESSENCE EARNED: <span id="essence-earned" class="neon-text">0</span></p>
                 <p>TOTAL ESSENCE: <span id="total-essence" class="neon-text">0</span></p>
                 <div class="shop-actions game-over-actions">
-                    <button class="secondary-btn" onclick="restartRun()">RESTART</button>
-                    <button class="secondary-btn" onclick="closeGameOver()">MENU</button>
+                    <button class="secondary-btn" onclick="closeGameOver()">MAIN MENU</button>
                 </div>
             </div>
         </div>

@@ -1015,6 +1015,9 @@
 				if(playerAlive && !anyEnemyAlive){
 					try{ if(state._winPopupTimeoutId) clearTimeout(state._winPopupTimeoutId); }catch(e){}
 					state._winPopupTimeoutId = setTimeout(function(){ try{ state._winPopupTimeoutId=null; showWinPopup(); }catch(e){} }, 1200);
+				} else if(!playerAlive && anyEnemyAlive){
+					try{ if(state._losePopupTimeoutId) clearTimeout(state._losePopupTimeoutId); }catch(e){}
+					state._losePopupTimeoutId = setTimeout(function(){ try{ state._losePopupTimeoutId=null; showLosePopup(); }catch(e){} }, 1200);
 				}
 			}catch(e){}
 		}
@@ -1025,6 +1028,29 @@
 			var overlay = document.createElement('div'); overlay.className='modal-overlay'; overlay.id='win-overlay';
 			var popup = document.createElement('div'); popup.className='win-popup';
 			var img = document.createElement('img'); img.alt='Won'; img.src='Images/won.gif';
+			var closeBtn = document.createElement('button'); closeBtn.className='close-btn'; closeBtn.innerHTML='Close';
+			popup.appendChild(img); popup.appendChild(closeBtn); overlay.appendChild(popup); document.body.appendChild(overlay);
+			function removePopup(){
+				try{ popup.classList.add('closing'); overlay.classList.add('closing'); }catch(e){}
+				var onAnimEnd = function(){
+					try{ document.body.removeChild(overlay); }catch(e){}
+					try{ document.removeEventListener('keydown', onKey); }catch(e){}
+					popup.removeEventListener('animationend', onAnimEnd);
+				};
+				popup.addEventListener('animationend', onAnimEnd);
+			}
+			function onKey(ev){ if(ev.key==='Escape'){ ev.stopPropagation(); removePopup(); } }
+			overlay.addEventListener('click', function(ev){ if(ev.target===overlay) removePopup(); });
+			closeBtn.addEventListener('click', function(){ removePopup(); });
+			document.addEventListener('keydown', onKey);
+		}
+
+		function showLosePopup(){
+			try{ if(state._losePopupTimeoutId){ clearTimeout(state._losePopupTimeoutId); state._losePopupTimeoutId = null; } }catch(e){}
+			if(document.getElementById('lose-overlay')) return;
+			var overlay = document.createElement('div'); overlay.className='modal-overlay'; overlay.id='lose-overlay';
+			var popup = document.createElement('div'); popup.className='win-popup';
+			var img = document.createElement('img'); img.alt='Lost'; img.src='Images/lost.png';
 			var closeBtn = document.createElement('button'); closeBtn.className='close-btn'; closeBtn.innerHTML='Close';
 			popup.appendChild(img); popup.appendChild(closeBtn); overlay.appendChild(popup); document.body.appendChild(overlay);
 			function removePopup(){
@@ -1387,7 +1413,7 @@
 
 		if($play){ $play.addEventListener('click', function(){ try{ playSound('start'); }catch(e){} if($splash) $splash.classList.add('hidden'); startBattle(); }); }
 		if($backSplash){ $backSplash.addEventListener('click', function(){ if(document.referrer){ history.back(); } else { window.location.href = 'index.html'; } }); }
-		if($back){ $back.addEventListener('click', function(){ playSound('restart'); $battle.classList.add('hidden'); if($splash) $splash.classList.remove('hidden'); state.turn='finished'; }); }
+		if($back){ $back.addEventListener('click', function(){ try{ if(state._winPopupTimeoutId){ clearTimeout(state._winPopupTimeoutId); state._winPopupTimeoutId=null; } }catch(e){} try{ if(state._losePopupTimeoutId){ clearTimeout(state._losePopupTimeoutId); state._losePopupTimeoutId=null; } }catch(e){} playSound('restart'); $battle.classList.add('hidden'); if($splash) $splash.classList.remove('hidden'); state.turn='finished'; }); }
 		if($home){ $home.addEventListener('click', function(){ playSound('restart'); window.location.href = '../index.html'; }); }
 		if($restart){ $restart.addEventListener('click', function(){ playSound('restart'); window.location.reload(); }); }
 
