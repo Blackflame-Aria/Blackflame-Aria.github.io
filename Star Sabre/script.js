@@ -20,7 +20,7 @@ const GAME = {
     deathTimer: 0,
     gatAmbientTimer: 0,
     shootAmbientTimer: 0,
-    draftCount: 0
+    draftCount: 0,
 };
 let meta = JSON.parse(localStorage.getItem('neonTowerSave')) || {
     dmgLvl: 0,
@@ -157,7 +157,9 @@ const sfx = {
     powerup: new Audio('sfx/powerup.wav'),
     shotgun: new Audio('sfx/shotgun.wav'),
     launch: new Audio('sfx/launch.wav'),
-    blackhole: new Audio('sfx/Blackhole.wav')
+    blackhole: new Audio('sfx/Blackhole.wav'),
+    upgrade: new Audio('sfx/upgrade.wav'),
+    warning: new Audio('sfx/Warning.mp3')
 };
 const activeAudio = [];
 const SETTINGS = { sfxMuted: false, musicMuted: false };
@@ -308,9 +310,10 @@ const sfxIndex = { shoot: 0, gat: 0, beam: 0 };
     }
 })();
 
-function playSfx(sound, volume = 1) {
+function playSfx(sound, volume = 1, opts = {}) {
     if (SETTINGS.sfxMuted) return;
-    if (GAME.state !== 'PLAY') return;
+    const uiAllowed = ['click','upgrade','warning'];
+    if (GAME.state !== 'PLAY' && !uiAllowed.includes(sound)) return;
     if (sfx[sound]) {
         if (sound === 'shoot') {
             const now = Date.now();
@@ -575,6 +578,7 @@ class Pet {
                         const dist = Math.hypot(ex - closestX, ey - closestY);
                         if (dist <= (beamWidth + e.size)) {
                             e.hp -= dmg;
+                            try { spawnDamagePopup(e, dmg, 'regular'); } catch(_){}
                             if (e.hp <= 0 && !e.deadProcessed) {
                                 e.deadProcessed = true;
                                 playSfx('die', 0.4);
@@ -645,6 +649,7 @@ class Pet {
                         }
                         const dmgFrame = dmgPerMs * msElapsed;
                         e.hp -= dmgFrame;
+                        try { spawnDamagePopup(e, dmgFrame, 'regular'); } catch(_){}
                         if (e.hp <= 0 && !e.deadProcessed) {
                             e.deadProcessed = true;
                             playSfx('die', 0.35);
@@ -863,6 +868,7 @@ class Enemy {
         const BASE_SPEED = 1.25; 
         const SPEED_SCALING = 0.1; 
         this.rank = isBoss ? 'BOSS' : 'minion';
+        this._eid = (GAME._enemyIdCounter = (GAME._enemyIdCounter || 0) + 1);
         this.type = ['Lydia', 'Cybil', 'Sofia'][Math.floor(Math.random()*3)];
         
         this.maxHp = isBoss ? GAME.floor * 250 : BASE_HP + (GAME.floor * HP_SCALING);
@@ -899,7 +905,7 @@ class Enemy {
                     x: this.x, y: this.y,
                     vx: Math.cos(ang) * spd,
                     vy: Math.sin(ang) * spd,
-                    dmg: 20, enemyShot: true, color: '#f00', active: true,
+                    enemyShot: true, color: '#f00', active: true,
                     ownerRank: 'BOSS',
                     baseRadius: 18, 
                     radius: 18,
@@ -925,7 +931,11 @@ class Enemy {
                             const d = Math.hypot(this.x - p.x, this.y - p.y);
                             const hitR = Math.max(6, this.radius * 0.6);
                             if(d < (p.size || 12) + hitR) {
-                                p.hp -= this.dmg;
+                                const progress = Math.max(0, Math.min(1, this.age / this.growthDuration));
+                                const base = 12 + GAME.floor * 0.8;
+                                const scaled = Math.round(base * (1 + 2.8 * progress));
+                                p.hp -= scaled;
+                                spawnPlayerDamagePopup(p, scaled, true);
                                 playSfx('hit', 0.4);
                                 GAME.shake = Math.max(GAME.shake, 5);
                                 this.active = false;
@@ -968,9 +978,10 @@ class Enemy {
                     const scale = this.rank === 'BOSS' ? 5 : 2;
                     const dmg = base + (GAME.floor * scale);
                     p.hp -= dmg;
+                    spawnPlayerDamagePopup(p, dmg, this.rank === 'BOSS');
                     playSfx('hit', 0.4);
                     GAME.shake = Math.max(GAME.shake, this.rank === 'BOSS' ? 16 : 12);
-                    this.contactTimer = 0.35;
+                    this.contactTimer = 1.5;
                     if(p.hp <= 0) p.hp = 0;
                 }
             }
@@ -1205,6 +1216,7 @@ class Bullet {
 
             if(hit) {
                 e.hp -= this.dmg;
+                try { spawnDamagePopup(e, this.dmg, (this.shape === 'crescent') ? 'mid' : 'regular'); } catch(_){}
                 playSfx('hit', 0.4);
                 GAME.shake = Math.max(GAME.shake, e.rank === 'BOSS' ? 4 : 2.5);
                 createParticles(this.x, this.y, this.color, 3);
@@ -1331,6 +1343,78 @@ function createRainbowExplosion(x, y, count) {
             color
         });
     }
+}
+
+function spawnDamagePopup(enemy, amount, category = 'regular') {
+    if (!enemy || !enemy._eid) return;
+    const eid = enemy._eid;
+    const baseSize = category === 'large' ? 26 : (category === 'mid' ? 18 : 12);
+    const scale = Math.min((enemy.size || 14) / 14, 2.2);
+    const fontSize = Math.max(10, Math.round(baseSize * scale));
+    const life = category === 'large' ? 1.1 : 0.8;
+    const val = Math.max(1, Math.round((amount || 0) * 99));
+    const startX = enemy.x + (enemy.size || 14) * 0.7;
+    const startY = enemy.y - (enemy.size || 14) * 0.9;
+    const perEnemy = textPopups.filter(p => p.enemyId === eid);
+    if (perEnemy.length >= 8) {
+        let oldestIdx = -1;
+        let oldestT = Infinity;
+        for (let i = 0; i < textPopups.length; i++) {
+            const p = textPopups[i];
+            if (p.enemyId !== eid) continue;
+            if (p.t < oldestT) { oldestT = p.t; oldestIdx = i; }
+        }
+        if (oldestIdx >= 0) textPopups.splice(oldestIdx, 1);
+    }
+    let color = '#00ffff';
+    if (category === 'mid') color = '#ffff00';
+    else if (category === 'large') color = '#ff00ff';
+    textPopups.push({
+        enemyId: eid,
+        x0: startX,
+        y0: startY,
+        size: fontSize,
+        life,
+        age: 0,
+        t: 0,
+        txt: String(val),
+        color,
+        category
+    });
+}
+
+function spawnPlayerDamagePopup(pet, amount, critical = false) {
+    if (!pet) return;
+    const baseSize = critical ? 22 : 18;
+    const scale = 1.0;
+    const fontSize = Math.max(10, Math.round(baseSize * scale));
+    const life = critical ? 1.0 : 0.8;
+    const val = Math.max(1, Math.round((amount || 0) * 99));
+    const startX = pet.x + 10;
+    const startY = pet.y - 18;
+    const perUnit = textPopups.filter(p => p.playerId === 1); 
+    if (perUnit.length >= 8) {
+        let oldestIdx = -1;
+        let oldestT = Infinity;
+        for (let i = 0; i < textPopups.length; i++) {
+            const p = textPopups[i];
+            if (p.playerId !== 1) continue;
+            if (p.t < oldestT) { oldestT = p.t; oldestIdx = i; }
+        }
+        if (oldestIdx >= 0) textPopups.splice(oldestIdx, 1);
+    }
+    textPopups.push({
+        playerId: 1,
+        x0: startX,
+        y0: startY,
+        size: fontSize,
+        life,
+        age: 0,
+        t: 0,
+        txt: String(val),
+        color: critical ? '#ff0000' : '#ff6666',
+        category: critical ? 'large' : 'mid'
+    });
 }
 
 function drawPoly(x, y, r, sides, rotate) {
@@ -1501,14 +1585,20 @@ function loop() {
             }
         }
     } else if (!bossIsPresent && GAME.bossesSpawned < GAME.bossQuota) {
-        document.getElementById('boss-warning').classList.remove('hidden');
-        setTimeout(() => {
-            document.getElementById('boss-warning').classList.add('hidden');
-            if (!enemies.some(e => e.rank === 'BOSS')) {
-                enemies.push(new Enemy(true));
-                GAME.bossesSpawned++;
-            }
-        }, 1500);
+        if (!GAME._pendingBossWarning) {
+            GAME._pendingBossWarning = true;
+            const warnEl = document.getElementById('boss-warning');
+            if (warnEl) warnEl.classList.remove('hidden');
+            playSfx('warning', 0.3);
+            setTimeout(() => {
+                if (warnEl) warnEl.classList.add('hidden');
+                if (!enemies.some(e => e.rank === 'BOSS') && GAME.bossesSpawned < GAME.bossQuota) {
+                    enemies.push(new Enemy(true));
+                    GAME.bossesSpawned++;
+                }
+                GAME._pendingBossWarning = false;
+            }, 1500);
+        }
     }
     if (GAME.powerupsSpawned < GAME.powerupQuota) {
         GAME.powerupSpawnTimer -= GAME.dt / 60;
@@ -1521,6 +1611,9 @@ function loop() {
     if (GAME.bossesSpawned >= GAME.bossQuota && !bossIsPresent && GAME.enemiesKilled >= GAME.enemiesRequired + GAME.bossQuota && !GAME.awaitingDraft) {
         GAME.awaitingDraft = true;
         GAME.postBossTimer = 3;
+        try { stopGunAudio(); } catch(_){}
+        GAME.gatAmbientTimer = 0;
+        GAME.shootAmbientTimer = 0;
     }
     if (GAME.awaitingDraft) {
         GAME.postBossTimer -= GAME.dt / 60; 
@@ -1681,6 +1774,35 @@ function loop() {
         }
     }
 
+    for (let i = textPopups.length - 1; i >= 0; i--) {
+        const p = textPopups[i];
+        p.age += realSec;
+        p.t = Math.max(0, Math.min(1, p.age / p.life));
+        if (p.t >= 1) { textPopups.splice(i, 1); continue; }
+        const t = p.t;
+        const easeOutCubic = (u) => 1 - Math.pow(1 - u, 3);
+        const kx = easeOutCubic(t);
+        const offsetX = 6 + 26 * kx + 10 * (t * t);
+        const offsetY = -6 * (1 - t) * 0.6 + 22 * (t * t);
+        const jx = (Math.random() - 0.5) * 1.2;
+        const jy = (Math.random() - 0.5) * 1.2;
+        let alpha = t < 0.65 ? 1 : (1 - (t - 0.65) / 0.35);
+        alpha = Math.max(0, Math.min(1, alpha));
+        const x = p.x0 + offsetX + jx;
+        const y = p.y0 + offsetY + jy;
+        ctx.save();
+        ctx.globalAlpha = alpha;
+        ctx.font = `bold ${p.size}px Orbitron, monospace`;
+        ctx.textAlign = 'left';
+        ctx.textBaseline = 'middle';
+        ctx.lineWidth = Math.max(1, Math.round(p.size * 0.10));
+        ctx.strokeStyle = '#000';
+        ctx.fillStyle = p.color || '#ff00ff';
+        ctx.strokeText(p.txt, x, y);
+        ctx.fillText(p.txt, x, y);
+        ctx.restore();
+    }
+
     if(GAME.shake > 0) ctx.restore();
 
     ctx.strokeStyle = '#808';
@@ -1696,7 +1818,7 @@ function loop() {
     updateUI();
 
     const hasGat = party.some(p => p && p.hp > 0 && p.trait && p.trait.id === 'gatling');
-    if (hasGat && GAME.state === 'PLAY') {
+    if (hasGat && GAME.state === 'PLAY' && !GAME.awaitingDraft) {
         GAME.gatAmbientTimer -= realSec;
         if (GAME.gatAmbientTimer <= 0) {
             const prevState = GAME.state;
@@ -1707,7 +1829,7 @@ function loop() {
         GAME.gatAmbientTimer = 0; 
     }
 
-    if (party[0] && party[0].hp > 0 && GAME.state === 'PLAY') {
+    if (party[0] && party[0].hp > 0 && GAME.state === 'PLAY' && !GAME.awaitingDraft) {
         GAME.shootAmbientTimer -= realSec;
         if (GAME.shootAmbientTimer <= 0) {
             playSfx('shoot', 0.2);
@@ -1985,6 +2107,7 @@ function activateUlt(pet) {
             const mul = 0.25 + (1.2 - 0.25) * (1 - t);
             const dmg = Math.max(1, Math.round(peakDamage * mul));
             e.hp -= dmg;
+            try { spawnDamagePopup(e, dmg, 'large'); } catch(_){}
             createParticles(e.x, e.y, '#f00', 6);
             if (e.hp <= 0 && !e.deadProcessed) {
                 e.deadProcessed = true;
@@ -2023,6 +2146,7 @@ function activateSniperUlt(pet, chargeBoost, opts = {}) {
                 const d = Math.hypot(this.x - e.x, this.y - e.y);
                 if (d < this.radius + e.size) {
                     e.hp -= mainDamage;
+                    try { spawnDamagePopup(e, mainDamage, 'large'); } catch(_){}
                     if (e.hp <= 0 && !e.deadProcessed) {
                         e.deadProcessed = true;
                         playSfx('die', 0.4);
@@ -2035,6 +2159,7 @@ function activateSniperUlt(pet, chargeBoost, opts = {}) {
                         const dd = Math.hypot(this.x - o.x, this.y - o.y);
                         if (dd <= splashRadius) {
                             o.hp -= splashDamage;
+                            try { spawnDamagePopup(o, splashDamage, 'mid'); } catch(_){}
                             createParticles(o.x, o.y, '#08f', 8);
                             if (o.hp <= 0 && !o.deadProcessed) {
                                 o.deadProcessed = true;
@@ -2121,6 +2246,7 @@ function activateShotgunUlt(pet, chargeBoost) {
                     const d = Math.hypot(this.x - e.x, this.y - e.y);
                     if (d < (this.radius + e.size)) {
                         e.hp -= this.dmg;
+                        try { spawnDamagePopup(e, this.dmg, 'regular'); } catch(_){}
                         playSfx('hit', 0.3);
                         createParticles(e.x, e.y, this.color, 3);
                         if (e.hp <= 0 && !e.deadProcessed) {
@@ -2659,11 +2785,13 @@ function grantRandomPowerup(p) {
 
 function resetUpgrades() {
     const n = meta.totalUpgrades || 0;
-    const refund = computeUpgradeRefund(n);
+    const refundFull = computeUpgradeRefund(n);
     const sN = Math.max(0, Math.min(10, meta.supportCount || 0));
-    const supportRefund = (sN > 0) ? (sN * 1000 + 500 * ((sN - 1) * sN) / 2) : 0;
+    const supportRefundFull = (sN > 0) ? (sN * 1000 + 500 * ((sN - 1) * sN) / 2) : 0;
+    const totalSpent = refundFull + supportRefundFull;
+    const partial = Math.round(totalSpent * 0.6);
     if (typeof meta.essence !== 'number') meta.essence = 0;
-    meta.essence += (refund + supportRefund);
+    meta.essence += partial;
     meta.dmgLvl = 0;
     meta.rateLvl = 0;
     meta.chargeLvl = 0;
@@ -2681,6 +2809,7 @@ window.resetUpgrades = resetUpgrades;
 function openResetConfirm() {
     const modal = document.getElementById('reset-confirm');
     if (!modal) return;
+    playSfx('click', 0.3);
     modal.classList.remove('hidden');
 }
 window.openResetConfirm = openResetConfirm;
@@ -2691,8 +2820,8 @@ function initResetConfirmEvents() {
     const cancelBtn = document.getElementById('reset-cancel-btn');
     if (!modal || !confirmBtn || !cancelBtn) return;
     const hide = () => modal.classList.add('hidden');
-    confirmBtn.addEventListener('click', () => { resetUpgrades(); hide(); });
-    cancelBtn.addEventListener('click', () => { hide(); });
+    confirmBtn.addEventListener('click', () => { playSfx('click',0.3); resetUpgrades(); hide(); });
+    cancelBtn.addEventListener('click', () => { playSfx('click',0.3); hide(); });
     modal.addEventListener('click', (e) => {
         const dlg = document.querySelector('#reset-confirm .reset-dialog');
         if (!dlg) return;
@@ -2706,15 +2835,15 @@ function buyUpgrade(type) {
     if (type === 'hp') type = 'charge';
     const isSpecialActive = (meta.dmgLvl >= 15) || (meta.rateLvl >= 15) || (meta.chargeLvl >= 15);
     if (isSpecialActive && type !== 'support') {
-        if (type === 'dmg' && (meta.rateLvl >= 15 || meta.chargeLvl >= 15) && (meta.dmgLvl >= 14)) return updateUI();
-        if (type === 'rate' && (meta.dmgLvl >= 15 || meta.chargeLvl >= 15) && (meta.rateLvl >= 14)) return updateUI();
-        if (type === 'charge' && (meta.dmgLvl >= 15 || meta.rateLvl >= 15) && (meta.chargeLvl >= 14)) return updateUI();
+        if (type === 'dmg' && (meta.rateLvl >= 15 || meta.chargeLvl >= 15) && (meta.dmgLvl >= 14)) { playSfx('click',0.3); return updateUI(); }
+        if (type === 'rate' && (meta.dmgLvl >= 15 || meta.chargeLvl >= 15) && (meta.rateLvl >= 14)) { playSfx('click',0.3); return updateUI(); }
+        if (type === 'charge' && (meta.dmgLvl >= 15 || meta.rateLvl >= 15) && (meta.chargeLvl >= 14)) { playSfx('click',0.3); return updateUI(); }
     }
     if (type === 'support') {
         const current = Math.max(0, meta.supportCount || 0);
-        if (current >= 10) { updateUI(); return; }
+        if (current >= 10) { playSfx('click',0.3); updateUI(); return; }
         const supportCost = 1000 + 500 * current;
-        if ((meta.essence || 0) < supportCost) return;
+        if ((meta.essence || 0) < supportCost) { playSfx('click',0.3); return; }
         meta.essence -= supportCost;
         meta.supportCount = current + 1;
         if (meta.supportCount > 10) meta.supportCount = 10;
@@ -2724,14 +2853,14 @@ function buyUpgrade(type) {
         return;
     }
     const cost = computeUpgradeCost(meta.totalUpgrades || 0);
-    if (meta.essence < cost) return;
+    if (meta.essence < cost) { playSfx('click',0.3); return; }
     meta.essence -= cost;
+    playSfx('upgrade', 0.7);
     if (type === 'dmg') meta.dmgLvl = (meta.dmgLvl || 0) + 1;
     if (type === 'rate') meta.rateLvl = (meta.rateLvl || 0) + 1;
     if (type === 'charge') meta.chargeLvl = (meta.chargeLvl || 0) + 1;
     meta.totalUpgrades = (meta.totalUpgrades || 0) + 1;
     meta.upgradeCost = computeUpgradeCost(meta.totalUpgrades || 0);
-    playSfx('click', 0.3);
     updateUI();
     localStorage.setItem('neonTowerSave', JSON.stringify(meta));
 }
