@@ -22,6 +22,22 @@ const GAME = {
     shootAmbientTimer: 0,
     draftCount: 0,
 };
+const ACCESS = (function(){
+    try {
+        const raw = localStorage.getItem('neonAccessibility');
+        const d = raw ? JSON.parse(raw) : {};
+        return {
+            joyRight: !!d.joyRight,
+            moveLevel: Math.min(5, Math.max(1, d.moveLevel || 3)),
+            shakeLevel: Math.min(5, Math.max(1, d.shakeLevel || 3))
+        };
+    } catch(_) {
+        return { joyRight:false, moveLevel:3, shakeLevel:3 };
+    }
+})();
+function saveAccessibility(){
+    try { localStorage.setItem('neonAccessibility', JSON.stringify(ACCESS)); } catch(_){ }
+}
 let meta = JSON.parse(localStorage.getItem('neonTowerSave')) || {
     dmgLvl: 0,
     rateLvl: 0,
@@ -1541,6 +1557,11 @@ function drawBackground() {
     } catch (_) { }
 }
 
+function getJoyCenter() {
+    const x = ACCESS.joyRight ? (canvas.width - (JOY.radius + 20)) : (JOY.radius + 20);
+    return { x, y: C.laneY };
+}
+
 
 function loop() {
     if(GAME.state !== 'PLAY') { activeFrame = null; return; }
@@ -1560,8 +1581,9 @@ function loop() {
     ctx.fillStyle = '#08080c';
     if(GAME.shake > 0) {
         ctx.save();
-        let dx = (Math.random()-0.5)*GAME.shake*2;
-        let dy = (Math.random()-0.5)*GAME.shake*2;
+        const shakeScale = (ACCESS.shakeLevel === 1)?0.5:(ACCESS.shakeLevel===2?0.75:(ACCESS.shakeLevel===3?1.0:(ACCESS.shakeLevel===4?1.3:1.6)));
+        let dx = (Math.random()-0.5)*GAME.shake*2*shakeScale;
+        let dy = (Math.random()-0.5)*GAME.shake*2*shakeScale;
         ctx.translate(dx, dy);
         GAME.shake *= 0.9;
         if(GAME.shake < 0.5) GAME.shake = 0;
@@ -1964,8 +1986,9 @@ canvas.addEventListener('touchstart', (e) => {
     const t = e.changedTouches[0];
     input.jIdentifier = t.identifier;
     const { x, y } = toCanvasCoords(t.clientX, t.clientY);
-    const baseX = JOY.radius + 30; 
-    const baseY = C.laneY;
+    const jc = getJoyCenter();
+    const baseX = jc.x; 
+    const baseY = jc.y;
     const distToCenter = Math.hypot(x - baseX, y - baseY);
     if (distToCenter <= JOY.radius) {
         input.jStartX = baseX; input.jStartY = baseY; input.jCurX = x; input.jCurY = y;
@@ -1984,8 +2007,9 @@ canvas.addEventListener('touchmove', (e) => {
     if(!t) return;
     const { x, y } = toCanvasCoords(t.clientX, t.clientY);
     input.jCurX = x; input.jCurY = y;
-    const baseX = JOY.radius + 30; 
-    const baseY = C.laneY;
+    const jc = getJoyCenter();
+    const baseX = jc.x; 
+    const baseY = jc.y;
     input.jStartX = baseX; input.jStartY = baseY;
     let dx = x - baseX;
     let dy = y - baseY;
@@ -2037,9 +2061,18 @@ function applyPlayerMovement() {
         if (len > 0) { dirX /= len; dirY /= len; magnitude = 1; }
     }
 
-    const accel = 0.8;   
-    const maxSpeed = 7;  
-    const friction = .3; 
+    function moveParams(level){
+        const L = Math.min(5, Math.max(1, level|0));
+        switch(L){
+            case 1: return { accel:0.4, maxSpeed:4.0, friction:0.5 };
+            case 2: return { accel:0.6, maxSpeed:5.5, friction:0.4 };
+            case 3: return { accel:0.8, maxSpeed:7.0, friction:0.30 };
+            case 4: return { accel:1.1, maxSpeed:9.0, friction:0.22 };
+            case 5: return { accel:1.5, maxSpeed:11.0, friction:0.16 };
+        }
+        return { accel:0.8, maxSpeed:7.0, friction:0.30 };
+    }
+    const { accel, maxSpeed, friction } = moveParams(ACCESS.moveLevel || 3);
 
     if (magnitude > 0.01) {
         p.vx += dirX * accel * magnitude;
@@ -2831,6 +2864,58 @@ function initResetConfirmEvents() {
 
 document.addEventListener('DOMContentLoaded', initResetConfirmEvents);
 
+function openAccessibility(){
+    const modal = document.getElementById('accessibility-modal');
+    if (!modal) return;
+    const leftBtn = document.getElementById('joy-left-btn');
+    const rightBtn = document.getElementById('joy-right-btn');
+    const move = document.getElementById('move-sens');
+    const shake = document.getElementById('shake-level');
+    if (leftBtn && rightBtn) {
+        const reflect = () => {
+            const jr = !!ACCESS.joyRight;
+            leftBtn.classList.toggle('selected', !jr);
+            rightBtn.classList.toggle('selected', jr);
+        };
+        reflect();
+        leftBtn.onclick = () => { ACCESS.joyRight = false; reflect(); saveAccessibility(); };
+        rightBtn.onclick = () => { ACCESS.joyRight = true; reflect(); saveAccessibility(); };
+    }
+    if (move) {
+        const mvLabel = document.getElementById('move-sens-val');
+        move.value = String(ACCESS.moveLevel || 3);
+        if (mvLabel) mvLabel.textContent = move.value;
+        move.oninput = () => {
+            ACCESS.moveLevel = Math.min(5, Math.max(1, parseInt(move.value)||3));
+            if (mvLabel) mvLabel.textContent = String(ACCESS.moveLevel);
+            saveAccessibility();
+        };
+    }
+    if (shake) {
+        const shLabel = document.getElementById('shake-level-val');
+        shake.value = String(ACCESS.shakeLevel || 3);
+        if (shLabel) shLabel.textContent = shake.value;
+        shake.oninput = () => {
+            ACCESS.shakeLevel = Math.min(5, Math.max(1, parseInt(shake.value)||3));
+            if (shLabel) shLabel.textContent = String(ACCESS.shakeLevel);
+            saveAccessibility();
+        };
+    }
+    const closeBtn = document.getElementById('acc-close-btn');
+    if (closeBtn) closeBtn.onclick = () => {
+        modal.classList.add('hidden');
+    };
+    const onKey = (e) => {
+        if (e.code === 'Escape') {
+            modal.classList.add('hidden');
+            document.removeEventListener('keydown', onKey);
+        }
+    };
+    document.addEventListener('keydown', onKey);
+    modal.classList.remove('hidden');
+}
+window.openAccessibility = openAccessibility;
+
 function buyUpgrade(type) {
     if (type === 'hp') type = 'charge';
     const isSpecialActive = (meta.dmgLvl >= 15) || (meta.rateLvl >= 15) || (meta.chargeLvl >= 15);
@@ -2919,8 +3004,9 @@ function updateKeyboardStick() {
 }
 
 function drawJoystickOverlay() {
-    const baseX = JOY.radius + 20; 
-    const baseY = C.laneY;
+    const jc = getJoyCenter();
+    const baseX = jc.x; 
+    const baseY = jc.y;
     ctx.save();
     ctx.globalCompositeOperation = 'source-over';
     ctx.lineWidth = 4;
@@ -3031,7 +3117,10 @@ const ALL_ULTS = [
     { id:'shotgun', label:'BURST', color:'#0f0' }
 ];
 function getUltCircleCenter() {
-    const cx = canvas.width - (JOY.radius + 20);
+    const joy = getJoyCenter();
+    const leftX = (JOY.radius + 20);
+    const rightX = canvas.width - (JOY.radius + 20);
+    const cx = (joy.x === leftX) ? rightX : leftX;
     const cy = C.laneY;
     return { cx, cy };
 }
