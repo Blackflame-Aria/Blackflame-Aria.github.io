@@ -508,7 +508,9 @@ class Pet {
         if (this.isMain && hasDefaultTrait && (meta.chargeLvl || 0) >= 15) {
             chargeRate *= 0.5; 
         }
-        this.ultCharge = Math.min(100, this.ultCharge + chargeRate * GAME.dt);
+        if (!(this.blackHoleActive && this.isMain && hasDefaultTrait && (meta.chargeLvl || 0) >= 15)) {
+            this.ultCharge = Math.min(100, this.ultCharge + chargeRate * GAME.dt);
+        }
 
         if(!this.entering && this.cooldown <= 0) {
             let t = null;
@@ -577,7 +579,7 @@ class Pet {
                                 e.deadProcessed = true;
                                 playSfx('die', 0.4);
                                 createRainbowExplosion(e.x, e.y, e.rank === 'BOSS' ? 20 : 10);
-                                GAME.enemiesKilled++;
+                                onEnemyKilled(e, 'GATLING_BEAM');
                                 if (GAME.target === e) GAME.target = null;
                             }
                         }
@@ -596,6 +598,37 @@ class Pet {
             } else {
                 const radius = this.blackHoleRadius;
                 const msElapsed = (GAME.dtMs || (GAME.dt * 16.6667));
+                const candidates = [];
+                for (let b of bullets) {
+                    if (!b || !b.active || !b.enemyShot || b.ownerRank !== 'BOSS') continue;
+                    const d = Math.hypot(b.x - this.x, b.y - this.y);
+                    if (d <= radius + (b.radius || 0)) {
+                        candidates.push({ b, d });
+                    }
+                }
+                candidates.sort((a, b) => a.d - b.d);
+                const limit = Math.min(5, candidates.length);
+                for (let i = 0; i < limit; i++) {
+                    const { b, d } = candidates[i];
+                    const rx = b.x - this.x, ry = b.y - this.y;
+                    const invD = 1 / Math.max(1e-3, d);
+                    const t = Math.max(0, Math.min(1, d / radius));
+                    const swirlStrength = (1 - t) * 0.28 * (msElapsed / 16.6667);
+                    const pullStrength = (1 - t) * 0.12 * (msElapsed / 16.6667);
+                    const tx = ry * invD, ty = -rx * invD;
+                    b.vx += tx * swirlStrength;
+                    b.vy += ty * swirlStrength;
+                    const px = -rx * invD, py = -ry * invD;
+                    b.vx += px * pullStrength;
+                    b.vy += py * pullStrength;
+                    const sp = Math.hypot(b.vx, b.vy);
+                    const maxSp = 12 + (GAME.floor * 0.15);
+                    if (sp > maxSp) {
+                        const s = maxSp / sp;
+                        b.vx *= s; b.vy *= s;
+                    }
+                    b.blackHoleInfluence = Math.min(1, (b.blackHoleInfluence || 0) + 0.5);
+                }
                 for (let e of enemies) {
                     if (!e || e.hp <= 0) continue;
                     const dist = Math.hypot(e.x - this.x, e.y - this.y);
@@ -616,7 +649,7 @@ class Pet {
                             e.deadProcessed = true;
                             playSfx('die', 0.35);
                             createRainbowExplosion(e.x, e.y, e.rank === 'BOSS' ? 40 : 18);
-                            GAME.enemiesKilled++;
+                            onEnemyKilled(e, 'BLACK_HOLE');
                             if (GAME.target === e) GAME.target = null;
                         }
                     }
@@ -674,7 +707,7 @@ class Pet {
             const chargeBoost = 1 + (meta.chargeLvl || 0) * 0.20;
             playSfx('ult', 0.8);
             GAME.shake = Math.max(GAME.shake, 15);
-            activateSniperUlt(this, chargeBoost);
+            activateSniperUlt(this, chargeBoost, { colorOverride: '#ff00ff' });
             return;
         }
 
@@ -867,13 +900,15 @@ class Enemy {
                     vx: Math.cos(ang) * spd,
                     vy: Math.sin(ang) * spd,
                     dmg: 20, enemyShot: true, color: '#f00', active: true,
+                    ownerRank: 'BOSS',
                     baseRadius: 18, 
                     radius: 18,
                     age: 0,
                     growthDuration: 2.6,
                     trail: [],
-                    trailMax: 12,
+                    trailMax: 22,
                     rot: 0,
+                    blackHoleInfluence: 0,
                     update() {
                         this.trail.push({ x: this.x, y: this.y, r: this.radius });
                         if (this.trail.length > this.trailMax) this.trail.shift();
@@ -906,7 +941,8 @@ class Enemy {
                             for (let i = 0; i < this.trail.length; i++) {
                                 const p = this.trail[i];
                                 const t = i / this.trail.length;
-                                const alpha = 0.08 + 0.18 * t;
+                                let alpha = 0.08 + 0.18 * t;
+                                alpha += 0.06 * Math.min(1, this.blackHoleInfluence || 0);
                                 ctx.globalAlpha = alpha;
                                 const s = Math.max(6, p.r * (0.5 + 0.3*t));
                                 ctx.drawImage(fireballImg, this.x - s/2, this.y - s/2, s, s);
@@ -1177,12 +1213,7 @@ class Bullet {
                     playSfx('die', 0.4);
                     GAME.shake = Math.max(GAME.shake, e.rank === 'BOSS' ? 14 : 7);
                     createRainbowExplosion(e.x, e.y, e.rank === 'BOSS' ? 80 : 40);
-                    if(e.rank === 'BOSS') {
-                        GAME.essence += Math.floor(5 * GAME.floor * 0.8);
-                    } else {
-                        GAME.essence += (1 + GAME.floor);
-                    }
-                    GAME.enemiesKilled++;
+                    onEnemyKilled(e, 'PROJECTILE');
                     if(GAME.target === e) GAME.target = null;
                 }
                 if (this.shape === 'crescent' || this.pierceChain) this.hitTargets.push(e);
@@ -1231,18 +1262,26 @@ class Bullet {
         if (isCrescent) {
             const ang = Math.atan2(this.vy, this.vx);
             const outerR = 18 * this.sizeMult;
-            const innerR = outerR * 0.65;
-            const span = 2.8; 
-            const start = ang - span/2;
-            const end = ang + span/2;
             ctx.save();
+            ctx.translate(this.x, this.y);
+            ctx.rotate(ang + Math.PI/2); 
             ctx.globalCompositeOperation = 'lighter';
-            ctx.fillStyle = this.color;
-            ctx.beginPath();
-            ctx.arc(this.x, this.y, outerR, start, end);
-            ctx.arc(this.x, this.y, innerR, end, start, true);
-            ctx.closePath();
-            ctx.fill();
+            if (crescentImg && crescentImg.complete && crescentImg.naturalWidth) {
+                const w = outerR * 2.2;
+                const h = outerR * 2.2;
+                ctx.drawImage(crescentImg, -w/2, -h/2, w, h);
+            } else {
+                const innerR = outerR * 0.65;
+                const span = 2.8;
+                const start = -span/2;
+                const end = span/2;
+                ctx.fillStyle = this.color;
+                ctx.beginPath();
+                ctx.arc(0, 0, outerR, start, end);
+                ctx.arc(0, 0, innerR, end, start, true);
+                ctx.closePath();
+                ctx.fill();
+            }
             ctx.restore();
         } else {
             ctx.globalCompositeOperation = 'lighter';
@@ -1375,6 +1414,7 @@ const bgSpace = new Image(); bgSpace.src = 'images/space.png';
 const bgStars = new Image(); bgStars.src = 'images/stars.png';
 const bgStars2 = new Image(); bgStars2.src = 'images/stars2.png';
 const fireballImg = new Image(); fireballImg.src = 'images/Fireball.png';
+const crescentImg = new Image(); crescentImg.src = 'images/crescent.png';
 const blackHoleImg = new Image(); blackHoleImg.src = 'images/BlackHole.png';
 let starsOffset = 0;
 let stars2Offset = 0;
@@ -1505,8 +1545,7 @@ function loop() {
                 GAME.shake = Math.max(GAME.shake, 5); 
             }
             enemies.splice(i, 1);
-            GAME.enemiesKilled++;
-            GAME.essence += (1 + GAME.floor);
+            onEnemyKilled(enemies[i], 'CRASH');
         } else if (enemies[i].hp <= 0 && enemies[i].deadProcessed) {
             createParticles(enemies[i].x, enemies[i].y, C.colors.enemy, 8);
             enemies.splice(i, 1);
@@ -1918,6 +1957,7 @@ function activateUlt(pet) {
         pet.blackHoleAngle = 0;
         playSfx('blackhole', 0.9);
         GAME.shake = 22;
+        pet.ultMeter = 0;
         return; 
     }
     playSfx('ult', 0.8);
@@ -1950,7 +1990,7 @@ function activateUlt(pet) {
                 e.deadProcessed = true;
                 playSfx('die', 0.4);
                 createRainbowExplosion(e.x, e.y, e.rank === 'BOSS' ? 80 : 40);
-                GAME.enemiesKilled++;
+                onEnemyKilled(e, 'ULT_BLAST');
                 if (GAME.target === e) GAME.target = null;
             }
         }
@@ -1958,7 +1998,7 @@ function activateUlt(pet) {
     spawnUltBloom(pet.x, pet.y, C.colors[pet.type.toLowerCase()] || '#ff00ff');
 }
 
-function activateSniperUlt(pet, chargeBoost) {
+function activateSniperUlt(pet, chargeBoost, opts = {}) {
     const target = GAME.target && enemies.includes(GAME.target) ? GAME.target : findClosestEnemy(pet.x, pet.y);
     if (!target) return;
     const ang = Math.atan2(target.y - pet.y, target.x - pet.x);
@@ -1973,7 +2013,7 @@ function activateSniperUlt(pet, chargeBoost) {
         vx: Math.cos(ang) * spd,
         vy: Math.sin(ang) * spd,
         radius: 40, 
-        color: C.colors['cybil'], 
+        color: (opts.colorOverride || C.colors['cybil']), 
         active: true,
         update() {
             this.x += this.vx * GAME.dt;
@@ -1987,7 +2027,7 @@ function activateSniperUlt(pet, chargeBoost) {
                         e.deadProcessed = true;
                         playSfx('die', 0.4);
                         createRainbowExplosion(e.x, e.y, e.rank === 'BOSS' ? 80 : 40);
-                        GAME.enemiesKilled++;
+                        onEnemyKilled(e, 'SNIPER_MAIN');
                         if (GAME.target === e) GAME.target = null;
                     }
                     for (let j = 0; j < enemies.length; j++) {
@@ -2000,7 +2040,7 @@ function activateSniperUlt(pet, chargeBoost) {
                                 o.deadProcessed = true;
                                 playSfx('die', 0.4);
                                 createRainbowExplosion(o.x, o.y, o.rank === 'BOSS' ? 80 : 40);
-                                GAME.enemiesKilled++;
+                                onEnemyKilled(o, 'SNIPER_SPLASH');
                                 if (GAME.target === o) GAME.target = null;
                             }
                         }
@@ -2017,11 +2057,11 @@ function activateSniperUlt(pet, chargeBoost) {
             ctx.save();
             ctx.globalCompositeOperation = 'lighter';
             ctx.shadowBlur = 20;
-            ctx.shadowColor = '#08f';
+            ctx.shadowColor = opts.colorOverride || '#08f';
             ctx.fillStyle = '#022a';
             ctx.beginPath(); ctx.arc(this.x, this.y, this.radius, 0, Math.PI*2); ctx.fill();
             ctx.shadowBlur = 0;
-            ctx.strokeStyle = '#08f';
+            ctx.strokeStyle = opts.colorOverride || '#08f';
             ctx.lineWidth = 3;
             ctx.beginPath(); ctx.arc(this.x, this.y, this.radius, 0, Math.PI*2); ctx.stroke();
             ctx.globalCompositeOperation = 'source-over';
@@ -2087,7 +2127,7 @@ function activateShotgunUlt(pet, chargeBoost) {
                             e.deadProcessed = true;
                             playSfx('die', 0.4);
                             createRainbowExplosion(e.x, e.y, e.rank === 'BOSS' ? 80 : 40);
-                            GAME.enemiesKilled++;
+                            onEnemyKilled(e, 'SHOTGUN');
                             if (GAME.target === e) GAME.target = null;
                         }
                     }
@@ -2150,6 +2190,7 @@ function startGame() {
     enemies = []; bullets = []; powerups = []; particles = [];
     GAME.floor = 1; 
     GAME.essence = 0;
+    GAME.totalKillsRun = 0;
     GAME.enemiesSpawned = 0;
     GAME.enemiesKilled = 0; 
     GAME.enemiesRequired = 10;
@@ -2332,6 +2373,8 @@ function showDraft() {
     bullets = [];
     particles = [];
     const draftCost = Math.max(0, (GAME.draftCount || 0) * 5);
+    const runEssEl = document.getElementById('run-essence-display');
+    if (runEssEl) runEssEl.innerText = (GAME.essence || 0);
     
     for(let i=0; i<3; i++) {
             let type = ['Lydia', 'Cybil', 'Sofia'][Math.floor(Math.random()*3)];
@@ -2378,6 +2421,22 @@ function showDraft() {
         con.appendChild(d);
     }
     document.getElementById('draft-screen').classList.remove('hidden');
+}
+
+function onEnemyKilled(enemy, cause) {
+    try {
+        const isBoss = enemy && enemy.rank === 'BOSS';
+        if (isBoss) {
+            GAME.essence += Math.floor(5 * GAME.floor * 0.8);
+        } else {
+            GAME.essence += (1 + GAME.floor);
+        }
+        GAME.enemiesKilled++;
+        GAME.totalKillsRun = (GAME.totalKillsRun || 0) + 1;
+    } catch(_){
+        GAME.enemiesKilled++;
+        GAME.totalKillsRun = (GAME.totalKillsRun || 0) + 1;
+    }
 }
 
 function resume() {
@@ -2470,7 +2529,7 @@ function gameOver() {
         const essenceEarnedEl = document.getElementById('essence-earned');
         const totalEssenceEl = document.getElementById('total-essence');
         if (finalFloorEl) finalFloorEl.innerText = GAME.floor;
-        if (totalKillsEl) totalKillsEl.innerText = GAME.enemiesKilled || 0;
+        if (totalKillsEl) totalKillsEl.innerText = (GAME.totalKillsRun || 0);
         if (essenceEarnedEl) essenceEarnedEl.innerText = GAME.essence || 0;
         if (totalEssenceEl) totalEssenceEl.innerText = meta.essence || 0;
         go.classList.remove('hidden');
@@ -2886,10 +2945,9 @@ function drawUltButtons() {
         if (pos.ult.id === 'default') {
             const main = party[0];
             if (main) { pct = Math.min(1, main.ultCharge/100); anyReady = main.ultCharge >= 100; }
-            // Override label/color if Black Hole ult is available (chargeLvl >= 15)
             if ((meta.chargeLvl || 0) >= 15) {
                 pos.ult.label = 'DOOM';
-                pos.ult.color = '#880000';
+                pos.ult.color = '#aa0000';
             }
         } else {
             const units = traitUnits(pos.ult.id);

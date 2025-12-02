@@ -4,6 +4,7 @@ body {
     font-family: 'Share Tech Mono', monospace;
     text-align: center;
     background-color: #000;
+    background-image: url('bg.png');
     border: 2px solid #0f0;
     box-shadow: 0 0 15px #0f0, 0 0 15px #0f0, 0 0 20px 2px #0f0 inset;
     color: #0f0;

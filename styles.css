@@ -2,6 +2,7 @@
 
 body {
     background-color: #000;
+    background-image: url('images/bg.png');
     color: #0f0;
     font-family: 'Share Tech Mono', monospace;
     cursor: url('images/cursor-full.png'), auto !important;

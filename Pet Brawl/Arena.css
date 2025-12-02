@@ -16,6 +16,7 @@
 body {
 	margin: 0;
 	background: #000;
+	background-image: url('images/bg3.png');
     border: #f0f 2px solid;
     box-shadow: inset 0 0 10px #f0f, 0 0 10px #f0f, 0 0 10px 2px #f0f inset;
 	color: #f0f;

@@ -48,6 +48,7 @@ html, body { height:100%; }
 body {
     margin: 0;
     background-color: #000;
+    background-image: url('images/bg3.png');
     color: #fff;
     font-family: 'Orbitron', sans-serif;
     display: flex;

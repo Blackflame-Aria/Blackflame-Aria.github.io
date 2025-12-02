@@ -16,6 +16,7 @@
 
 body {
     background-color: var(--matrix-darker);
+    background-image: url('images/bg.png');
     color: var(--matrix-green);
     font-family: 'VT323', 'Courier New', monospace;
     display: flex;
