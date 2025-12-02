@@ -31,6 +31,35 @@ let meta = JSON.parse(localStorage.getItem('neonTowerSave')) || {
     supportCount: 0
 };
 let activeFrame = null;
+const UPGRADE_COST_TABLE = [
+    20, 50, 90, 130, 200,
+    300, 430, 600, 780, 950,
+    1200, 1700, 2200, 2800, 3500,
+    4500, 6000, 8000, 10000, 12000,
+    15000
+];
+const UPGRADE_COST_R = 1.25;
+function computeUpgradeCost(n) {
+    const lvl = Math.max(0, n || 0);
+    if (lvl <= 20) return UPGRADE_COST_TABLE[lvl];
+    const m = lvl - 20;
+    const base = UPGRADE_COST_TABLE[20];
+    return Math.max(1, Math.round(base * Math.pow(UPGRADE_COST_R, m)));
+}
+function computeUpgradeRefund(n) {
+    const count = Math.max(0, n || 0);
+    let sum = 0;
+    const tableCount = Math.min(count, UPGRADE_COST_TABLE.length);
+    for (let i = 0; i < tableCount; i++) sum += UPGRADE_COST_TABLE[i];
+    if (count > UPGRADE_COST_TABLE.length) {
+        const m = count - UPGRADE_COST_TABLE.length;
+        const base = UPGRADE_COST_TABLE[20];
+        const r = UPGRADE_COST_R;
+        const geom = base * (r * (Math.pow(r, m) - 1) / (r - 1));
+        sum += Math.round(geom);
+    }
+    return sum;
+}
 if (typeof meta.chargeLvl !== 'number' && typeof meta.hpLvl === 'number') {
     meta.chargeLvl = meta.hpLvl;
     delete meta.hpLvl;
@@ -40,15 +69,6 @@ if (typeof meta.totalUpgrades !== 'number') {
 }
 if (typeof meta.upgradeCost !== 'number') {
     const base = 10;
-    function computeUpgradeCost(n) {
-        const r1 = 1.2; 
-        const r2 = 1.35; 
-        const a = Math.min(n || 0, 50);
-        const b = Math.max(0, (n || 0) - 50);
-        const costAt50 = base * Math.pow(r1, a);
-        const final = costAt50 * Math.pow(r2, b);
-        return Math.max(base, Math.round(final));
-    }
     meta.upgradeCost = computeUpgradeCost(meta.totalUpgrades || 0);
 }
 if (typeof meta.supportCount !== 'number') {
@@ -136,7 +156,8 @@ const sfx = {
     click: new Audio('sfx/click.wav'),  
     powerup: new Audio('sfx/powerup.wav'),
     shotgun: new Audio('sfx/shotgun.wav'),
-    launch: new Audio('sfx/launch.wav')
+    launch: new Audio('sfx/launch.wav'),
+    blackhole: new Audio('sfx/Blackhole.wav')
 };
 const activeAudio = [];
 const SETTINGS = { sfxMuted: false, musicMuted: false };
@@ -321,7 +342,7 @@ function playSfx(sound, volume = 1) {
             }
         } else if (sound === 'beam') {
             const now = Date.now();
-            if (now - (GAME.lastBeamSfxTime || 0) < 1000) return;
+            if (now - (GAME.lastBeamSfxTime || 0) < 400) return;
             GAME.lastBeamSfxTime = now;
             const pool = sfxPool.beam;
             if (pool.length) {
@@ -329,7 +350,7 @@ function playSfx(sound, volume = 1) {
                 const ch = pool[i];
                 sfxIndex.beam = (i + 1) % pool.length;
                 try { ch.pause(); ch.currentTime = 0; } catch(e){}
-                ch.volume = volume;
+                ch.volume = Math.min(1, volume);
                 ch.play().catch(() => {});
                 return;
             }
@@ -363,6 +384,7 @@ function stopGunAudio() {
     try {
         (sfxPool.shoot || []).forEach(a => { try { a.pause(); a.currentTime = 0; } catch(e){} });
         (sfxPool.gat || []).forEach(a => { try { a.pause(); a.currentTime = 0; } catch(e){} });
+        (sfxPool.beam || []).forEach(a => { try { a.pause(); a.currentTime = 0; } catch(e){} });
     } catch(e){}
     for (let i = activeAudio.length - 1; i >= 0; i--) {
         const a = activeAudio[i];
@@ -430,6 +452,11 @@ class Pet {
         this.entering = false;
         this.targetX = 0;
         this.targetY = 0;
+
+        this.blackHoleActive = false;
+        this.blackHoleTime = 0;
+        this.blackHoleRadius = 210; 
+        this.blackHoleAngle = 0;
     }
 
     update(idx, total) {
@@ -476,7 +503,12 @@ class Pet {
 
         if(this.cooldown > 0) this.cooldown -= GAME.dt;
         const chargeMult = 1 + (meta.chargeLvl || 0) * 0.20;
-        this.ultCharge = Math.min(100, this.ultCharge + 0.1 * chargeMult * GAME.dt);
+        let chargeRate = 0.1 * chargeMult;
+        const hasDefaultTrait = !(this.trait && this.trait.id && (this.trait.id === 'sniper' || this.trait.id === 'gatling' || this.trait.id === 'shotgun'));
+        if (this.isMain && hasDefaultTrait && (meta.chargeLvl || 0) >= 15) {
+            chargeRate *= 0.5; 
+        }
+        this.ultCharge = Math.min(100, this.ultCharge + chargeRate * GAME.dt);
 
         if(!this.entering && this.cooldown <= 0) {
             let t = null;
@@ -501,9 +533,9 @@ class Pet {
             if (this.beamSfxBurstLeft <= 0) {
                 this.beamSfxBurstLeft = 0; 
             } else if (this.beamSfxTimer <= 0) {
-                playSfx('beam', 0.5);
+                playSfx('beam', 1);
                 this.beamSfxBurstLeft--;
-                this.beamSfxTimer = 1.0;
+                this.beamSfxTimer = .8;
             }
             if (this.beamTime <= 0) {
                 this.beamActive = false;
@@ -555,6 +587,43 @@ class Pet {
                 }
             }
         }
+
+        if (this.blackHoleActive) {
+            this.blackHoleTime -= (GAME.dtMs || (GAME.dt * 16.6667)) / 1000; 
+            this.blackHoleAngle -= 0.0025 * (GAME.dtMs || (GAME.dt * 16.6667)); 
+            if (this.blackHoleTime <= 0) {
+                this.blackHoleActive = false;
+            } else {
+                const radius = this.blackHoleRadius;
+                const msElapsed = (GAME.dtMs || (GAME.dt * 16.6667));
+                for (let e of enemies) {
+                    if (!e || e.hp <= 0) continue;
+                    const dist = Math.hypot(e.x - this.x, e.y - this.y);
+                    if (dist <= radius + e.size) {
+                        const t = Math.max(0, Math.min(1, dist / radius));
+                        const pivot = 0.55;
+                        let dmgPerMs;
+                        if (t <= pivot) {
+                            const k = t / pivot; 
+                            dmgPerMs = 1.2 + (0.1 - 1.2) * k; 
+                        } else {
+                            const k = (t - pivot) / (1 - pivot); 
+                            dmgPerMs = 0.1 + (0.025 - 0.1) * k; 
+                        }
+                        const dmgFrame = dmgPerMs * msElapsed;
+                        e.hp -= dmgFrame;
+                        if (e.hp <= 0 && !e.deadProcessed) {
+                            e.deadProcessed = true;
+                            playSfx('die', 0.35);
+                            createRainbowExplosion(e.x, e.y, e.rank === 'BOSS' ? 40 : 18);
+                            GAME.enemiesKilled++;
+                            if (GAME.target === e) GAME.target = null;
+                        }
+                    }
+                }
+                GAME.shake = Math.max(GAME.shake, 3);
+            }
+        }
     }
 
     shoot(target) {
@@ -585,10 +654,30 @@ class Pet {
             this.gatSfxTimer = 0;
         }
 
+        const isMainUnit = !!this.isMain;
+        if (isMainUnit && (meta.rateLvl || 0) >= 15) {
+            if (!this.beamActive) {
+                this.beamActive = true;
+                this.beamTime = 1e9;
+                this.beamSfxTimer = 0;
+                this.beamSfxBurstLeft = 10;
+                playSfx('beam', 0.8);
+            }
+            return;
+        }
+
         let count = (this.trait.id === 'shotgun') ? 3 : 1;
         if (this.powerup.type === 'TRIPLE') count = Math.max(count, 3);
         if (this.powerup.type === 'SEXTUPLE') count = Math.max(count, 6);
         
+        if (isMainUnit && (meta.dmgLvl || 0) >= 15) {
+            const chargeBoost = 1 + (meta.chargeLvl || 0) * 0.20;
+            playSfx('ult', 0.8);
+            GAME.shake = Math.max(GAME.shake, 15);
+            activateSniperUlt(this, chargeBoost);
+            return;
+        }
+
         for(let i=0; i<count; i++) {
             let spread = (this.trait.id === 'shotgun') ? (Math.random()-0.5)*1.5 : (Math.random()-0.5)*0.2;
             let dmg = this.dmg;
@@ -716,6 +805,20 @@ class Pet {
                 ctx.globalCompositeOperation = 'source-over';
                 ctx.restore();
             }
+        }
+
+        if (this.blackHoleActive && blackHoleImg && blackHoleImg.complete) {
+            const r = this.blackHoleRadius;
+            ctx.save();
+            ctx.translate(this.x, this.y);
+            ctx.rotate(this.blackHoleAngle); 
+            ctx.globalCompositeOperation = 'lighter';
+            ctx.globalAlpha = 0.85;
+            const size = r * 2;
+            ctx.drawImage(blackHoleImg, -size/2, -size/2, size, size);
+            ctx.globalAlpha = 1;
+            ctx.globalCompositeOperation = 'source-over';
+            ctx.restore();
         }
     }
 }
@@ -1272,6 +1375,7 @@ const bgSpace = new Image(); bgSpace.src = 'images/space.png';
 const bgStars = new Image(); bgStars.src = 'images/stars.png';
 const bgStars2 = new Image(); bgStars2.src = 'images/stars2.png';
 const fireballImg = new Image(); fireballImg.src = 'images/Fireball.png';
+const blackHoleImg = new Image(); blackHoleImg.src = 'images/BlackHole.png';
 let starsOffset = 0;
 let stars2Offset = 0;
 function drawBackground() {
@@ -1324,6 +1428,7 @@ function loop() {
     const dtFrames = Math.min(3, rawDtMs / 16.6667);
     const timeScale = (GAME.deathTimer > 0) ? 0.25 : 1; 
     GAME.dt = dtFrames * timeScale;
+    GAME.dtMs = rawDtMs * timeScale; 
     const realSec = rawDtMs / 1000;
     GAME.frame++;
     GAME.time++;
@@ -1806,6 +1911,15 @@ function activateUlt(pet) {
     if (!pet || pet.hp <= 0) return;
     pet.ultCharge = 0;
     GAME.shake = 15;
+    const isDefaultTrait = !(pet.trait && pet.trait.id && (pet.trait.id === 'sniper' || pet.trait.id === 'gatling' || pet.trait.id === 'shotgun'));
+    if (isDefaultTrait && (meta.chargeLvl || 0) >= 15) {
+        pet.blackHoleActive = true;
+        pet.blackHoleTime = 10.0;
+        pet.blackHoleAngle = 0;
+        playSfx('blackhole', 0.9);
+        GAME.shake = 22;
+        return; 
+    }
     playSfx('ult', 0.8);
     ctx.fillStyle = 'rgba(255,255,255,0.5)';
     ctx.fillRect(0,0,canvas.width,canvas.height);
@@ -1814,7 +1928,7 @@ function activateUlt(pet) {
 
     const tid = (pet.trait && pet.trait.id) ? pet.trait.id.toLowerCase() : 'none';
     if (tid === 'sniper') { activateSniperUlt(pet, chargeBoost); return; }
-    if (tid === 'gatling') { pet.beamActive = true; pet.beamTime = 10; pet.beamSfxTimer = 0; pet.beamSfxBurstLeft = 10; return; }
+    if (tid === 'gatling') { pet.beamActive = true; pet.beamTime = 10; pet.beamSfxTimer = 0; pet.beamSfxBurstLeft = 10; playSfx('beam', 0.9); return; }
     if (tid === 'shotgun') { activateShotgunUlt(pet, chargeBoost); return; }
 
     const base = (6 + meta.dmgLvl) * 3;
@@ -2338,7 +2452,7 @@ document.addEventListener('DOMContentLoaded', updateAudioButtons);
 function skipDraft() {
     playSfx('click', 0.2);
     party.forEach(p => p.hp = p.maxHp);
-    GAME.draftCount = (GAME.draftCount || 0) + 1; // advancing to next draft cost step
+    GAME.draftCount = (GAME.draftCount || 0) + 1;
     resume();
 }
 
@@ -2424,32 +2538,39 @@ function updateUI() {
     const supLvlEl = document.getElementById('lvl-support');
     if (supLvlEl) supLvlEl.innerText = `LVL ${Math.min(10, meta.supportCount || 0)}`;
 
-    function computeUpgradeCost(n) {
-        const base = 10;
-        const r1 = 1.25;
-        const r2 = 1.4;
-        const a = Math.min(n || 0, 50);
-        const b = Math.max(0, (n || 0) - 50);
-        const costAt50 = base * Math.pow(r1, a);
-        const final = costAt50 * Math.pow(r2, b);
-        return Math.max(base, Math.round(final));
-    }
     const nextCost = computeUpgradeCost(meta.totalUpgrades || 0);
     {
         const elD = document.getElementById('cost-dmg');
         const elR = document.getElementById('cost-rate');
-        if (elD) elD.innerText = `${nextCost} ESSENCE`;
-        if (elR) elR.innerText = `${nextCost} ESSENCE`;
+        const dmgUnavailable = (meta.dmgLvl >= 14) && (meta.rateLvl >= 15 || meta.chargeLvl >= 15);
+        const rateUnavailable = (meta.rateLvl >= 14) && (meta.dmgLvl >= 15 || meta.chargeLvl >= 15);
+        if (elD) {
+            elD.innerText = dmgUnavailable ? `UNAVAILABLE` : `${nextCost} ESSENCE`;
+            elD.classList.toggle('disabled', !!dmgUnavailable);
+            const tileD = elD.closest('.shop-item');
+            if (tileD) tileD.classList.toggle('disabled', !!dmgUnavailable);
+        }
+        if (elR) {
+            elR.innerText = rateUnavailable ? `UNAVAILABLE` : `${nextCost} ESSENCE`;
+            elR.classList.toggle('disabled', !!rateUnavailable);
+            const tileR = elR.closest('.shop-item');
+            if (tileR) tileR.classList.toggle('disabled', !!rateUnavailable);
+        }
         DISPLAY.upgradeCost = nextCost;
     }
     const costHpEl = document.getElementById('cost-hp');
     if (costHpEl) {
-        costHpEl.innerText = `${nextCost} ESSENCE`;
+        const hpUnavailable = (meta.chargeLvl >= 14) && (meta.dmgLvl >= 15 || meta.rateLvl >= 15);
+        costHpEl.innerText = hpUnavailable ? `UNAVAILABLE` : `${nextCost} ESSENCE`;
+        costHpEl.classList.toggle('disabled', !!hpUnavailable);
+        const tileH = costHpEl.closest('.shop-item');
+        if (tileH) tileH.classList.toggle('disabled', !!hpUnavailable);
     }
     const costSupEl = document.getElementById('cost-support');
     const supportItem = document.getElementById('shop-support');
     const supportMaxed = (meta.supportCount || 0) >= 10;
-    if (costSupEl) costSupEl.innerText = supportMaxed ? `MAX` : `1000 ESSENCE`;
+    const nextSupportCost = 1000 + 500 * Math.max(0, Math.min(10, (meta.supportCount || 0)));
+    if (costSupEl) costSupEl.innerText = supportMaxed ? `MAX` : `${nextSupportCost} ESSENCE`;
     if (supportItem) {
         if (supportMaxed) supportItem.classList.add('disabled');
         else supportItem.classList.remove('disabled');
@@ -2478,22 +2599,18 @@ function grantRandomPowerup(p) {
 }
 
 function resetUpgrades() {
-    const base = 10; const n = meta.totalUpgrades || 0;
-    // Approximate refund using the slower growth rate up to 50, then faster after
-    const r1 = 1.18, r2 = 1.35;
-    const a = Math.min(n, 50);
-    const b = Math.max(0, n - 50);
-    const seqSum = (x, k) => (k <= 0) ? 0 : (x * (Math.pow(r1, k) - 1) / (r1 - 1));
-    const costAt50 = base * Math.pow(r1, 50);
-    const seqSumAfter = (baseAt50, m) => (m <= 0) ? 0 : (baseAt50 * (Math.pow(r2, m) - 1) / (r2 - 1));
-    const refund = Math.round(seqSum(base, a) + seqSumAfter(costAt50, b));
+    const n = meta.totalUpgrades || 0;
+    const refund = computeUpgradeRefund(n);
+    const sN = Math.max(0, Math.min(10, meta.supportCount || 0));
+    const supportRefund = (sN > 0) ? (sN * 1000 + 500 * ((sN - 1) * sN) / 2) : 0;
     if (typeof meta.essence !== 'number') meta.essence = 0;
-    meta.essence += refund;
+    meta.essence += (refund + supportRefund);
     meta.dmgLvl = 0;
     meta.rateLvl = 0;
     meta.chargeLvl = 0;
     meta.totalUpgrades = 0;
-    meta.upgradeCost = base;
+    meta.upgradeCost = computeUpgradeCost(0);
+    meta.supportCount = 0;
     try {
         localStorage.setItem('neonTowerSave', JSON.stringify(meta));
     } catch (e) {}
@@ -2528,27 +2645,24 @@ document.addEventListener('DOMContentLoaded', initResetConfirmEvents);
 
 function buyUpgrade(type) {
     if (type === 'hp') type = 'charge';
+    const isSpecialActive = (meta.dmgLvl >= 15) || (meta.rateLvl >= 15) || (meta.chargeLvl >= 15);
+    if (isSpecialActive && type !== 'support') {
+        if (type === 'dmg' && (meta.rateLvl >= 15 || meta.chargeLvl >= 15) && (meta.dmgLvl >= 14)) return updateUI();
+        if (type === 'rate' && (meta.dmgLvl >= 15 || meta.chargeLvl >= 15) && (meta.rateLvl >= 14)) return updateUI();
+        if (type === 'charge' && (meta.dmgLvl >= 15 || meta.rateLvl >= 15) && (meta.chargeLvl >= 14)) return updateUI();
+    }
     if (type === 'support') {
-        const supportCost = 1000;
-        if ((meta.supportCount || 0) >= 10) { updateUI(); return; }
+        const current = Math.max(0, meta.supportCount || 0);
+        if (current >= 10) { updateUI(); return; }
+        const supportCost = 1000 + 500 * current;
         if ((meta.essence || 0) < supportCost) return;
         meta.essence -= supportCost;
-        meta.supportCount = (meta.supportCount || 0) + 1;
+        meta.supportCount = current + 1;
         if (meta.supportCount > 10) meta.supportCount = 10;
         playSfx('click', 0.3);
         updateUI();
         localStorage.setItem('neonTowerSave', JSON.stringify(meta));
         return;
-    }
-    function computeUpgradeCost(n) {
-        const base = 10;
-        const r1 = 1.18;
-        const r2 = 1.35;
-        const a = Math.min(n || 0, 50);
-        const b = Math.max(0, (n || 0) - 50);
-        const costAt50 = base * Math.pow(r1, a);
-        const final = costAt50 * Math.pow(r2, b);
-        return Math.max(base, Math.round(final));
     }
     const cost = computeUpgradeCost(meta.totalUpgrades || 0);
     if (meta.essence < cost) return;
@@ -2772,6 +2886,11 @@ function drawUltButtons() {
         if (pos.ult.id === 'default') {
             const main = party[0];
             if (main) { pct = Math.min(1, main.ultCharge/100); anyReady = main.ultCharge >= 100; }
+            // Override label/color if Black Hole ult is available (chargeLvl >= 15)
+            if ((meta.chargeLvl || 0) >= 15) {
+                pos.ult.label = 'DOOM';
+                pos.ult.color = '#880000';
+            }
         } else {
             const units = traitUnits(pos.ult.id);
             for (const {p} of units) {
