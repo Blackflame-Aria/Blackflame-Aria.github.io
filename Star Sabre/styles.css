@@ -38,7 +38,7 @@ html, body { height:100%; }
 @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Share+Tech+Mono&display=swap');
 
 :root {
-    --bg: #050510;
+    --bg: #090009;
     --neon-blue: #00ffff;
     --neon-pink: #ff00ff;
     --neon-yellow: #ffff00;
@@ -98,7 +98,7 @@ h2 {
 
 
 canvas {
-    background: #08080c;
+    background: var(--bg);
     display: block;
     cursor: crosshair;
     width: 100%;
