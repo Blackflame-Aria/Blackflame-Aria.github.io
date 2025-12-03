@@ -102,6 +102,7 @@ let powerups = [];
 let particles = [];
 let textPopups = [];
 let blooms = [];
+let playerTrail = [];
 
 const gameWrapper = document.getElementById('game-wrapper');
 const DISPLAY = {
@@ -133,8 +134,8 @@ const C = {
     spawnY: -60,
     colors: {
         lydia: '#f0f',
-        cybil: '#08f',
-        sofia: '#0a0',
+        cybil: '#0ff',
+        sofia: '#ff0',
         enemy: '#f00',
         boss:  '#f00'
     },
@@ -175,7 +176,11 @@ const sfx = {
     launch: new Audio('sfx/launch.wav'),
     blackhole: new Audio('sfx/Blackhole.wav'),
     upgrade: new Audio('sfx/upgrade.wav'),
-    warning: new Audio('sfx/Warning.mp3')
+    warning: new Audio('sfx/Warning.mp3'),
+    laser1: new Audio('sfx/laser1.wav'),
+    laser2: new Audio('sfx/laser2.wav'),
+    laser3: new Audio('sfx/laser3.wav'),
+    cannon: new Audio('sfx/cannon.wav')
 };
 const activeAudio = [];
 const SETTINGS = { sfxMuted: false, musicMuted: false };
@@ -326,6 +331,35 @@ const sfxIndex = { shoot: 0, gat: 0, beam: 0 };
     }
 })();
 
+// Simple loop manager for continuous SFX
+const LOOPING = {
+    map: new Map(),
+    play(name, volume = 1) {
+        if (SETTINGS.sfxMuted) return;
+        let a = this.map.get(name);
+        if (!a) {
+            const base = sfx[name];
+            if (!base) return;
+            a = base.cloneNode();
+            a.loop = true;
+            a.volume = Math.max(0, Math.min(1, volume));
+            this.map.set(name, a);
+        }
+        try { a.volume = Math.max(0, Math.min(1, volume)); a.play().catch(()=>{}); } catch(_){ }
+    },
+    stop(name, resetTime = true) {
+        const a = this.map.get(name);
+        if (!a) return;
+        try { a.pause(); if (resetTime) a.currentTime = 0; } catch(_){}
+    },
+    stopAll() {
+        for (const [name, a] of this.map.entries()) {
+            try { a.pause(); a.currentTime = 0; } catch(_){}
+        }
+        this.map.clear();
+    }
+};
+
 function playSfx(sound, volume = 1, opts = {}) {
     if (SETTINGS.sfxMuted) return;
     const uiAllowed = ['click','upgrade','warning'];
@@ -418,6 +452,7 @@ function stopGunAudio() {
 
 function stopAllAudio() {
     stopGunAudio();
+    LOOPING.stopAll();
     for (let i = activeAudio.length - 1; i >= 0; i--) {
         try { activeAudio[i].pause(); activeAudio[i].currentTime = 0; } catch(e){}
         activeAudio.splice(i,1);
@@ -432,11 +467,11 @@ class Pet {
         this.isMain = isMain;
 
         let baseDmg = 4 + (meta.dmgLvl * 1.5);
-        let baseHp = isMain ? 100 : 60;
+        let baseHp = isMain ? 120 : 80;
         let baseRate = 35;
 
         if(this.trait.id === 'gatling') { 
-            baseRate = 20; 
+            baseRate = 18; 
             baseDmg *= 0.65; 
         }
         if(this.trait.id === 'sniper') { 
@@ -563,6 +598,9 @@ class Pet {
                 this.beamTime = 0;
                 this.beamSfxTimer = 0;
                 this.beamSfxBurstLeft = 0;
+                // stop any beam-related looping audio when channel ends
+                LOOPING.stop('laser1');
+                if ((meta.rateLvl || 0) >= 15) LOOPING.stop('laser2');
             } else {
                 let t = null;
                 if (GAME.target && enemies.includes(GAME.target) && GAME.target.hp > 0) {
@@ -572,13 +610,17 @@ class Pet {
                 }
                 if (t) {
                     const msElapsed = GAME.dt * 10;
-                    const dmg = msElapsed * 0.08;
+                    let dmg = msElapsed * 0.08;
+                    // Big Shot + Speed 15 beam: double damage during power-up
+                    const bigBeamActive = (this.powerup.type === 'BIG' && this.powerup.time > 0 && (meta.rateLvl || 0) >= 15);
+                    if (bigBeamActive) dmg *= 2;
                     const ang = Math.atan2(t.y - this.y, t.x - this.x);
                     const dirX = Math.cos(ang), dirY = Math.sin(ang);
                     const maxLen = Math.max(canvas.width, canvas.height) * 1.5;
                     const x2 = this.x + dirX * maxLen;
                     const y2 = this.y + dirY * maxLen;
-                    const beamWidth = 10;
+                    let beamWidth = 10;
+                    if (bigBeamActive) beamWidth *= 2;
                     for (let e of enemies) {
                         if (!e || e.hp <= 0) continue;
                         const ax = this.x, ay = this.y;
@@ -715,7 +757,8 @@ class Pet {
                 this.beamTime = 1e9;
                 this.beamSfxTimer = 0;
                 this.beamSfxBurstLeft = 10;
-                playSfx('beam', 0.8);
+                // continuous beam SFX for Speed 15
+                LOOPING.play('laser2', 0.8);
             }
             return;
         }
@@ -733,14 +776,29 @@ class Pet {
         }
 
         for(let i=0; i<count; i++) {
-            let spread = (this.trait.id === 'shotgun') ? (Math.random()-0.5)*1.5 : (Math.random()-0.5)*0.2;
+            // Narrow Broadfire (shotgun) spread so shots are closer together
+            let spread = (this.trait.id === 'shotgun') ? (Math.random()-0.5)*0.35 : (Math.random()-0.5)*0.2;
             let dmg = this.dmg;
             let bulletSizeMult = 1;
             let piercing = false;
             let shape = 'round';
             if (this.powerup.type === 'BIG') { dmg *= 3; bulletSizeMult = 3; shape = 'crescent'; }
             if (this.powerup.type === 'PIERCE') { piercing = true; }
-            bullets.push(new Bullet(this.x, this.y - 10, target, dmg, this.type, spread, GAME.target, { bulletSizeMult, piercing, shape }));
+            const impact15 = (meta.dmgLvl || 0) >= 15;
+            const opts = { bulletSizeMult, piercing, shape };
+            // Mark Impact 15 bullets for BIGshot visuals (smaller for normal shots, larger when BIG powerup)
+            if (impact15) {
+                opts.bigImpact = true;
+                opts.sprite = 'BIGshot';
+                // scale down normal Impact 15 shots vs BIG powerup crescents
+                if (this.powerup.type !== 'BIG') {
+                    opts.bulletSizeMult = bulletSizeMult * 1.5; // modest enlargement for visibility
+                }
+            }
+            bullets.push(new Bullet(this.x, this.y - 10, target, dmg, this.type, spread, GAME.target, opts));
+            if (impact15 && this.powerup.type === 'BIG') {
+                try { console.log('[Bullet] Impact15 BIG shot created:', { bigImpact: !!opts.bigImpact, sizeMult: bulletSizeMult, shape }); } catch(_){}
+            }
         }
         
         if(this.trait.id === 'sniper') GAME.shake = 4;
@@ -843,15 +901,16 @@ class Pet {
                 ctx.globalCompositeOperation = 'lighter';
                 ctx.shadowBlur = 18;
                 ctx.shadowColor = C.colors[this.type.toLowerCase()];
+                const bigBeamActive = (this.powerup.type === 'BIG' && this.powerup.time > 0 && (meta.rateLvl || 0) >= 15);
                 ctx.strokeStyle = C.colors[this.type.toLowerCase()];
-                ctx.lineWidth = 8;
+                ctx.lineWidth = bigBeamActive ? 32 : 8;
                 ctx.beginPath();
                 ctx.moveTo(this.x, this.y);
                 ctx.lineTo(endX, endY);
                 ctx.stroke();
                 ctx.shadowBlur = 0;
                 ctx.strokeStyle = '#fff';
-                ctx.lineWidth = 3;
+                ctx.lineWidth = bigBeamActive ? 12 : 3;
                 ctx.beginPath();
                 ctx.moveTo(this.x, this.y);
                 ctx.lineTo(endX, endY);
@@ -1126,6 +1185,8 @@ class Bullet {
         this.lockOnTarget = lockOnTarget;
         this.piercing = !!opts.piercing;
         this.shape = opts.shape || 'round';
+        this.bigImpact = !!opts.bigImpact;
+        this.sprite = opts.sprite || null;
         if (this.shape === 'crescent') {
             this.multiHitWindow = 0.005; 
             this.multiHitTimer = 0;
@@ -1262,6 +1323,8 @@ class Bullet {
                     if (next) {
                         this.target = next;
                     } else {
+                        // Final deactivation: spawn aftershock linger for Impact 15 bullets
+                        if (this.bigImpact) spawnCanvasExplosion(this.x, this.y, Math.max(20, 24 * (this.sizeMult || 1)), true);
                         this.active = false;
                         break;
                     }
@@ -1270,10 +1333,14 @@ class Bullet {
                         this.multiHitTimer = Math.max(this.multiHitTimer || 0, this.multiHitWindow);
                         this.multiHitRemaining--;
                     } else {
+                        // End of crescent multi-hit window; spawn aftershock if Impact 15
+                        if (this.bigImpact) spawnCanvasExplosion(this.x, this.y, Math.max(20, 24 * (this.sizeMult || 1)), true);
                         this.active = false;
                         break;
                     }
                 } else {
+                    // Standard non-piercing hit: spawn aftershock for Impact 15 bullets
+                    if (this.bigImpact) spawnCanvasExplosion(this.x, this.y, Math.max(20, 24 * (this.sizeMult || 1)), true);
                     this.active = false;
                     break;
                 }
@@ -1281,12 +1348,29 @@ class Bullet {
         }
         if (this.shape === 'crescent' && (this.multiHitTimer || 0) > 0) {
             this.multiHitTimer -= secDelta;
-            if (this.multiHitTimer <= 0 && this.multiHitRemaining <= 0) this.active = false;
+            if (this.multiHitTimer <= 0 && this.multiHitRemaining <= 0) {
+                if (this.bigImpact) spawnCanvasExplosion(this.x, this.y, Math.max(20, 24 * (this.sizeMult || 1)), true);
+                this.active = false;
+            }
         }
     }
 
     draw() {
         const isCrescent = (this.shape === 'crescent');
+        if (this.bigImpact && BIGshotImg) {
+            const ang = Math.atan2(this.vy, this.vx);
+            const outerR = 18 * this.sizeMult;
+            ctx.save();
+            ctx.translate(this.x, this.y);
+            ctx.rotate(ang + Math.PI/2);
+            ctx.globalCompositeOperation = 'lighter';
+            const w = outerR * 2.2;
+            const h = outerR * 2.2;
+            ctx.drawImage(BIGshotImg, -w/2, -h/2, w, h);
+            ctx.restore();
+            try { if (!BIGshotImgLoaded) console.warn('[Bullet] BIGshot drawn before load complete'); } catch(_){}
+            return;
+        }
         if (isCrescent) {
             const ang = Math.atan2(this.vy, this.vx);
             const outerR = 18 * this.sizeMult;
@@ -1515,6 +1599,17 @@ const bgStars = new Image(); bgStars.src = 'images/stars.png';
 const bgStars2 = new Image(); bgStars2.src = 'images/stars2.png';
 const fireballImg = new Image(); fireballImg.src = 'images/Fireball.png';
 const crescentImg = new Image(); crescentImg.src = 'images/crescent.png';
+let BIGshotImgLoaded = false;
+const BIGshotImg = new Image();
+BIGshotImg.onload = () => { BIGshotImgLoaded = true; try { console.log('[Assets] BIGshot.png loaded'); } catch(_){} };
+BIGshotImg.onerror = () => { try { console.warn('[Assets] BIGshot.png failed to load at images/BIGshot.png'); } catch(_){} };
+BIGshotImg.src = 'images/BIGshot.png';
+
+let aftershockImgLoaded = false;
+const aftershockImg = new Image();
+aftershockImg.onload = () => { aftershockImgLoaded = true; try { console.log('[Assets] aftershock.png loaded'); } catch(_){} };
+aftershockImg.onerror = () => { try { console.warn('[Assets] aftershock.png failed to load at images/aftershock.png'); } catch(_){} };
+aftershockImg.src = 'images/aftershock.png';
 const blackHoleImg = new Image(); blackHoleImg.src = 'images/BlackHole.png';
 let starsOffset = 0;
 let stars2Offset = 0;
@@ -1611,7 +1706,7 @@ function loop() {
             GAME._pendingBossWarning = true;
             const warnEl = document.getElementById('boss-warning');
             if (warnEl) warnEl.classList.remove('hidden');
-            playSfx('warning', 0.3);
+            playSfx('warning', 0.15);
             setTimeout(() => {
                 if (warnEl) warnEl.classList.add('hidden');
                 if (!enemies.some(e => e.rank === 'BOSS') && GAME.bossesSpawned < GAME.bossQuota) {
@@ -1634,6 +1729,8 @@ function loop() {
         GAME.awaitingDraft = true;
         GAME.postBossTimer = 3;
         try { stopGunAudio(); } catch(_){}
+        // stop continuous beam loop when sector is cleared
+        LOOPING.stop('laser2');
         GAME.gatAmbientTimer = 0;
         GAME.shootAmbientTimer = 0;
     }
@@ -1734,6 +1831,30 @@ function loop() {
         if(!bullets[i].active) bullets.splice(i, 1);
         else bullets[i].draw();
     }
+
+    // Render player movement trail (magenta, fading)
+    if (playerTrail.length) {
+        ctx.save();
+        ctx.globalCompositeOperation = 'lighter';
+        for (let i = 0; i < playerTrail.length; i++) {
+            const t = playerTrail[i];
+            t.life -= realSec * 1.8; // fade speed
+            if (t.life < 0) { continue; }
+            const alpha = Math.max(0, Math.min(1, t.life));
+            ctx.globalAlpha = alpha * 0.8;
+            ctx.fillStyle = '#ff00ff';
+            const size = 6 * (0.5 + 0.5 * t.life);
+            ctx.beginPath();
+            ctx.arc(t.x, t.y, size, 0, Math.PI * 2);
+            ctx.fill();
+        }
+        ctx.globalAlpha = 1;
+        ctx.restore();
+        // prune fully faded
+        for (let i = playerTrail.length - 1; i >= 0; i--) {
+            if (playerTrail[i].life <= 0) playerTrail.splice(i, 1);
+        }
+    }
     for(let i=particles.length-1; i>=0; i--) {
         let p = particles[i];
         p.x += p.vx; p.y += p.vy; 
@@ -1786,12 +1907,21 @@ function loop() {
         } else {
             b.life -= realSec;
             const alpha = Math.max(0, b.life / 0.6);
-            const grad = ctx.createRadialGradient(b.x, b.y, 0, b.x, b.y, b.radius);
-            grad.addColorStop(0, `rgba(0,170,255,${0.35*alpha})`);
-            grad.addColorStop(0.6, `rgba(0,170,255,${0.18*alpha})`);
-            grad.addColorStop(1, `rgba(0,170,255,0)`);
-            ctx.fillStyle = grad;
-            ctx.beginPath(); ctx.arc(b.x, b.y, b.radius, 0, Math.PI*2); ctx.fill();
+            if (b.img && b.img.complete && b.img.naturalWidth) {
+                ctx.save();
+                ctx.globalAlpha = alpha;
+                const size = b.radius * 2;
+                ctx.drawImage(b.img, b.x - size/2, b.y - size/2, size, size);
+                ctx.globalAlpha = 1;
+                ctx.restore();
+            } else {
+                const grad = ctx.createRadialGradient(b.x, b.y, 0, b.x, b.y, b.radius);
+                grad.addColorStop(0, `rgba(0,170,255,${0.35*alpha})`);
+                grad.addColorStop(0.6, `rgba(0,170,255,${0.18*alpha})`);
+                grad.addColorStop(1, `rgba(0,170,255,0)`);
+                ctx.fillStyle = grad;
+                ctx.beginPath(); ctx.arc(b.x, b.y, b.radius, 0, Math.PI*2); ctx.fill();
+            }
             if (b.life <= 0) blooms.splice(i,1);
         }
     }
@@ -1914,6 +2044,12 @@ window.addEventListener('keydown', (e) => {
     if (c === 'KeyG') {
         DEBUG_REINF_GUIDES = !DEBUG_REINF_GUIDES;
         try { console.log('[Reinf Guides]', DEBUG_REINF_GUIDES ? 'ON' : 'OFF'); } catch(_){}
+    }
+    // Toggle simple audio debug logs
+    if (c === 'KeyL') {
+        const p0 = party[0];
+        console.log('[Audio] beamActive:', !!(p0 && p0.beamActive), 'rate15:', (meta.rateLvl||0)>=15,
+            'BIG:', (p0 && p0.powerup && p0.powerup.type === 'BIG' && p0.powerup.time > 0));
     }
 });
 window.addEventListener('keyup', (e) => {
@@ -2093,6 +2229,13 @@ function applyPlayerMovement() {
     p.x += p.vx;
     p.y += p.vy;
 
+    // Emit trail segment when moving
+    const spd = Math.hypot(p.vx, p.vy);
+    if (spd > 0.2) {
+        playerTrail.push({ x: p.x, y: p.y, life: 1.0 });
+        if (playerTrail.length > 60) playerTrail.shift();
+    }
+
     const minX = 20, maxX = canvas.width - 20;
     const minY = 20, maxY = C.laneY - 20;
     if (p.x < minX) { p.x = minX; if (p.vx < 0) p.vx = 0; }
@@ -2123,7 +2266,12 @@ function activateUlt(pet) {
 
     const tid = (pet.trait && pet.trait.id) ? pet.trait.id.toLowerCase() : 'none';
     if (tid === 'sniper') { activateSniperUlt(pet, chargeBoost); return; }
-    if (tid === 'gatling') { pet.beamActive = true; pet.beamTime = 10; pet.beamSfxTimer = 0; pet.beamSfxBurstLeft = 10; playSfx('beam', 0.9); return; }
+    if (tid === 'gatling') {
+        pet.beamActive = true; pet.beamTime = 10; pet.beamSfxTimer = 0; pet.beamSfxBurstLeft = 10;
+        // Beam ult activation sound (laser1) loops while channeling
+        LOOPING.play('laser1', 0.9);
+        return;
+    }
     if (tid === 'shotgun') { activateShotgunUlt(pet, chargeBoost); return; }
 
     const base = (6 + meta.dmgLvl) * 3;
@@ -2156,21 +2304,28 @@ function activateUlt(pet) {
 
 function activateSniperUlt(pet, chargeBoost, opts = {}) {
     const target = GAME.target && enemies.includes(GAME.target) ? GAME.target : findClosestEnemy(pet.x, pet.y);
+    if (target) playSfx('cannon', 0.1);
     if (!target) return;
     const ang = Math.atan2(target.y - pet.y, target.x - pet.x);
     const spd = 14; 
-    const mainDamage = Math.round(40 * chargeBoost);
-    const splashDamage = Math.round(10 * chargeBoost);
+    let mainDamage = Math.round(40 * chargeBoost);
+    let splashDamage = Math.round(10 * chargeBoost);
+    const impact15 = (meta.dmgLvl || 0) >= 15;
+    const bigActive = (pet.powerup && pet.powerup.type === 'BIG' && pet.powerup.time > 0);
+    const bigBomb = impact15 && bigActive;
+    if (bigBomb) { mainDamage *= 2; splashDamage *= 2; }
     const splashRadius = 150;
 
+    // Use a distinct projectile when Impact 15 + BIG is active so visuals can differ from Sniper ult
     const proj = {
         x: pet.x,
         y: pet.y,
         vx: Math.cos(ang) * spd,
         vy: Math.sin(ang) * spd,
-        radius: 40, 
+        radius: bigBomb ? 80 : 40, 
         color: (opts.colorOverride || C.colors['cybil']), 
         active: true,
+        impactBomb: !!bigBomb,
         update() {
             this.x += this.vx * GAME.dt;
             this.y += this.vy * GAME.dt;
@@ -2193,7 +2348,7 @@ function activateSniperUlt(pet, chargeBoost, opts = {}) {
                         if (dd <= splashRadius) {
                             o.hp -= splashDamage;
                             try { spawnDamagePopup(o, splashDamage, 'mid'); } catch(_){}
-                            createParticles(o.x, o.y, '#08f', 8);
+                            createParticles(o.x, o.y, '#0ff', 8);
                             if (o.hp <= 0 && !o.deadProcessed) {
                                 o.deadProcessed = true;
                                 playSfx('die', 0.4);
@@ -2204,7 +2359,8 @@ function activateSniperUlt(pet, chargeBoost, opts = {}) {
                         }
                     }
                     GAME.shake = Math.max(GAME.shake, 20);
-                    spawnCanvasExplosion(this.x, this.y, this.radius * 1);
+                    // Lingering explosion: always use aftershock image for sniper ult
+                    spawnCanvasExplosion(this.x, this.y, this.radius * 1, true);
                     this.active = false;
                     break;
                 }
@@ -2212,24 +2368,24 @@ function activateSniperUlt(pet, chargeBoost, opts = {}) {
             if (this.x < -50 || this.x > canvas.width + 50 || this.y < -50 || this.y > canvas.height + 50) this.active = false;
         },
         draw() {
-            ctx.save();
-            ctx.globalCompositeOperation = 'lighter';
-            ctx.shadowBlur = 20;
-            ctx.shadowColor = opts.colorOverride || '#08f';
-            ctx.fillStyle = '#022a';
-            ctx.beginPath(); ctx.arc(this.x, this.y, this.radius, 0, Math.PI*2); ctx.fill();
-            ctx.shadowBlur = 0;
-            ctx.strokeStyle = opts.colorOverride || '#08f';
-            ctx.lineWidth = 3;
-            ctx.beginPath(); ctx.arc(this.x, this.y, this.radius, 0, Math.PI*2); ctx.stroke();
-            ctx.globalCompositeOperation = 'source-over';
-            ctx.restore();
+            if (BIGshotImg) {
+                // Distinct Impact 15 bomb visuals using BIGshot sprite, sized by radius
+                const ang = Math.atan2(this.vy, this.vx);
+                ctx.save();
+                ctx.translate(this.x, this.y);
+                ctx.rotate(ang + Math.PI/2);
+                ctx.globalCompositeOperation = 'lighter';
+                const size = this.impactBomb ? this.radius * 2.0 : this.radius * 1.5; // smaller for regular sniper ult
+                ctx.drawImage(BIGshotImg, -size/2, -size/2, size, size);
+                ctx.globalCompositeOperation = 'source-over';
+                ctx.restore();
+            }
         }
     };
     bullets.push(proj);
 }
 
-function spawnCanvasExplosion(x, y, r) {
+function spawnCanvasExplosion(x, y, r, useAftershock = false) {
     const bursts = 360;
     for (let i = 0; i < bursts; i++) {
         const a = Math.random() * Math.PI * 1;
@@ -2242,8 +2398,13 @@ function spawnCanvasExplosion(x, y, r) {
             color: (i % 3 === 0)? '#ff00ff' : (i % 3 === 1 ? '#00d4ff' : '#ffffff')
         });
     }
-    blooms.push({ x, y, radius: r*0.7, maxRadius: r*2.0, ringRadius: r*1.3, life: 1, maxLife: 1, pulse: 0, slow: true, colors:['#f0f','#f0f','#f00'] });
-    blooms.push({ x, y, radius: r*1.2, maxRadius: r*2.8, ringRadius: r*1.9, life: 1, maxLife:1, pulse:0, slow: true, colors:['#550022','#002255','#000814'] });
+    if (useAftershock && aftershockImg && aftershockImg.complete && aftershockImg.naturalWidth) {
+        // Single image-based lingering explosion with same fade profile
+        blooms.push({ x, y, radius: r*1.2, life: 1, maxLife: 1, img: aftershockImg });
+    } else {
+        blooms.push({ x, y, radius: r*0.7, maxRadius: r*2.0, ringRadius: r*1.3, life: 1, maxLife: 1, pulse: 0, slow: true, colors:['#f0f','#f0f','#f00'] });
+        blooms.push({ x, y, radius: r*1.2, maxRadius: r*2.8, ringRadius: r*1.9, life: 1, maxLife:1, pulse:0, slow: true, colors:['#550022','#002255','#000814'] });
+    }
 }
 
 function activateShotgunUlt(pet, chargeBoost) {
@@ -2342,7 +2503,7 @@ function startGame() {
     const supportN = Math.min(10, Math.max(0, meta.supportCount || 0));
     const sniperTrait = C.traits.find(t => t.id === 'sniper');
     for (let i = 0; i < supportN; i++) {
-        const alt = new Pet('Cybil', sniperTrait, false);
+        const alt = new Pet('Lydia', sniperTrait, false);
         alt.hp = 100; alt.maxHp = 100;
         if (party.length < 11) party.push(alt);
     }
@@ -2536,8 +2697,22 @@ function showDraft() {
     if (runEssEl) runEssEl.innerText = (GAME.essence || 0);
     
     for(let i=0; i<3; i++) {
-            let type = ['Lydia', 'Cybil', 'Sofia'][Math.floor(Math.random()*3)];
-        let trait = C.traits[Math.floor(Math.random()*C.traits.length)];
+        // Force trait order each draft: 1) Broadfire, 2) Rapid Shot, 3) Heavy Cannon
+        const desiredOrder = ['shotgun','gatling','sniper'];
+        const traitId = desiredOrder[i] || 'shotgun';
+        let trait = C.traits.find(t => t.id === traitId) || C.traits[0];
+        // Enforce name/trait pairings:
+        // - Lydia: allowed Heavy Cannon, allowed Rapid Shot, NOT Broadfire
+        // - Cybil & Sofia: allowed Broadfire or Rapid Shot, NOT Heavy Cannon
+        let allowedTypes;
+        if (traitId === 'shotgun') {
+            allowedTypes = ['Cybil','Sofia'];
+        } else if (traitId === 'gatling') {
+            allowedTypes = ['Lydia','Cybil','Sofia'];
+        } else { // sniper
+            allowedTypes = ['Lydia'];
+        }
+        const type = allowedTypes[Math.floor(Math.random() * allowedTypes.length)];
         
         let d = document.createElement('div');
         d.className = `card`;
@@ -2633,6 +2808,19 @@ function resume() {
     }
     const trackName = pickTrackForSector(GAME.floor);
     MUSIC.play(trackName, { fadeInMs: 0, loop: true, volume: .2 });
+    // Resume continuous beam audio if main unit is still channeling
+    const p0 = party[0];
+    if (p0 && p0.beamActive) {
+        if ((meta.rateLvl || 0) >= 15) {
+            LOOPING.play('laser2', 0.8);
+            // Resume laser3 only if Big Shot still has time remaining
+            if (p0.powerup && p0.powerup.type === 'BIG' && p0.powerup.time > 0) {
+                LOOPING.play('laser3', 0.9);
+            }
+        } else {
+            LOOPING.play('laser1', 0.9);
+        }
+    }
     loop();
 }
 
@@ -2796,10 +2984,19 @@ function updateUI() {
 }
 function grantRandomPowerup(p) {
     if (!p) return;
-    const options = ['TRIPLE','FIRE2X','PIERCE','BIG','SEXTUPLE'];
+    const hasSpecial = (meta.dmgLvl || 0) >= 15 || (meta.rateLvl || 0) >= 15;
+    const options = hasSpecial ? ['BIG'] : ['TRIPLE','FIRE2X','PIERCE','BIG','SEXTUPLE'];
     const pick = options[Math.floor(Math.random()*options.length)];
     p.powerup.type = pick;
-    p.powerup.time = 10;
+    // Big Shot lasts 12s when Speed 15 beam is active to sync with laser3
+    if (pick === 'BIG' && (meta.rateLvl || 0) >= 15) {
+        p.powerup.time = 12;
+        // start laser3 loop (timed externally by duration)
+        LOOPING.play('laser3', 0.9);
+        setTimeout(() => { LOOPING.stop('laser3'); }, 12000);
+    } else {
+        p.powerup.time = 10;
+    }
     const messages = {
         TRIPLE: 'POWER-UP: TRIPLE SHOT',
         FIRE2X: 'POWER-UP: RAPID SHOT',
@@ -2885,9 +3082,18 @@ function openAccessibility(){
         const mvLabel = document.getElementById('move-sens-val');
         move.value = String(ACCESS.moveLevel || 3);
         if (mvLabel) mvLabel.textContent = move.value;
+        // initialize slider fill
+        const min = parseFloat(move.min||'1');
+        const max = parseFloat(move.max||'5');
+        const val = parseFloat(move.value||String(ACCESS.moveLevel||3));
+        const pct = Math.max(0, Math.min(1, (val - min) / Math.max(1, (max - min)))) * 100;
+        move.style.setProperty('--fill', pct + '%');
         move.oninput = () => {
             ACCESS.moveLevel = Math.min(5, Math.max(1, parseInt(move.value)||3));
             if (mvLabel) mvLabel.textContent = String(ACCESS.moveLevel);
+            const v = parseFloat(move.value||String(ACCESS.moveLevel));
+            const p = Math.max(0, Math.min(1, (v - min) / Math.max(1, (max - min)))) * 100;
+            move.style.setProperty('--fill', p + '%');
             saveAccessibility();
         };
     }
@@ -2895,9 +3101,22 @@ function openAccessibility(){
         const shLabel = document.getElementById('shake-level-val');
         shake.value = String(ACCESS.shakeLevel || 3);
         if (shLabel) shLabel.textContent = shake.value;
+        // initialize slider fill
+        {
+            const min = parseFloat(shake.min||'1');
+            const max = parseFloat(shake.max||'5');
+            const val = parseFloat(shake.value||String(ACCESS.shakeLevel||3));
+            const pct = Math.max(0, Math.min(1, (val - min) / Math.max(1, (max - min)))) * 100;
+            shake.style.setProperty('--fill', pct + '%');
+        }
         shake.oninput = () => {
             ACCESS.shakeLevel = Math.min(5, Math.max(1, parseInt(shake.value)||3));
             if (shLabel) shLabel.textContent = String(ACCESS.shakeLevel);
+            const min = parseFloat(shake.min||'1');
+            const max = parseFloat(shake.max||'5');
+            const v = parseFloat(shake.value||String(ACCESS.shakeLevel));
+            const p = Math.max(0, Math.min(1, (v - min) / Math.max(1, (max - min)))) * 100;
+            shake.style.setProperty('--fill', p + '%');
             saveAccessibility();
         };
     }
@@ -3112,9 +3331,9 @@ const DEF_ULT_BTN_RADIUS = 36;
 
 const ALL_ULTS = [
     { id:'default', label:'BLAST', color:'#f0f' },
-    { id:'sniper', label:'BOMB', color:'#0ff' },
+    { id:'sniper', label:'BOMB', color:'#f0f' },
     { id:'gatling', label:'BEAM', color:'#ff0' },
-    { id:'shotgun', label:'BURST', color:'#0f0' }
+    { id:'shotgun', label:'BURST', color:'#0ff' }
 ];
 function getUltCircleCenter() {
     const joy = getJoyCenter();

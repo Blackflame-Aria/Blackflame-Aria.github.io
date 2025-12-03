@@ -165,7 +165,6 @@ canvas {
     line-height: 50px;
     padding: 0;
     box-sizing: border-box;
-    border-radius: 50%;
     cursor: pointer;
     transition: transform 120ms ease, box-shadow 120ms ease, border-color 120ms ease;
 }
@@ -489,8 +488,8 @@ h4 {
 }
 .ult-glow.charged { display:block; }
 .ult-lydia { color:#f0f; }
-.ult-cybil { color:#08f; }
-.ult-sofia { color:#0a0; }
+.ult-cybil { color:#0ff; }
+.ult-sofia { color:#ff0; }
 @keyframes ultPulse {
     0% { transform:translate(-50%, -50%) scale(0.9); opacity:0.6; }
     50% { transform:translate(-50%, -50%) scale(1.05); opacity:1; }
@@ -566,7 +565,7 @@ h4 {
 
 .launch-row { position: relative; width: 100%; display: flex; justify-content: center; align-items: center; }
 .launch-row .mega-btn { margin: 0 auto; }
-.icon-btn { position: absolute; left: calc(50% + 120px); display:flex; align-items:center; justify-content:center; width:48px; height:48px; border:1px solid #ff0; background:transparent; color:#ff0; cursor:pointer; }
+.icon-btn { position: absolute; left: calc(50% + 145px); display:flex; align-items:center; justify-content:center; width:48px; height:48px; border:1px solid #ff0; background:transparent; color:#ff0; cursor:pointer; }
 .icon-btn svg { width: 28px; height: 28px; }
 .icon-btn:hover { border-color: #ffa; color: #ffa; box-shadow: 0 0 18px #0ff; transform: scale(1.08); }
 
@@ -611,7 +610,7 @@ h4 {
 #accessibility-modal input[type="range"]::-webkit-slider-runnable-track {
     height: 6px;
     border-radius: 3px;
-    background: linear-gradient(to right, var(--neon-blue) 0%, var(--neon-blue) var(--fill, 0%), rgba(255,255,255,0.08) var(--fill, 0%), rgba(255,255,255,0.08) 100%),
+    background: linear-gradient(to right, #ffff00 0%, #ffff00 var(--fill, 0%), rgba(255,255,255,0.08) var(--fill, 0%), rgba(255,255,255,0.08) 100%),
                 repeating-linear-gradient(to right, rgba(255,255,255,0.35) 0, rgba(255,255,255,0.35) 1px, transparent 1px, transparent calc(25% - 1px));
     box-shadow: none;
 }
@@ -631,14 +630,14 @@ h4 {
 #accessibility-modal input[type="range"]::-moz-range-track {
     height: 6px;
     border-radius: 3px;
-    background: linear-gradient(to right, var(--neon-blue) 0%, var(--neon-blue) var(--fill, 0%), rgba(255,255,255,0.08) var(--fill, 0%), rgba(255,255,255,0.08) 100%),
+    background: linear-gradient(to right, #ffff00 0%, #ffff00 var(--fill, 0%), rgba(255,255,255,0.08) var(--fill, 0%), rgba(255,255,255,0.08) 100%),
                 repeating-linear-gradient(to right, rgba(255,255,255,0.35) 0, rgba(255,255,255,0.35) 1px, transparent 1px, transparent calc(25% - 1px));
     box-shadow: none;
 }
 #accessibility-modal input[type="range"]::-moz-range-progress {
     height: 6px;
     border-radius: 3px;
-    background: var(--neon-blue);
+    background: #ffff00;
 }
 #accessibility-modal input[type="range"]::-moz-range-thumb {
     width: 18px; height: 18px;
@@ -655,7 +654,7 @@ h4 {
     border: none;
 }
 #accessibility-modal input[type="range"]::-ms-fill-lower {
-    background: var(--neon-blue);
+    background: #ffff00;
     border-radius: 3px;
 }
 #accessibility-modal input[type="range"]::-ms-fill-upper {
@@ -670,7 +669,7 @@ h4 {
     transform: scale(1.12);
 }
 #accessibility-modal input[type="range"]:hover::-webkit-slider-runnable-track {
-    background-image: repeating-linear-gradient(to right, rgba(0,255,255,0.65) 0, rgba(0,255,255,0.65) 1px, transparent 1px, transparent calc(25% - 1px));
+    background-image: repeating-linear-gradient(to right, rgba(255,255,0,0.65) 0, rgba(255,255,0,0.65) 1px, transparent 1px, transparent calc(25% - 1px));
 }
 
 #accessibility-modal input[type="range"]::-moz-range-thumb:hover {
@@ -678,7 +677,7 @@ h4 {
     transform: scale(1.12);
 }
 #accessibility-modal input[type="range"]:hover::-moz-range-track {
-    background-image: repeating-linear-gradient(to right, rgba(0,255,255,0.65) 0, rgba(0,255,255,0.65) 1px, transparent 1px, transparent calc(25% - 1px));
+    background-image: repeating-linear-gradient(to right, rgba(255,255,0,0.65) 0, rgba(255,255,0,0.65) 1px, transparent 1px, transparent calc(25% - 1px));
 }
 
 #accessibility-modal input[type="range"]:focus-visible {
