@@ -331,7 +331,6 @@ const sfxIndex = { shoot: 0, gat: 0, beam: 0 };
     }
 })();
 
-// Simple loop manager for continuous SFX
 const LOOPING = {
     map: new Map(),
     play(name, volume = 1) {
@@ -598,7 +597,6 @@ class Pet {
                 this.beamTime = 0;
                 this.beamSfxTimer = 0;
                 this.beamSfxBurstLeft = 0;
-                // stop any beam-related looping audio when channel ends
                 LOOPING.stop('laser1');
                 if ((meta.rateLvl || 0) >= 15) LOOPING.stop('laser2');
             } else {
@@ -611,7 +609,6 @@ class Pet {
                 if (t) {
                     const msElapsed = GAME.dt * 10;
                     let dmg = msElapsed * 0.08;
-                    // Big Shot + Speed 15 beam: double damage during power-up
                     const bigBeamActive = (this.powerup.type === 'BIG' && this.powerup.time > 0 && (meta.rateLvl || 0) >= 15);
                     if (bigBeamActive) dmg *= 2;
                     const ang = Math.atan2(t.y - this.y, t.x - this.x);
@@ -757,7 +754,6 @@ class Pet {
                 this.beamTime = 1e9;
                 this.beamSfxTimer = 0;
                 this.beamSfxBurstLeft = 10;
-                // continuous beam SFX for Speed 15
                 LOOPING.play('laser2', 0.8);
             }
             return;
@@ -776,7 +772,6 @@ class Pet {
         }
 
         for(let i=0; i<count; i++) {
-            // Narrow Broadfire (shotgun) spread so shots are closer together
             let spread = (this.trait.id === 'shotgun') ? (Math.random()-0.5)*0.35 : (Math.random()-0.5)*0.2;
             let dmg = this.dmg;
             let bulletSizeMult = 1;
@@ -786,13 +781,11 @@ class Pet {
             if (this.powerup.type === 'PIERCE') { piercing = true; }
             const impact15 = (meta.dmgLvl || 0) >= 15;
             const opts = { bulletSizeMult, piercing, shape };
-            // Mark Impact 15 bullets for BIGshot visuals (smaller for normal shots, larger when BIG powerup)
             if (impact15) {
                 opts.bigImpact = true;
                 opts.sprite = 'BIGshot';
-                // scale down normal Impact 15 shots vs BIG powerup crescents
                 if (this.powerup.type !== 'BIG') {
-                    opts.bulletSizeMult = bulletSizeMult * 1.5; // modest enlargement for visibility
+                    opts.bulletSizeMult = bulletSizeMult * 1.5;
                 }
             }
             bullets.push(new Bullet(this.x, this.y - 10, target, dmg, this.type, spread, GAME.target, opts));
@@ -1323,7 +1316,6 @@ class Bullet {
                     if (next) {
                         this.target = next;
                     } else {
-                        // Final deactivation: spawn aftershock linger for Impact 15 bullets
                         if (this.bigImpact) spawnCanvasExplosion(this.x, this.y, Math.max(20, 24 * (this.sizeMult || 1)), true);
                         this.active = false;
                         break;
@@ -1333,13 +1325,11 @@ class Bullet {
                         this.multiHitTimer = Math.max(this.multiHitTimer || 0, this.multiHitWindow);
                         this.multiHitRemaining--;
                     } else {
-                        // End of crescent multi-hit window; spawn aftershock if Impact 15
                         if (this.bigImpact) spawnCanvasExplosion(this.x, this.y, Math.max(20, 24 * (this.sizeMult || 1)), true);
                         this.active = false;
                         break;
                     }
                 } else {
-                    // Standard non-piercing hit: spawn aftershock for Impact 15 bullets
                     if (this.bigImpact) spawnCanvasExplosion(this.x, this.y, Math.max(20, 24 * (this.sizeMult || 1)), true);
                     this.active = false;
                     break;
@@ -1729,7 +1719,6 @@ function loop() {
         GAME.awaitingDraft = true;
         GAME.postBossTimer = 3;
         try { stopGunAudio(); } catch(_){}
-        // stop continuous beam loop when sector is cleared
         LOOPING.stop('laser2');
         GAME.gatAmbientTimer = 0;
         GAME.shootAmbientTimer = 0;
@@ -1832,17 +1821,16 @@ function loop() {
         else bullets[i].draw();
     }
 
-    // Render player movement trail (magenta, fading)
     if (playerTrail.length) {
         ctx.save();
         ctx.globalCompositeOperation = 'lighter';
         for (let i = 0; i < playerTrail.length; i++) {
             const t = playerTrail[i];
-            t.life -= realSec * 1.8; // fade speed
+            t.life -= realSec * 3; 
             if (t.life < 0) { continue; }
             const alpha = Math.max(0, Math.min(1, t.life));
-            ctx.globalAlpha = alpha * 0.8;
-            ctx.fillStyle = '#ff00ff';
+            ctx.globalAlpha = alpha * 0.6;
+            ctx.fillStyle = '#d0d';
             const size = 6 * (0.5 + 0.5 * t.life);
             ctx.beginPath();
             ctx.arc(t.x, t.y, size, 0, Math.PI * 2);
@@ -1850,7 +1838,6 @@ function loop() {
         }
         ctx.globalAlpha = 1;
         ctx.restore();
-        // prune fully faded
         for (let i = playerTrail.length - 1; i >= 0; i--) {
             if (playerTrail[i].life <= 0) playerTrail.splice(i, 1);
         }
@@ -2045,7 +2032,6 @@ window.addEventListener('keydown', (e) => {
         DEBUG_REINF_GUIDES = !DEBUG_REINF_GUIDES;
         try { console.log('[Reinf Guides]', DEBUG_REINF_GUIDES ? 'ON' : 'OFF'); } catch(_){}
     }
-    // Toggle simple audio debug logs
     if (c === 'KeyL') {
         const p0 = party[0];
         console.log('[Audio] beamActive:', !!(p0 && p0.beamActive), 'rate15:', (meta.rateLvl||0)>=15,
@@ -2229,7 +2215,6 @@ function applyPlayerMovement() {
     p.x += p.vx;
     p.y += p.vy;
 
-    // Emit trail segment when moving
     const spd = Math.hypot(p.vx, p.vy);
     if (spd > 0.2) {
         playerTrail.push({ x: p.x, y: p.y, life: 1.0 });
@@ -2268,7 +2253,6 @@ function activateUlt(pet) {
     if (tid === 'sniper') { activateSniperUlt(pet, chargeBoost); return; }
     if (tid === 'gatling') {
         pet.beamActive = true; pet.beamTime = 10; pet.beamSfxTimer = 0; pet.beamSfxBurstLeft = 10;
-        // Beam ult activation sound (laser1) loops while channeling
         LOOPING.play('laser1', 0.9);
         return;
     }
@@ -2316,7 +2300,6 @@ function activateSniperUlt(pet, chargeBoost, opts = {}) {
     if (bigBomb) { mainDamage *= 2; splashDamage *= 2; }
     const splashRadius = 150;
 
-    // Use a distinct projectile when Impact 15 + BIG is active so visuals can differ from Sniper ult
     const proj = {
         x: pet.x,
         y: pet.y,
@@ -2359,7 +2342,6 @@ function activateSniperUlt(pet, chargeBoost, opts = {}) {
                         }
                     }
                     GAME.shake = Math.max(GAME.shake, 20);
-                    // Lingering explosion: always use aftershock image for sniper ult
                     spawnCanvasExplosion(this.x, this.y, this.radius * 1, true);
                     this.active = false;
                     break;
@@ -2369,13 +2351,12 @@ function activateSniperUlt(pet, chargeBoost, opts = {}) {
         },
         draw() {
             if (BIGshotImg) {
-                // Distinct Impact 15 bomb visuals using BIGshot sprite, sized by radius
                 const ang = Math.atan2(this.vy, this.vx);
                 ctx.save();
                 ctx.translate(this.x, this.y);
                 ctx.rotate(ang + Math.PI/2);
                 ctx.globalCompositeOperation = 'lighter';
-                const size = this.impactBomb ? this.radius * 2.0 : this.radius * 1.5; // smaller for regular sniper ult
+                const size = this.impactBomb ? this.radius * 2.0 : this.radius * 1.5; 
                 ctx.drawImage(BIGshotImg, -size/2, -size/2, size, size);
                 ctx.globalCompositeOperation = 'source-over';
                 ctx.restore();
@@ -2399,7 +2380,6 @@ function spawnCanvasExplosion(x, y, r, useAftershock = false) {
         });
     }
     if (useAftershock && aftershockImg && aftershockImg.complete && aftershockImg.naturalWidth) {
-        // Single image-based lingering explosion with same fade profile
         blooms.push({ x, y, radius: r*1.2, life: 1, maxLife: 1, img: aftershockImg });
     } else {
         blooms.push({ x, y, radius: r*0.7, maxRadius: r*2.0, ringRadius: r*1.3, life: 1, maxLife: 1, pulse: 0, slow: true, colors:['#f0f','#f0f','#f00'] });
@@ -2697,19 +2677,15 @@ function showDraft() {
     if (runEssEl) runEssEl.innerText = (GAME.essence || 0);
     
     for(let i=0; i<3; i++) {
-        // Force trait order each draft: 1) Broadfire, 2) Rapid Shot, 3) Heavy Cannon
         const desiredOrder = ['shotgun','gatling','sniper'];
         const traitId = desiredOrder[i] || 'shotgun';
         let trait = C.traits.find(t => t.id === traitId) || C.traits[0];
-        // Enforce name/trait pairings:
-        // - Lydia: allowed Heavy Cannon, allowed Rapid Shot, NOT Broadfire
-        // - Cybil & Sofia: allowed Broadfire or Rapid Shot, NOT Heavy Cannon
         let allowedTypes;
         if (traitId === 'shotgun') {
             allowedTypes = ['Cybil','Sofia'];
         } else if (traitId === 'gatling') {
             allowedTypes = ['Lydia','Cybil','Sofia'];
-        } else { // sniper
+        } else { 
             allowedTypes = ['Lydia'];
         }
         const type = allowedTypes[Math.floor(Math.random() * allowedTypes.length)];
@@ -2808,12 +2784,10 @@ function resume() {
     }
     const trackName = pickTrackForSector(GAME.floor);
     MUSIC.play(trackName, { fadeInMs: 0, loop: true, volume: .2 });
-    // Resume continuous beam audio if main unit is still channeling
     const p0 = party[0];
     if (p0 && p0.beamActive) {
         if ((meta.rateLvl || 0) >= 15) {
             LOOPING.play('laser2', 0.8);
-            // Resume laser3 only if Big Shot still has time remaining
             if (p0.powerup && p0.powerup.type === 'BIG' && p0.powerup.time > 0) {
                 LOOPING.play('laser3', 0.9);
             }
@@ -2988,10 +2962,8 @@ function grantRandomPowerup(p) {
     const options = hasSpecial ? ['BIG'] : ['TRIPLE','FIRE2X','PIERCE','BIG','SEXTUPLE'];
     const pick = options[Math.floor(Math.random()*options.length)];
     p.powerup.type = pick;
-    // Big Shot lasts 12s when Speed 15 beam is active to sync with laser3
     if (pick === 'BIG' && (meta.rateLvl || 0) >= 15) {
         p.powerup.time = 12;
-        // start laser3 loop (timed externally by duration)
         LOOPING.play('laser3', 0.9);
         setTimeout(() => { LOOPING.stop('laser3'); }, 12000);
     } else {
@@ -3082,7 +3054,6 @@ function openAccessibility(){
         const mvLabel = document.getElementById('move-sens-val');
         move.value = String(ACCESS.moveLevel || 3);
         if (mvLabel) mvLabel.textContent = move.value;
-        // initialize slider fill
         const min = parseFloat(move.min||'1');
         const max = parseFloat(move.max||'5');
         const val = parseFloat(move.value||String(ACCESS.moveLevel||3));
@@ -3101,7 +3072,6 @@ function openAccessibility(){
         const shLabel = document.getElementById('shake-level-val');
         shake.value = String(ACCESS.shakeLevel || 3);
         if (shLabel) shLabel.textContent = shake.value;
-        // initialize slider fill
         {
             const min = parseFloat(shake.min||'1');
             const max = parseFloat(shake.max||'5');
