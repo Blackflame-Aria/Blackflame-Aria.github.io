@@ -304,8 +304,8 @@ const sfx = {
     click: new Audio('sfx/click.wav'),  
     powerup: new Audio('sfx/powerup.wav'),
     shotgun: new Audio('sfx/shotgun.wav'),
-    launch: new Audio('sfx/launch.wav'),
-    blackhole: new Audio('sfx/Blackhole.wav'),
+    launch: new Audio('sfx/Launch.wav'),
+    blackhole: new Audio('sfx/BlackHole.wav'),
     upgrade: new Audio('sfx/upgrade.wav'),
     warning: new Audio('sfx/Warning.mp3'),
     laser1: new Audio('sfx/laser1.wav'),
@@ -365,10 +365,12 @@ const AudioEngine = (() => {
             window.removeEventListener('pointerdown', one);
             window.removeEventListener('touchstart', one, { passive: true });
             window.removeEventListener('keydown', one);
+            window.removeEventListener('click', one);
         };
         window.addEventListener('pointerdown', one, { once: true });
         window.addEventListener('touchstart', one, { passive: true, once: true });
         window.addEventListener('keydown', one, { once: true });
+        window.addEventListener('click', one, { once: true });
     }
     unlockOnGesture();
     async function loadBuffer(name, url) {
@@ -471,7 +473,7 @@ function preloadAudioAssets() {
         { name: 'die', url: 'sfx/die.wav' },
         { name: 'click', url: 'sfx/click.wav' },
         { name: 'powerup', url: 'sfx/powerup.wav' },
-        { name: 'blackhole', url: 'sfx/Blackhole.wav' },
+        { name: 'blackhole', url: 'sfx/BlackHole.wav' },
         { name: 'upgrade', url: 'sfx/upgrade.wav' },
         { name: 'warning', url: 'sfx/Warning.mp3' },
         { name: 'laser1', url: 'sfx/laser1.wav' },
@@ -1378,9 +1380,18 @@ class Enemy {
                     const apply = Math.min(eff.perTick, eff.remaining);
                     this.hp -= apply;
                     try { spawnDamagePopup(this, apply, 'small'); } catch(_) {}
+                    try { if (eff.color) createParticles(this.x, this.y, eff.color, 4); } catch(_) {}
                     eff.remaining -= apply;
                     if (this.hp <= 0) {
                         this.hp = 0;
+                        if (!this.deadProcessed) {
+                            this.deadProcessed = true;
+                            this._remove = true;
+                            try { playSfx('die', 0.35); } catch(_) {}
+                            try { createRainbowExplosion(this.x, this.y, this.rank === 'BOSS' ? 80 : 40); } catch(_) {}
+                            try { onEnemyKilled(this, 'DOT'); } catch(_) {}
+                            if (GAME && GAME.target === this) GAME.target = null;
+                        }
                         break;
                     }
                 }
@@ -1761,6 +1772,7 @@ class Bullet {
                         const ticks = Math.max(1, Math.round(duration / tickInterval));
                         const perTick = Math.max(1, Math.floor(total / ticks));
                         const leftover = total - perTick * ticks;
+                        const theme = getSkinTheme ? getSkinTheme() : { primary: '#ff9900' };
                         e.dotEffects.push({
                             duration,
                             elapsed: 0,
@@ -1768,6 +1780,7 @@ class Bullet {
                             tickAcc: 0,
                             perTick,
                             remaining: total,
+                            color: theme.primary,
                         });
                         const last = e.dotEffects[e.dotEffects.length - 1];
                         last.tickAcc = Math.min(last.tickInterval * 0.6, last.tickInterval);
