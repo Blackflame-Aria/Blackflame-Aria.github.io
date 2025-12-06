@@ -21,6 +21,7 @@ const GAME = {
     gatAmbientTimer: 0,
     shootAmbientTimer: 0,
     draftCount: 0,
+    warship: null,
 };
 const ACCESS = (function(){
     try {
@@ -78,7 +79,8 @@ async function startMenuMusic() {
     if (INTRO_PLAYING) return;
     try {
         if (AudioEngine && AudioEngine.state && AudioEngine.state.ready) {
-            if (AudioEngine.playMusic('intro1', 0.25, true, 0)) { INTRO_PLAYING = true; return; }
+            const result = await AudioEngine.playMusic('intro1', 0.25, true, 0);
+            if (result) { INTRO_PLAYING = true; return; }
         }
     } catch(_){}
     try {
@@ -113,16 +115,25 @@ document.addEventListener('DOMContentLoaded', () => {
     if (splash && start && playBtn) {
         splash.classList.remove('hidden');
         start.classList.add('hidden');
-        playBtn.onclick = () => {
+        playBtn.onclick = async () => {
             if (splashDialog) splashDialog.classList.add('closing');
 
             try {
-                if (AudioEngine && AudioEngine.state && AudioEngine.state.ctx && AudioEngine.state.ctx.state === 'suspended') {
-                    AudioEngine.state.ctx.resume().catch(() => {});
+                await AudioEngine.init();
+                if (AudioEngine.state.ctx && AudioEngine.state.ctx.state === 'suspended') {
+                    await AudioEngine.state.ctx.resume();
                 }
-            } catch(_){}
-            try { startMenuMusic(); } catch(_){}
-            try { preloadAudioAssets(); } catch(_){}
+                await preloadAudioAssets();
+                await startMenuMusic();
+            } catch(e) {
+                console.warn('Audio init failed, using fallback:', e);
+                try {
+                    bgm.intro1.loop = true;
+                    bgm.intro1.volume = 0.25;
+                    await bgm.intro1.play();
+                    INTRO_PLAYING = true;
+                } catch(_) {}
+            }
 
             setTimeout(() => {
                 splash.classList.add('hidden');
@@ -342,7 +353,10 @@ const AudioEngine = (() => {
     async function init() {
         if (state.ctx) return;
         try {
-            const ctx = new (window.AudioContext || window.webkitAudioContext)({ latencyHint: 'interactive' });
+            const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+            if (!AudioContextClass) return;
+            
+            const ctx = new AudioContextClass({ latencyHint: 'interactive' });
             const master = ctx.createGain();
             const sfx = ctx.createGain();
             const music = ctx.createGain();
@@ -357,7 +371,9 @@ const AudioEngine = (() => {
             sfx.connect(master); music.connect(master); master.connect(ctx.destination);
             state.ctx = ctx; state.masterGain = master; state.sfxGain = sfx; state.musicGain = music;
             state.ready = true;
-        } catch(_) {}
+        } catch(e) {
+            console.warn('AudioEngine init failed (expected before user gesture):', e.message);
+        }
     }
     function unlockOnGesture() {
         const one = async () => {
@@ -390,6 +406,7 @@ const AudioEngine = (() => {
     }
     function playSfx(name, volume = 1, speed = 1) {
         if (!state.ready || !state.ctx) return false;
+        if (state.ctx.state === 'suspended') return false;
         const buf = state.buffers.get(name);
         if (!buf) return false;
         try {
@@ -404,8 +421,14 @@ const AudioEngine = (() => {
             return true;
         } catch(_) { return false; }
     }
-    function playMusic(name, volume = 0.2, loop = true, fadeInMs = 0) {
-        if (!state.ready || !state.ctx) return false;
+    async function playMusic(name, volume = 0.2, loop = true, fadeInMs = 0) {
+        if (!state.ready || !state.ctx) {
+            try { await init(); } catch(_) {}
+        }
+        if (!state.ctx) return false;
+        if (state.ctx.state === 'suspended') {
+            try { await state.ctx.resume(); } catch(_) { return false; }
+        }
         const buf = state.buffers.get(name);
         if (!buf) return false;
         stopMusic(0);
@@ -490,9 +513,7 @@ function preloadAudioAssets() {
         { name: 'rusty', url: 'sfx/Rusty.mp3' }
     ];
     try {
-        AudioEngine.init()?.then?.(() => {
-            AudioEngine.loadList(sfxList.concat(musicList)).catch(() => {});
-        });
+        AudioEngine.loadList(sfxList.concat(musicList)).catch(() => {});
     } catch(_) {}
 }
 window.preloadAudioAssets = preloadAudioAssets;
@@ -905,7 +926,7 @@ class Pet {
 
         if(!this.entering && this.cooldown <= 0) {
             let t = null;
-            if (GAME.target && enemies.includes(GAME.target) && GAME.target.hp > 0) {
+            if (isValidTarget(GAME.target)) {
                 t = GAME.target;
             } else {
                 t = findClosestEnemy(this.x, this.y);
@@ -939,7 +960,7 @@ class Pet {
                 if ((meta.rateLvl || 0) >= 15) LOOPING.stop('laser2');
             } else {
                 let t = null;
-                if (GAME.target && enemies.includes(GAME.target) && GAME.target.hp > 0) {
+                if (isValidTarget(GAME.target)) {
                     t = GAME.target;
                 } else {
                     t = findClosestEnemy(this.x, this.y);
@@ -956,7 +977,11 @@ class Pet {
                     const y2 = this.y + dirY * maxLen;
                     let beamWidth = 10;
                     if (bigBeamActive) beamWidth *= 4;
-                    for (let e of enemies) {
+                    const allTargets = [...enemies];
+                    if (GAME.warship && GAME.warship.cannons) {
+                        allTargets.push(...GAME.warship.cannons.filter(c => !c.dead));
+                    }
+                    for (let e of allTargets) {
                         if (!e || e.hp <= 0) continue;
                         const ax = this.x, ay = this.y;
                         const bx = x2, by = y2;
@@ -969,15 +994,20 @@ class Pet {
                         const closestX = ax + abx * tProj;
                         const closestY = ay + aby * tProj;
                         const dist = Math.hypot(ex - closestX, ey - closestY);
-                        if (dist <= (beamWidth + e.size)) {
+                        const targetSize = e.size || (e.radius || 20);
+                        if (dist <= (beamWidth + targetSize)) {
                             e.hp -= dmg;
                             try { spawnDamagePopup(e, dmg, 'regular'); } catch(_){}
-                            if (e.hp <= 0 && !e.deadProcessed) {
-                                e.deadProcessed = true;
-                                playSfx('die', 0.4);
-                                createRainbowExplosion(e.x, e.y, e.rank === 'BOSS' ? 20 : 10);
-                                onEnemyKilled(e, 'GATLING_BEAM');
-                                if (GAME.target === e) GAME.target = null;
+                            if (e.hp <= 0 && !e.deadProcessed && !e.dead) {
+                                if (e.takeDamage) {
+                                    e.takeDamage(0);
+                                } else {
+                                    e.deadProcessed = true;
+                                    playSfx('die', 0.4);
+                                    createRainbowExplosion(e.x, e.y, e.rank === 'BOSS' ? 20 : 10);
+                                    onEnemyKilled(e, 'GATLING_BEAM');
+                                    if (GAME.target === e) GAME.target = null;
+                                }
                             }
                         }
                     }
@@ -1026,10 +1056,15 @@ class Pet {
                     }
                     b.blackHoleInfluence = Math.min(1, (b.blackHoleInfluence || 0) + 0.5);
                 }
-                for (let e of enemies) {
+                const allTargets = [...enemies];
+                if (GAME.warship && GAME.warship.cannons) {
+                    allTargets.push(...GAME.warship.cannons.filter(c => !c.dead));
+                }
+                for (let e of allTargets) {
                     if (!e || e.hp <= 0) continue;
                     const dist = Math.hypot(e.x - this.x, e.y - this.y);
-                    if (dist <= radius + e.size) {
+                    const targetSize = e.size || (e.radius || 20);
+                    if (dist <= radius + targetSize) {
                         const t = Math.max(0, Math.min(1, dist / radius));
                         const pivot = 0.55;
                         let dmgPerMs;
@@ -1043,12 +1078,16 @@ class Pet {
                         const dmgFrame = dmgPerMs * msElapsed;
                         e.hp -= dmgFrame;
                         try { spawnDamagePopup(e, dmgFrame, 'regular'); } catch(_){}
-                        if (e.hp <= 0 && !e.deadProcessed) {
-                            e.deadProcessed = true;
-                            playSfx('die', 0.35);
-                            createRainbowExplosion(e.x, e.y, e.rank === 'BOSS' ? 40 : 18);
-                            onEnemyKilled(e, 'BLACK_HOLE');
-                            if (GAME.target === e) GAME.target = null;
+                        if (e.hp <= 0 && !e.deadProcessed && !e.dead) {
+                            if (e.takeDamage) {
+                                e.takeDamage(0);
+                            } else {
+                                e.deadProcessed = true;
+                                playSfx('die', 0.35);
+                                createRainbowExplosion(e.x, e.y, e.rank === 'BOSS' ? 40 : 18);
+                                onEnemyKilled(e, 'BLACK_HOLE');
+                                if (GAME.target === e) GAME.target = null;
+                            }
                         }
                     }
                 }
@@ -1184,7 +1223,7 @@ class Pet {
             const img = SkinImages[sel] || SkinImages.DEFAULT;
             if (img && img.complete) {
                 let angle = (typeof this.facingAngle === 'number') ? this.facingAngle : (-Math.PI/2);
-                if (GAME.target && enemies.includes(GAME.target) && GAME.target.hp > 0) {
+                if (isValidTarget(GAME.target)) {
                     angle = Math.atan2(GAME.target.y - this.y, GAME.target.x - this.x);
                 } else if (typeof this.lastMoveX === 'number' && typeof this.lastMoveY === 'number' && (Math.abs(this.lastMoveX) + Math.abs(this.lastMoveY) > 0.01)) {
                     angle = Math.atan2(this.lastMoveY, this.lastMoveX);
@@ -1288,7 +1327,7 @@ class Pet {
 
         if (this.beamActive) {
             let t = null;
-            if (GAME.target && enemies.includes(GAME.target) && GAME.target.hp > 0) {
+            if (isValidTarget(GAME.target)) {
                 t = GAME.target;
             } else {
                 t = findClosestEnemy(this.x, this.y);
@@ -1639,11 +1678,330 @@ class PowerupEntity {
     }
 }
 
+class Cannon {
+    constructor(x, y, img, warship, isMiddle = false) {
+        this.x = x;
+        this.y = y;
+        this.offsetX = x;
+        this.offsetY = y;
+        this.img = img;
+        this.warship = warship;
+        this.hp = 5000;
+        this.maxHp = 5000;
+        this.hpDisplay = 5000;
+        this.baseSize = 64;
+        this.size = this.baseSize;
+        this.radius = this.size * 0.6;
+        this.angle = 0;
+        this.fireTimer = 0;
+        this.fireRate = 60;
+        this.recoil = 0;
+        this.dead = false;
+        this._cid = Math.random();
+        this._eid = Math.random();
+        this.rank = 'CANNON';
+        this.isMiddle = isMiddle;
+        this.spawnTimer = 0;
+    }
+
+    update() {
+        if (this.dead) return;
+        
+        this.x = this.warship.x + this.offsetX;
+        this.y = this.warship.y + this.offsetY;
+
+        const hpDiff = this.hpDisplay - this.hp;
+        if (Math.abs(hpDiff) > 0.1) {
+            this.hpDisplay += (this.hp - this.hpDisplay) * 0.15;
+        } else {
+            this.hpDisplay = this.hp;
+        }
+
+        if (this.recoil > 0) {
+            this.recoil -= 0.5 * GAME.dt;
+            if (this.recoil < 0) this.recoil = 0;
+        }
+
+        if (this.isMiddle) {
+            this.angle = 0;
+            
+            if (this.warship.settled) {
+                this.spawnTimer += GAME.dt / 60;
+                if (this.spawnTimer >= 3.5) {
+                    this.spawnTimer = 0;
+                    this.spawnEnemy();
+                }
+            }
+        } else if (party.length > 0 && this.warship.settled) {
+            const target = party[0];
+            const dx = target.x - this.x;
+            const dy = target.y - this.y;
+            this.angle = Math.atan2(dy, dx) - Math.PI / 2;
+
+            const aliveCannons = this.warship.cannons.filter(c => !c.dead).length;
+            let rateMultiplier = 1;
+            if (aliveCannons === 2) rateMultiplier = 0.8;
+            else if (aliveCannons === 1) rateMultiplier = 0.64;
+            
+            this.fireTimer++;
+            if (this.fireTimer >= this.fireRate * rateMultiplier) {
+                this.fireTimer = 0;
+                this.shoot(target);
+            }
+        }
+    }
+
+    shoot(target) {
+        if (this.dead) return;
+        const speed = 3;
+        const dx = target.x - this.x;
+        const dy = target.y - this.y;
+        const dist = Math.sqrt(dx*dx + dy*dy);
+        const vx = (dx / dist) * speed;
+        const vy = (dy / dist) * speed;
+        
+        bullets.push(new Bullet(
+            this.x,
+            this.y,
+            target,
+            20,
+            'warship',
+            0,
+            null,
+            { vx, vy, enemy: true }
+        ));
+        
+        this.recoil = 8;
+        playSfx('cannon', 0.15);
+    }
+
+    spawnEnemy() {
+        if (this.dead) return;
+        
+        const spawnY = this.y + this.size * 0.5;
+        const enemy = new Enemy(false);
+        enemy.x = this.x;
+        enemy.y = spawnY;
+        enemy.speed *= 0.75;
+        enemies.push(enemy);
+        
+        this.recoil = 8;
+        playSfx('gat', 0.2);
+    }
+
+    takeDamage(dmg) {
+        if (this.dead) return;
+        this.hp -= dmg;
+        
+        const warshipTop = {
+            x: this.warship.x,
+            y: this.warship.y - 10,
+            size: 20,
+            _cid: this._cid
+        };
+        spawnDamagePopup(warshipTop, dmg, 'small');
+        
+        if (this.hp <= 0) {
+            this.hp = 0;
+            this.dead = true;
+            this.onDeath();
+        }
+    }
+
+    onDeath() {
+        playSfx('die', 0.5);
+        createRainbowExplosion(this.x, this.y, 40);
+        GAME.shake = 10;
+        
+        if (GAME.target === this) {
+            GAME.target = null;
+        }
+        
+        if (GAME.warship) {
+            GAME.warship.checkAllDestroyed();
+        }
+    }
+
+    draw() {
+        if (this.dead) return;
+
+        const scaleRatio = this.warship.width / this.warship.baseImgW;
+        this.size = this.baseSize * scaleRatio;
+        this.radius = this.size * 0.6;
+
+        const recoilOffset = this.recoil;
+        const recoilAngle = this.angle - Math.PI / 2;
+        const drawX = this.x - Math.cos(recoilAngle) * recoilOffset;
+        const drawY = this.y - Math.sin(recoilAngle) * recoilOffset;
+
+        ctx.save();
+        ctx.translate(drawX, drawY);
+        ctx.rotate(this.angle);
+        
+        if (this.img && this.img.complete) {
+            ctx.drawImage(this.img, -this.size/2, -this.size/2, this.size, this.size);
+        } else {
+            ctx.fillStyle = '#888';
+            ctx.fillRect(-this.size/2, -this.size/2, this.size, this.size);
+        }
+        
+        ctx.restore();
+
+        if (this === GAME.target) {
+            const extra = 12;
+            const r = (this.size * 0.6 + extra) * 0.85;
+            ctx.lineWidth = 4;
+            const theme = (party && party[0]) ? getSkinTheme() : { primary: '#f0f' };
+            ctx.strokeStyle = theme.primary || '#f0f';
+            ctx.save();
+            ctx.translate(this.x, this.y);
+            ctx.setLineDash([12, 8]);
+            ctx.lineDashOffset = -(GAME.time * 1);
+            ctx.beginPath();
+            ctx.arc(0, 0, r, 0, Math.PI * 2);
+            ctx.stroke();
+            ctx.restore();
+            ctx.setLineDash([]);
+            ctx.lineDashOffset = 0;
+        }
+
+        renderSmoothBar(
+            this.x - 35,
+            this.y + 55,
+            70,
+            8,
+            this.hpDisplay,
+            this.maxHp,
+            '#00ff00'
+        );
+    }
+}
+
+class WarshipBoss {
+    constructor() {
+        this.x = BASE_W / 2;
+        this.y = -200;
+        this.targetY = 100;
+        this.settled = false;
+        this.dropSpeed = 1.5;
+        this.baseImgW = 256;
+        this.baseImgH = 64;
+        this.width = BASE_W;
+        this.height = (this.baseImgH / this.baseImgW) * this.width;
+        this.backY = this.y - this.height;
+        this.alpha = 1;
+        this.exploding = false;
+        this.explosionTimer = 0;
+        
+        const cannonSpacing = this.width / 3;
+        this.cannons = [
+            new Cannon(-cannonSpacing, this.height / 2, leftCannonImg, this, false),
+            new Cannon(0, this.height / 2, midCannonImg, this, true),
+            new Cannon(cannonSpacing, this.height / 2, rightCannonImg, this, false)
+        ];
+    }
+
+    update() {
+        if (this.exploding) {
+            this.explosionTimer += GAME.dt;
+            this.alpha = Math.max(0, 1 - this.explosionTimer / 60);
+            
+            if (this.explosionTimer >= 120 && !GAME.awaitingDraft) {
+                GAME.warship = null;
+                GAME.awaitingDraft = true;
+                GAME.postBossTimer = 3;
+                try { stopGunAudio(); } catch(_){}
+                LOOPING.stop('laser2');
+                GAME.gatAmbientTimer = 0;
+                GAME.shootAmbientTimer = 0;
+            }
+            return;
+        }
+
+        if (!this.settled) {
+            this.y += this.dropSpeed * GAME.dt;
+            this.backY = this.y - this.height;
+            
+            if (this.y >= this.targetY) {
+                this.y = this.targetY;
+                this.backY = this.y - this.height;
+                this.settled = true;
+            }
+        }
+
+        for (let cannon of this.cannons) {
+            if (!cannon.dead) {
+                cannon.update();
+            }
+        }
+    }
+
+    checkAllDestroyed() {
+        const allDead = this.cannons.every(c => c.dead);
+        if (allDead && !this.exploding) {
+            this.exploding = true;
+            this.explosionTimer = 0;
+            playSfx('die', 1);
+            createRainbowExplosion(this.x, this.y + this.height / 2, 120);
+            GAME.shake = 20;
+            GAME.bossesSpawned = GAME.bossQuota;
+            GAME.enemiesKilled = GAME.enemiesRequired + GAME.bossQuota;
+        }
+    }
+
+    draw() {
+        ctx.save();
+        ctx.globalAlpha = this.alpha;
+
+        if (warshipBackImg && warshipBackImg.complete) {
+            ctx.drawImage(
+                warshipBackImg,
+                this.x - this.width / 2,
+                this.backY,
+                this.width,
+                this.height
+            );
+        }
+
+        if (warshipBossImg && warshipBossImg.complete) {
+            ctx.drawImage(
+                warshipBossImg,
+                this.x - this.width / 2,
+                this.y,
+                this.width,
+                this.height
+            );
+        }
+
+        ctx.restore();
+
+        for (let cannon of this.cannons) {
+            if (!cannon.dead) {
+                cannon.draw();
+            }
+        }
+    }
+}
+
 class Bullet {
     constructor(x, y, target, dmg, type, spread, lockOnTarget = null, opts = {}) {
         this.x = x; this.y = y;
         this.prevX = x; this.prevY = y;
         this.dmg = dmg;
+        this.enemy = !!opts.enemy;
+        this.type = type;
+        
+        if (this.type === 'warship') {
+            this.color = '#ff0000';
+            this.vx = opts.vx || 0;
+            this.vy = opts.vy || 3;
+            this.w = 6;
+            this.h = 18;
+            this.trail = [];
+            this.active = true;
+            return;
+        }
+        
         this.color = opts.color || C.colors[type.toLowerCase()];
         this.active = true;
         this.sizeMult = opts.bulletSizeMult || 1;
@@ -1694,11 +2052,45 @@ class Bullet {
     }
 
     update() {
+        if (this.type === 'warship' && this.enemy) {
+            this.x += this.vx * GAME.dt;
+            this.y += this.vy * GAME.dt;
+            
+            this.trail.push({ x: this.x, y: this.y, life: 1 });
+            if (this.trail.length > 15) this.trail.shift();
+            for (let t of this.trail) {
+                t.life -= 0.05 * GAME.dt;
+            }
+            
+            for (let p of party) {
+                const dx = this.x - p.x;
+                const dy = this.y - p.y;
+                const dist = Math.sqrt(dx * dx + dy * dy);
+                if (dist < 16) {
+                    p.hp -= this.dmg;
+                    spawnPlayerDamagePopup(p, this.dmg, false);
+                    this.active = false;
+                    createParticles(this.x, this.y, this.color, 8);
+                    playSfx('hit', 0.3);
+                    if (p.hp <= 0) {
+                        p.hp = 0;
+                        gameOver();
+                    }
+                    return;
+                }
+            }
+            
+            if (this.y > BASE_H + 50 || this.x < -50 || this.x > BASE_W + 50) {
+                this.active = false;
+            }
+            return;
+        }
+        
         this.trail.push({x: this.x, y: this.y});
         if(this.trail.length > 3) this.trail.shift();
 
         const locked = (this.lockOnTarget && this.target === this.lockOnTarget);
-        const shouldTrack = (locked || this.pierceChain) && this.target && enemies.includes(this.target) && this.target.hp > 0;
+        const shouldTrack = (locked || this.pierceChain) && this.target && isValidTarget(this.target);
         if (shouldTrack) {
             const dx = this.target.x - this.x;
             const dy = (this.target.y + 15) - this.y;
@@ -1722,6 +2114,40 @@ class Bullet {
         this.width = Math.min(maxWidth, this.width + this.growthRate * GAME.dt);
 
         if(this.y < -50 || this.x < 0 || this.x > canvas.width) this.active = false;
+        
+        if (GAME.warship && GAME.warship.cannons) {
+            for (let cannon of GAME.warship.cannons) {
+                if (cannon.dead) continue;
+                if ((this.pierceChain || this.shape === 'crescent') && this.hitTargets.includes(cannon)) continue;
+                
+                const dx = cannon.x - this.x;
+                const dy = cannon.y - this.y;
+                const dist = Math.sqrt(dx * dx + dy * dy);
+                const hitPad = this.pierceChain ? Math.max(this.width || 3, 8) : Math.max(5 * this.sizeMult, (this.width || 3));
+                
+                if (dist < cannon.radius + hitPad) {
+                    cannon.takeDamage(this.dmg);
+                    createParticles(this.x, this.y, '#ff0000', 6);
+                    playSfx('hit', 0.4);
+                    GAME.shake = Math.max(GAME.shake, 3);
+                    
+                    if (this.shape === 'crescent' || this.pierceChain) {
+                        this.hitTargets.push(cannon);
+                        if (this.pierceChain) {
+                            this.hitCount++;
+                            if (this.hitCount >= this.maxPierce) {
+                                this.active = false;
+                                break;
+                            }
+                        }
+                    } else {
+                        if (this.bigImpact) spawnCanvasExplosion(this.x, this.y, Math.max(20, 24 * (this.sizeMult || 1)), true, this.skinKey);
+                        this.active = false;
+                        return;
+                    }
+                }
+            }
+        }
         
         const secDelta = GAME.dt / 60;
         for(let e of enemies) {
@@ -1846,6 +2272,38 @@ class Bullet {
     }
 
     draw() {
+        if (this.type === 'warship' && this.enemy) {
+            const angle = Math.atan2(this.vy, this.vx) + Math.PI / 2;
+            
+            for (let t of this.trail) {
+                if (t.life > 0) {
+                    ctx.save();
+                    ctx.translate(t.x, t.y);
+                    ctx.rotate(angle);
+                    ctx.shadowBlur = 20;
+                    ctx.shadowColor = 'rgba(255, 0, 0, 0.8)';
+                    ctx.fillStyle = `rgba(255, 0, 0, ${t.life * 0.5})`;
+                    ctx.beginPath();
+                    ctx.ellipse(0, 0, this.w / 2, this.h / 2, 0, 0, Math.PI * 2);
+                    ctx.fill();
+                    ctx.restore();
+                }
+            }
+            
+            ctx.save();
+            ctx.translate(this.x, this.y);
+            ctx.rotate(angle);
+            ctx.shadowBlur = 25;
+            ctx.shadowColor = 'rgba(255, 0, 0, 1)';
+            ctx.fillStyle = this.color;
+            ctx.beginPath();
+            ctx.ellipse(0, 0, this.w / 2, this.h / 2, 0, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.restore();
+            ctx.shadowBlur = 0;
+            return;
+        }
+        
         const isCrescent = (this.shape === 'crescent');
         if (this.bigImpact && BIGshotImg) {
             const ang = Math.atan2(this.vy, this.vx);
@@ -1902,6 +2360,15 @@ class Bullet {
     }
 }
 
+function isValidTarget(target) {
+    if (!target) return false;
+    if (target.dead) return false;
+    if (target.hp !== undefined && target.hp <= 0) return false;
+    if (target._cid) return !target.dead;
+    if (target._eid) return enemies.includes(target) && target.hp > 0;
+    return false;
+}
+
 function findClosestEnemy(x, y) {
     let closest = null;
     let minD = Infinity;
@@ -1909,6 +2376,15 @@ function findClosestEnemy(x, y) {
         let d = (e.x - x)**2 + (e.y - y)**2;
         if(d < minD) { minD = d; closest = e; }
     }
+    
+    if (GAME.warship && GAME.warship.cannons) {
+        for (let cannon of GAME.warship.cannons) {
+            if (cannon.dead) continue;
+            let d = (cannon.x - x)**2 + (cannon.y - y)**2;
+            if(d < minD) { minD = d; closest = cannon; }
+        }
+    }
+    
     return closest;
 }
 
@@ -1932,11 +2408,12 @@ function createRainbowExplosion(x, y, count) {
 }
 
 function spawnDamagePopup(enemy, amount, category = 'regular') {
-    if (!enemy || !enemy._eid) return;
-    const eid = enemy._eid;
-    const baseSize = category === 'large' ? 26 : (category === 'mid' ? 18 : 12);
+    if (!enemy) return;
+    const eid = enemy._eid || enemy._cid;
+    if (!eid) return;
+    const baseSize = category === 'large' ? 20 : (category === 'mid' ? 14 : 9);
     const scale = Math.min((enemy.size || 14) / 14, 2.2);
-    const fontSize = Math.max(10, Math.round(baseSize * scale));
+    const fontSize = Math.max(8, Math.round(baseSize * scale));
     const life = category === 'large' ? 1.1 : 0.8;
     const val = Math.max(1, Math.round((amount || 0) * 99));
     const startX = enemy.x + (enemy.size || 14) * 0.7;
@@ -2030,6 +2507,18 @@ function renderBar(x, y, w, h, pct, color) {
     ctx.fillStyle = color;
     ctx.fillRect(x, y, Math.max(0, w * pct), h);
 }
+
+function renderSmoothBar(x, y, w, h, currentHp, maxHp, color) {
+    const pct = Math.max(0, Math.min(1, currentHp / maxHp));
+    ctx.fillStyle = 'rgba(40, 40, 40, 0.8)';
+    ctx.fillRect(x, y, w, h);
+    ctx.fillStyle = color;
+    ctx.fillRect(x, y, Math.max(0, w * pct), h);
+    ctx.strokeStyle = 'rgba(255, 255, 255, 0.3)';
+    ctx.lineWidth = 1;
+    ctx.strokeRect(x, y, w, h);
+}
+
 function drawSegmentedRing(cx, cy, radius, trackColor, segCount, segGapRad, lineWidth, progressPct, progressColor) {
     const full = Math.PI * 2;
     const pct = Math.max(0, Math.min(0.985, progressPct));
@@ -2108,6 +2597,12 @@ const darkCrescentImg = new Image(); darkCrescentImg.src = 'images/darkcrescent.
 const starAftershockImg = new Image(); starAftershockImg.src = 'images/staraftershock1.png';
 const moonAftershockImg = new Image(); moonAftershockImg.src = 'images/moonaftershock1.png';
 const darkAftershockImg = new Image(); darkAftershockImg.src = 'images/darkaftershock1.png';
+
+const warshipBossImg = new Image(); warshipBossImg.src = 'first-boss/BOSS.png';
+const warshipBackImg = new Image(); warshipBackImg.src = 'first-boss/BOSS_BACK.png';
+const leftCannonImg = new Image(); leftCannonImg.src = 'first-boss/L_CANNON.png';
+const midCannonImg = new Image(); midCannonImg.src = 'first-boss/M_CANNON.png';
+const rightCannonImg = new Image(); rightCannonImg.src = 'first-boss/R_CANNON.png';
 
 const SKIN_SPRITES = {
     DEFAULT: { bigshot: BIGshotImg, crescent: crescentImg, aftershock: aftershockImg },
@@ -2203,7 +2698,7 @@ function loop() {
                 GAME.spawnTimer -= GAME.dt / 60; 
             }
         }
-    } else if (!bossIsPresent && GAME.bossesSpawned < GAME.bossQuota) {
+    } else if (!bossIsPresent && GAME.bossesSpawned < GAME.bossQuota && !GAME.warship) {
         if (!GAME._pendingBossWarning) {
             GAME._pendingBossWarning = true;
             const warnEl = document.getElementById('boss-warning');
@@ -2211,7 +2706,10 @@ function loop() {
             playSfx('warning', 0.15);
             setTimeout(() => {
                 if (warnEl) warnEl.classList.add('hidden');
-                if (!enemies.some(e => e.rank === 'BOSS') && GAME.bossesSpawned < GAME.bossQuota) {
+                if (GAME.floor === 5 && !GAME.warship) {
+                    GAME.warship = new WarshipBoss();
+                    GAME.bossesSpawned = GAME.bossQuota;
+                } else if (!enemies.some(e => e.rank === 'BOSS') && GAME.bossesSpawned < GAME.bossQuota) {
                     enemies.push(new Enemy(true));
                     GAME.bossesSpawned++;
                 }
@@ -2227,7 +2725,9 @@ function loop() {
             GAME.powerupSpawnTimer = 6 + (powerups.length * 2) + Math.random()*1.5; 
         }
     }
-    if (GAME.bossesSpawned >= GAME.bossQuota && !bossIsPresent && GAME.enemiesKilled >= GAME.enemiesRequired + GAME.bossQuota && !GAME.awaitingDraft) {
+    const warshipComplete = GAME.warship ? (GAME.warship.exploding && GAME.warship.explosionTimer >= 120) : true;
+    const warshipFullyDone = !GAME.warship || warshipComplete;
+    if (GAME.bossesSpawned >= GAME.bossQuota && !bossIsPresent && warshipFullyDone && GAME.enemiesKilled >= GAME.enemiesRequired + GAME.bossQuota && !GAME.awaitingDraft) {
         GAME.awaitingDraft = true;
         GAME.postBossTimer = 3;
         try { stopGunAudio(); } catch(_){}
@@ -2244,6 +2744,11 @@ function loop() {
             showDraft();
             return;
         }
+    }
+
+    if (GAME.warship && !GAME.warship.exploding) {
+        GAME.warship.update();
+        GAME.warship.draw();
     }
 
     for(let i=enemies.length-1; i>=0; i--) {
@@ -2704,6 +3209,13 @@ canvas.addEventListener('mousedown', (e) => {
         const d = Math.hypot(en.x - x, en.y - y);
         if(d <= en.size + selectionR && d < bestDist) { best = en; bestDist = d; bestType = 'enemy'; }
     }
+    if (GAME.warship && GAME.warship.cannons) {
+        for (let cannon of GAME.warship.cannons) {
+            if (cannon.dead) continue;
+            const d = Math.hypot(cannon.x - x, cannon.y - y);
+            if(d <= cannon.radius + selectionR && d < bestDist) { best = cannon; bestDist = d; bestType = 'enemy'; }
+        }
+    }
     for(let p of party) {
         if(!p || p.hp<=0 || p.ultCharge < 100) continue;
         const d = Math.hypot(p.x - x, p.y - y);
@@ -2729,6 +3241,13 @@ function handleTap(x, y) {
     for(let en of enemies) {
         const d = Math.hypot(en.x - x, en.y - y);
         if(d <= en.size + selectionR && d < bestDist) { best = en; bestDist = d; bestType = 'enemy'; }
+    }
+    if (GAME.warship && GAME.warship.cannons) {
+        for (let cannon of GAME.warship.cannons) {
+            if (cannon.dead) continue;
+            const d = Math.hypot(cannon.x - x, cannon.y - y);
+            if(d <= cannon.radius + selectionR && d < bestDist) { best = cannon; bestDist = d; bestType = 'enemy'; }
+        }
     }
     for(let p of party) {
         if(!p || p.hp<=0 || p.ultCharge < 100) continue;
@@ -3050,33 +3569,49 @@ function activateSniperUlt(pet, chargeBoost, opts = {}) {
         update() {
             this.x += this.vx * GAME.dt;
             this.y += this.vy * GAME.dt;
-            for (let i = 0; i < enemies.length; i++) {
-                const e = enemies[i];
+            
+            const allTargets = [...enemies];
+            if (GAME.warship && GAME.warship.cannons) {
+                allTargets.push(...GAME.warship.cannons.filter(c => !c.dead));
+            }
+            
+            for (let i = 0; i < allTargets.length; i++) {
+                const e = allTargets[i];
+                const targetSize = e.size || (e.radius || 20);
                 const d = Math.hypot(this.x - e.x, this.y - e.y);
-                if (d < this.radius + e.size) {
+                if (d < this.radius + targetSize) {
                     playSfx('ult', 0.8);
                     e.hp -= mainDamage;
                     try { spawnDamagePopup(e, mainDamage, 'large'); } catch(_){}
-                    if (e.hp <= 0 && !e.deadProcessed) {
-                        e.deadProcessed = true;
-                        playSfx('die', 0.4);
-                        createRainbowExplosion(e.x, e.y, e.rank === 'BOSS' ? 80 : 40);
-                        onEnemyKilled(e, 'SNIPER_MAIN');
-                        if (GAME.target === e) GAME.target = null;
+                    if (e.hp <= 0 && !e.deadProcessed && !e.dead) {
+                        if (e.takeDamage) {
+                            e.takeDamage(0);
+                        } else {
+                            e.deadProcessed = true;
+                            playSfx('die', 0.4);
+                            createRainbowExplosion(e.x, e.y, e.rank === 'BOSS' ? 80 : 40);
+                            onEnemyKilled(e, 'SNIPER_MAIN');
+                            if (GAME.target === e) GAME.target = null;
+                        }
                     }
-                    for (let j = 0; j < enemies.length; j++) {
-                        const o = enemies[j];
+                    
+                    for (let j = 0; j < allTargets.length; j++) {
+                        const o = allTargets[j];
                         const dd = Math.hypot(this.x - o.x, this.y - o.y);
                         if (dd <= splashRadius) {
                             o.hp -= splashDamage;
                             try { spawnDamagePopup(o, splashDamage, 'mid'); } catch(_){}
                             createParticles(o.x, o.y, '#0ff', 8);
-                            if (o.hp <= 0 && !o.deadProcessed) {
-                                o.deadProcessed = true;
-                                playSfx('die', 0.4);
-                                createRainbowExplosion(o.x, o.y, o.rank === 'BOSS' ? 80 : 40);
-                                onEnemyKilled(o, 'SNIPER_SPLASH');
-                                if (GAME.target === o) GAME.target = null;
+                            if (o.hp <= 0 && !o.deadProcessed && !o.dead) {
+                                if (o.takeDamage) {
+                                    o.takeDamage(0);
+                                } else {
+                                    o.deadProcessed = true;
+                                    playSfx('die', 0.4);
+                                    createRainbowExplosion(o.x, o.y, o.rank === 'BOSS' ? 80 : 40);
+                                    onEnemyKilled(o, 'SNIPER_SPLASH');
+                                    if (GAME.target === o) GAME.target = null;
+                                }
                             }
                         }
                     }
@@ -3218,7 +3753,7 @@ function spawnUltBloom(x, y, baseColor) {
         outerColors = [accent, main, '#101016'];
         ringColor = accent;
     } else if (id === 'MOONLIGHT') {
-        innerColors = [main, '#00e0a0', '#cffff0'];
+        innerColors = [main, '#00ffbb', '#cffff0'];
         outerColors = [accent, main, '#001018'];
         ringColor = main;
     } else if (id === 'DARKMATTER') {
@@ -3234,7 +3769,7 @@ function spawnUltBloom(x, y, baseColor) {
     blooms.push({ x, y, radius: r*1.2, maxRadius: r*3.4, ringRadius: r*2.1, life:1.2, maxLife:1.2, pulse:0, colors: outerColors, ringColor });
 }
 
-function startGame() {
+async function startGame() {
     if(activeFrame) { cancelAnimationFrame(activeFrame); activeFrame = null; }
     party = [ new Pet('Lydia', null, true) ];
     const p0 = party[0];
@@ -3288,6 +3823,19 @@ function startGame() {
     GAME.postBossTimer = 0;
     GAME.deathTimer = 0;
     GAME.draftCount = 0;
+    
+    const trackName = pickTrackForSector(GAME.floor);
+    try {
+        if (AudioEngine.state.ctx && AudioEngine.state.ctx.state === 'suspended') {
+            await AudioEngine.state.ctx.resume();
+        }
+        if (AudioEngine.state.musicName !== trackName) {
+            await AudioEngine.playMusic(trackName, 0.15, true, 800);
+        }
+    } catch(e) {
+        console.warn('Music start failed:', e);
+    }
+    
     loop();
 }
 
@@ -3452,7 +4000,7 @@ function launchLoop(now) {
     }
 }
 
-function endLaunch(skipped) {
+async function endLaunch(skipped) {
     if (!LAUNCH.active) return;
     LAUNCH.active = false;
     if (LAUNCH.frame) { cancelAnimationFrame(LAUNCH.frame); LAUNCH.frame = null; }
@@ -3469,6 +4017,15 @@ function endLaunch(skipped) {
     if (skipped) {
         try { sfx.launch.pause(); sfx.launch.currentTime = 0; } catch(_){}
     }
+    
+    try {
+        if (AudioEngine.state.ctx && AudioEngine.state.ctx.state === 'suspended') {
+            await AudioEngine.state.ctx.resume();
+        }
+    } catch(e) {
+        console.warn('AudioContext resume failed on launch end:', e);
+    }
+    
     startGame();
 }
 
@@ -3560,7 +4117,7 @@ function onEnemyKilled(enemy, cause) {
     }
 }
 
-function resume() {
+async function resume() {
     GAME.floor++;
     GAME.enemiesRequired = 10 + (GAME.floor - 1);
     GAME.bossQuota = 1 + Math.floor(GAME.floor / 5);
@@ -3594,7 +4151,15 @@ function resume() {
         p0.entering = true;
     }
     const trackName = pickTrackForSector(GAME.floor);
-    MUSIC.play(trackName, { fadeInMs: 0, loop: true, volume: .2 });
+    try {
+        if (AudioEngine.state.ctx && AudioEngine.state.ctx.state === 'suspended') {
+            await AudioEngine.state.ctx.resume();
+        }
+        await AudioEngine.playMusic(trackName, 0.15, true, 800);
+    } catch(e) {
+        console.warn('Music resume failed:', e);
+        MUSIC.play(trackName, { fadeInMs: 0, loop: true, volume: .2 });
+    }
     const p0 = party[0];
     if (p0 && p0.beamActive) {
             if ((meta.rateLvl || 0) >= 15) {
