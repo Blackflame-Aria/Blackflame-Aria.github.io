@@ -866,6 +866,7 @@ class Pet {
                 const minInset = 32; 
                 const availWidth = Math.max(0, (canvas.width - minInset * 2));
                     const ease = 0.1 * GAME.dt;
+                const defaultSpacing = 56;
                 const spacingX = supportCount > 1 ? Math.min(defaultSpacing, availWidth / (supportCount - 1)) : defaultSpacing;
             const totalWidth = spacingX * (supportCount - 1);
             const startX = centerX - totalWidth / 2;
