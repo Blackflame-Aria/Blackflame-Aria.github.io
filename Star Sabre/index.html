@@ -55,7 +55,17 @@
         </button>
         </div>
 
-            <div id="start-screen" class="modal">
+            <div id="splash-screen" class="reset-modal">
+                <div class="reset-dialog" id="splash-dialog">
+                    <h1 class="glitch-text" data-text="STAR SABRE">STAR SABRE</h1>
+                    <p class="subtitle">PROJECT: OVERDRIVE</p>
+                    <div class="reset-actions">
+                        <button class="mega-btn" id="splash-play-btn" aria-label="Play">PLAY</button>
+                    </div>
+                </div>
+            </div>
+
+            <div id="start-screen" class="modal hidden">
                 <h1 class="glitch-text" data-text="STAR SABRE">STAR SABRE</h1>
                 <h2 class="subtitle">PROJECT: OVERDRIVE</h2>
                 
@@ -100,7 +110,7 @@
                     </div>
                 </div>
 
-                <p id="high-score">RECORD: SECTOR 0</p>
+                <p id="high-score"><span class="record-label">RECORD: </span><span id="record-floor" class="record-value">0</span></p>
                                 <div class="launch-row">
                                     <button id="skins-btn" class="icon-btn left" onclick="openSkins()" aria-label="Character Skins" title="Character Skins">
                                         <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="size-6">
@@ -188,32 +198,36 @@
                     </div>
                 </div>
             </div>
-        </div>
-    </div>
 
-    <!-- Character Skins Modal -->
-    <div id="skins-modal" class="reset-modal hidden">
-        <div class="reset-dialog">
-            <h4>CHARACTER SKINS</h4>
-            <div class="skins-grid">
-                <div class="skin-card" data-skin="STARCORE" data-cost="500">
-                    <img src="skins/STARCORE.png" alt="STARCORE skin preview" />
-                    <div class="skin-name">STARCORE</div>
-                    <div class="skin-cost">500 ESSENCE</div>
+            <div id="skins-modal" class="reset-modal hidden" aria-labelledby="skins-title" role="dialog">
+                <div class="reset-dialog">
+                    <h4 id="skins-title">CHARACTER SKINS</h4>
+                    <div class="acc-row" id="skin-status-row">
+                        <label class="acc-label" id="skin-status-label">Select a skin to equip</label>
+                    </div>
+                    <div class="acc-row" id="skins-grid-row">
+                        <div class="skins-grid" role="list">
+                            <div class="skin-card" role="listitem" data-skin="STARCORE" data-cost="500" tabindex="0" aria-label="STARCORE, 500 Essence">
+                                <img src="skins/STARCORE.png" alt="STARCORE skin preview" />
+                                <div class="skin-name">STARCORE</div>
+                                <div class="skin-cost">500 ESSENCE</div>
+                            </div>
+                            <div class="skin-card" role="listitem" data-skin="MOONLIGHT" data-cost="700" tabindex="0" aria-label="MOONLIGHT, 700 Essence">
+                                <img src="skins/MOONLIGHT.png" alt="MOONLIGHT skin preview" />
+                                <div class="skin-name">MOONLIGHT</div>
+                                <div class="skin-cost">700 ESSENCE</div>
+                            </div>
+                            <div class="skin-card" role="listitem" data-skin="DARKMATTER" data-cost="900" tabindex="0" aria-label="DARKMATTER, 900 Essence">
+                                <img src="skins/DARKMATTER.png" alt="DARKMATTER skin preview" />
+                                <div class="skin-name">DARKMATTER</div>
+                                <div class="skin-cost">900 ESSENCE</div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="reset-actions">
+                        <button class="secondary-btn" id="skins-close-btn" onclick="closeSkins()">CLOSE</button>
+                    </div>
                 </div>
-                <div class="skin-card" data-skin="MOONLIGHT" data-cost="750">
-                    <img src="skins/MOONLIGHT.png" alt="MOONLIGHT skin preview" />
-                    <div class="skin-name">MOONLIGHT</div>
-                    <div class="skin-cost">750 ESSENCE</div>
-                </div>
-                <div class="skin-card" data-skin="DARKMATTER" data-cost="1000">
-                    <img src="skins/DARKMATTER.png" alt="DARKMATTER skin preview" />
-                    <div class="skin-name">DARKMATTER</div>
-                    <div class="skin-cost">1000 ESSENCE</div>
-                </div>
-            </div>
-            <div class="reset-actions">
-                <button class="secondary-btn" onclick="closeSkins()">CLOSE</button>
             </div>
         </div>
     </div>

@@ -6,10 +6,10 @@ const BASE_H = 854;
 const GAME = {
     state: 'MENU',
     floor: 1,
-    essence: 0, 
-    frame: 0,   
-    time: 0,    
-    dt: 0,      
+    essence: 0,
+    frame: 0,
+    time: 0,
+    dt: 0,
     lastTs: performance.now(),
     target: null,
     shake: 0,
@@ -37,6 +37,112 @@ const ACCESS = (function(){
         return { joyRight:false, moveLevel:3, shakeLevel:3, sfxLevel:3, musicLevel:3 };
     }
 })();
+
+async function ensureIntroPlaying() {
+    try {
+        if (AudioEngine && AudioEngine.state && AudioEngine.state.ctx && AudioEngine.state.ctx.state === 'suspended') {
+            try { await AudioEngine.state.ctx.resume(); } catch(_){}
+        }
+    } catch(_){}
+    try {
+        if (!MUSIC.current && !(AudioEngine && AudioEngine.state && AudioEngine.state.currentMusic)) {
+            try {
+                if (AudioEngine && AudioEngine.state && AudioEngine.state.ready) {
+                    AudioEngine.playMusic('intro1', 0.25, true, 0);
+                    return;
+                }
+            } catch(_){}
+            try { bgm.intro1.muted = true; bgm.intro1.volume = 0; bgm.intro1.loop = true; const p = bgm.intro1.play(); if (p && typeof p.then === 'function') { p.then(()=>{ if (!SETTINGS.musicMuted) { try { bgm.intro1.muted = false; bgm.intro1.volume = 0.25; } catch(_){} } }).catch(()=>{}); } } catch(_){}
+        }
+    } catch(_){}
+}
+
+document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'visible') { ensureIntroPlaying(); startMenuMusic(); }
+});
+let INTRO_PLAYING = false;
+function stopMenuMusic() {
+    try {
+        if (AudioEngine && AudioEngine.state && AudioEngine.state.currentMusic) {
+            AudioEngine.stopMusic(0);
+        }
+    } catch(_){}
+    try {
+        bgm.intro1.pause();
+        bgm.intro1.currentTime = 0;
+    } catch(_){}
+    INTRO_PLAYING = false;
+}
+async function startMenuMusic() {
+    if (SETTINGS.musicMuted) return;
+    if (INTRO_PLAYING) return;
+    try {
+        if (AudioEngine && AudioEngine.state && AudioEngine.state.ready) {
+            if (AudioEngine.playMusic('intro1', 0.25, true, 0)) { INTRO_PLAYING = true; return; }
+        }
+    } catch(_){}
+    try {
+        bgm.intro1.loop = true;
+        bgm.intro1.muted = true;
+        bgm.intro1.volume = 0;
+        const p = bgm.intro1.play();
+        if (p && typeof p.then === 'function') {
+            p.then(() => {
+                INTRO_PLAYING = true;
+                if (!SETTINGS.musicMuted) {
+                    try { bgm.intro1.muted = false; bgm.intro1.volume = 0.25; } catch(_){}
+                }
+            }).catch(() => { INTRO_PLAYING = false; });
+        } else {
+            INTRO_PLAYING = true;
+            try { bgm.intro1.muted = false; bgm.intro1.volume = 0.25; } catch(_){}
+        }
+    } catch(_){}
+}
+function setupFirstGestureIntroUnlock() {
+    const once = () => { startMenuMusic(); window.removeEventListener('pointerdown', once); window.removeEventListener('touchstart', once, { passive: true }); window.removeEventListener('keydown', once); };
+    window.addEventListener('pointerdown', once, { once: true });
+    window.addEventListener('touchstart', once, { passive: true, once: true });
+    window.addEventListener('keydown', once, { once: true });
+}
+document.addEventListener('DOMContentLoaded', () => {
+    const splash = document.getElementById('splash-screen');
+    const start = document.getElementById('start-screen');
+    const playBtn = document.getElementById('splash-play-btn');
+    const splashDialog = document.getElementById('splash-dialog');
+    if (splash && start && playBtn) {
+        splash.classList.remove('hidden');
+        start.classList.add('hidden');
+        playBtn.onclick = () => {
+            if (splashDialog) splashDialog.classList.add('closing');
+
+            try {
+                if (AudioEngine && AudioEngine.state && AudioEngine.state.ctx && AudioEngine.state.ctx.state === 'suspended') {
+                    AudioEngine.state.ctx.resume().catch(() => {});
+                }
+            } catch(_){}
+            try { startMenuMusic(); } catch(_){}
+            try { preloadAudioAssets(); } catch(_){}
+
+            setTimeout(() => {
+                splash.classList.add('hidden');
+                start.classList.remove('hidden');
+            }, 240);
+        };
+    } else {
+        startMenuMusic();
+        setupFirstGestureIntroUnlock();
+    }
+    const modal = document.getElementById('start-screen');
+    if (modal && typeof MutationObserver !== 'undefined') {
+        const obs = new MutationObserver(() => {
+            const isHidden = modal.classList.contains('hidden');
+            if (isHidden) { stopMenuMusic(); }
+            else { startMenuMusic(); }
+        });
+        obs.observe(modal, { attributes: true, attributeFilter: ['class'] });
+    }
+});
 function saveAccessibility(){
     try { localStorage.setItem('neonAccessibility', JSON.stringify(ACCESS)); } catch(_){ }
 }
@@ -79,19 +185,8 @@ function computeUpgradeRefund(n) {
     }
     return sum;
 }
-if (typeof meta.chargeLvl !== 'number' && typeof meta.hpLvl === 'number') {
-    meta.chargeLvl = meta.hpLvl;
-    delete meta.hpLvl;
-}
 if (typeof meta.totalUpgrades !== 'number') {
     meta.totalUpgrades = (meta.dmgLvl || 0) + (meta.rateLvl || 0) + (meta.chargeLvl || 0);
-}
-if (typeof meta.upgradeCost !== 'number') {
-    const base = 10;
-    meta.upgradeCost = computeUpgradeCost(meta.totalUpgrades || 0);
-}
-if (typeof meta.supportCount !== 'number') {
-    meta.supportCount = 0;
 }
 if (typeof meta.supportCount === 'number' && meta.supportCount > 10) {
     meta.supportCount = 10;
@@ -253,7 +348,12 @@ const AudioEngine = (() => {
             const music = ctx.createGain();
             master.gain.value = 1;
             sfx.gain.value = SETTINGS.sfxMuted ? 0 : 1;
-            music.gain.value = SETTINGS.musicMuted ? 0 : 0.2;
+            try {
+                const initialLevel = (typeof levelToGain === 'function') ? levelToGain(ACCESS.musicLevel || 3) : 0.7;
+                music.gain.value = SETTINGS.musicMuted ? 0 : Math.max(0, Math.min(1, initialLevel));
+            } catch(_) {
+                music.gain.value = SETTINGS.musicMuted ? 0 : 0.7;
+            }
             sfx.connect(master); music.connect(master); master.connect(ctx.destination);
             state.ctx = ctx; state.masterGain = master; state.sfxGain = sfx; state.musicGain = music;
             state.ready = true;
@@ -286,13 +386,14 @@ const AudioEngine = (() => {
     async function loadList(list) {
         await Promise.all(list.map(x => loadBuffer(x.name, x.url)));
     }
-    function playSfx(name, volume = 1) {
+    function playSfx(name, volume = 1, speed = 1) {
         if (!state.ready || !state.ctx) return false;
         const buf = state.buffers.get(name);
         if (!buf) return false;
         try {
             const src = state.ctx.createBufferSource();
             src.buffer = buf;
+            try { src.playbackRate.value = speed || 1; } catch(_){}
             const g = state.ctx.createGain();
             g.gain.value = Math.max(0, Math.min(1, volume));
             src.connect(g); g.connect(state.sfxGain);
@@ -309,11 +410,21 @@ const AudioEngine = (() => {
         try {
             const src = state.ctx.createBufferSource();
             src.buffer = buf; src.loop = !!loop;
-            src.connect(state.musicGain);
+            const trackGain = state.ctx.createGain();
+            src.connect(trackGain); trackGain.connect(state.musicGain);
             const now = state.ctx.currentTime;
             if (!SETTINGS.musicMuted) {
-                state.musicGain.gain.setValueAtTime(0, now);
-                state.musicGain.gain.linearRampToValueAtTime(Math.max(0, Math.min(1, volume)), now + Math.max(0, fadeInMs/1000));
+                try {
+                    const target = Math.max(0, Math.min(1, volume));
+                    if (fadeInMs > 0) {
+                        trackGain.gain.setValueAtTime(0, now);
+                        trackGain.gain.linearRampToValueAtTime(target, now + Math.max(0, fadeInMs/1000));
+                    } else {
+                        trackGain.gain.setValueAtTime(target, now);
+                    }
+                } catch(_) {}
+            } else {
+                try { trackGain.gain.setValueAtTime(0, now); } catch(_) {}
             }
             src.start(now);
             state.currentMusic = src; state.musicName = name;
@@ -335,11 +446,21 @@ const AudioEngine = (() => {
         } catch(_) {}
     }
     function setSfxMuted(m) { if (state.sfxGain) state.sfxGain.gain.value = m ? 0 : 1; }
-    function setMusicMuted(m) { if (state.musicGain) state.musicGain.gain.value = m ? 0 : 0.2; }
+    function setMusicMuted(m) {
+        if (!state.musicGain) return;
+        try {
+            if (m) {
+                state.musicGain.gain.value = 0;
+            } else {
+                const lvl = (typeof levelToGain === 'function') ? levelToGain(ACCESS.musicLevel || 3) : 0.7;
+                state.musicGain.gain.value = Math.max(0, Math.min(1, lvl));
+            }
+        } catch(_) {}
+    }
     return { init, loadBuffer, loadList, playSfx, playMusic, stopMusic, setSfxMuted, setMusicMuted, state };
 })();
 
-(async () => {
+function preloadAudioAssets() {
     const sfxList = [
         { name: 'shoot', url: 'sfx/shoot.wav' },
         { name: 'gat', url: 'sfx/gat.wav' },
@@ -366,8 +487,13 @@ const AudioEngine = (() => {
         { name: 'rustyLoop', url: 'sfx/Rusty-loop.mp3' },
         { name: 'rusty', url: 'sfx/Rusty.mp3' }
     ];
-    try { await AudioEngine.loadList(sfxList.concat(musicList)); } catch(_) {}
-})();
+    try {
+        AudioEngine.init()?.then?.(() => {
+            AudioEngine.loadList(sfxList.concat(musicList)).catch(() => {});
+        });
+    } catch(_) {}
+}
+window.preloadAudioAssets = preloadAudioAssets;
 
 const bgm = {
     intro1: new Audio('sfx/1.wav'),
@@ -410,7 +536,9 @@ const MUSIC = {
         } catch(_){}
         const track = bgm[name];
         if (!track) return;
-        this.stop();
+        try { if (AudioEngine.state.currentMusic) { AudioEngine.stopMusic(0); } } catch(_){ }
+        const prev = this.current;
+        if (prev) { try { prev.pause(); prev.currentTime = 0; } catch(_){ } }
         this.current = track;
         this.name = name;
         try {
@@ -485,6 +613,7 @@ function setMusicMuted(flag) {
         } catch(_){}
     }
     try { AudioEngine.setMusicMuted(SETTINGS.musicMuted); } catch(_){ }
+    try { applyVolumeLevels(); } catch(_){}
     try { localStorage.setItem('neonAudio', JSON.stringify({ sfxMuted: SETTINGS.sfxMuted, musicMuted: SETTINGS.musicMuted })); } catch(_){}
     updateAudioButtons();
 }
@@ -554,11 +683,12 @@ function playSfx(sound, volume = 1, opts = {}) {
     if (GAME.state !== 'PLAY' && !uiAllowed.includes(sound)) return;
     if (sfx[sound]) {
         try {
-            if (AudioEngine.state.ready && AudioEngine.playSfx(sound, volume)) return;
+            const speed = (opts && (opts.playbackRate || opts.rate)) || 1;
+            if (AudioEngine.state.ready && AudioEngine.playSfx(sound, volume, speed)) return;
         } catch(_){}
         if (sound === 'shoot') {
             const now = Date.now();
-            if (now - GAME.lastShootSfxTime < 500) return;
+            if (now - GAME.lastShootSfxTime < 40) return;
             GAME.lastShootSfxTime = now;
             const pool = sfxPool.shoot;
             if (pool.length) {
@@ -566,6 +696,7 @@ function playSfx(sound, volume = 1, opts = {}) {
                 const ch = pool[i];
                 sfxIndex.shoot = (i + 1) % pool.length;
                 try { ch.pause(); ch.currentTime = 0; } catch(e){}
+                try { ch.playbackRate = (opts && (opts.playbackRate || opts.rate)) || 1; } catch(_){}
                 ch.volume = volume;
                 ch.play().catch(() => {});
                 return;
@@ -580,13 +711,14 @@ function playSfx(sound, volume = 1, opts = {}) {
                 const ch = pool[i];
                 sfxIndex.gat = (i + 1) % pool.length;
                 try { ch.pause(); ch.currentTime = 0; } catch(e){}
+                try { ch.playbackRate = (opts && (opts.playbackRate || opts.rate)) || 1; } catch(_){}
                 ch.volume = volume;
                 ch.play().catch(() => {});
                 return;
             }
         } else if (sound === 'beam') {
             const now = Date.now();
-            if (now - (GAME.lastBeamSfxTime || 0) < 1000) return;
+            if (now - (GAME.lastBeamSfxTime || 0) < 200) return;
             GAME.lastBeamSfxTime = now;
             const pool = sfxPool.beam;
             if (pool.length) {
@@ -594,6 +726,7 @@ function playSfx(sound, volume = 1, opts = {}) {
                 const ch = pool[i];
                 sfxIndex.beam = (i + 1) % pool.length;
                 try { ch.pause(); ch.currentTime = 0; } catch(e){}
+                try { ch.playbackRate = (opts && (opts.playbackRate || opts.rate)) || 1; } catch(_){}
                 ch.volume = Math.min(1, volume);
                 ch.play().catch(() => {});
                 return;
@@ -614,6 +747,7 @@ function playSfx(sound, volume = 1, opts = {}) {
         }
 
         const clone = sfx[sound].cloneNode();
+            try { clone.playbackRate = (opts && (opts.playbackRate || opts.rate)) || 1; } catch(_){}
         clone.volume = volume;
         activeAudio.push(clone);
         clone.addEventListener('ended', () => {
@@ -681,7 +815,7 @@ class Pet {
         this.dmg = baseDmg;
         this.cooldownMax = baseRate;
         this.cooldown = 0;
-        this.size = 12;
+        this.size = 16;
         
         this.x = 0;
         this.y = C.laneY;
@@ -729,7 +863,7 @@ class Pet {
             const supportCount = Math.max(1, Math.min(10, total - 1));
                 const minInset = 32; 
                 const availWidth = Math.max(0, (canvas.width - minInset * 2));
-                const defaultSpacing = 56;
+                    const ease = 0.1 * GAME.dt;
                 const spacingX = supportCount > 1 ? Math.min(defaultSpacing, availWidth / (supportCount - 1)) : defaultSpacing;
             const totalWidth = spacingX * (supportCount - 1);
             const startX = centerX - totalWidth / 2;
@@ -789,7 +923,7 @@ class Pet {
             if (this.beamSfxBurstLeft <= 0) {
                 this.beamSfxBurstLeft = 0; 
             } else if (this.beamSfxTimer <= 0) {
-                playSfx('beam', 1);
+                playSfx('beam', 0.35);
                 this.beamSfxBurstLeft--;
                 this.beamSfxTimer = .8;
             }
@@ -955,7 +1089,7 @@ class Pet {
                 this.beamTime = 1e9;
                 this.beamSfxTimer = 0;
                 this.beamSfxBurstLeft = 10;
-                LOOPING.play('laser2', 0.8);
+                LOOPING.play('laser2', 0.5);
             }
             return;
         }
@@ -966,7 +1100,7 @@ class Pet {
         
         if (isMainUnit && (meta.dmgLvl || 0) >= 15) {
             const chargeBoost = 1 + (meta.chargeLvl || 0) * 0.20;
-            playSfx('ult', 0.8);
+            playSfx('cannon', 0.6);
             GAME.shake = Math.max(GAME.shake, 15);
             activateSniperUlt(this, chargeBoost, { colorOverride: '#ff00ff' });
             return;
@@ -1018,6 +1152,25 @@ class Pet {
         }
         
         let drawY = this.y + this.recoil;
+        if (this.ultCharge >= 100) {
+            ctx.save();
+            ctx.globalCompositeOperation = 'lighter';
+            const isPlayerUnit = (party[0] === this);
+            const theme = isPlayerUnit ? getSkinTheme() : { primary: (C.colors[this.type.toLowerCase()] || '#fff'), accent: '#ffffff' };
+            const glow = theme.primary || '#fff';
+            const inner = 18;
+            const outer = inner + 22;
+            const grad = ctx.createRadialGradient(this.x, this.y, inner, this.x, this.y, outer);
+            grad.addColorStop(0.00, hexToRgba(glow, 0.15));
+            grad.addColorStop(0.35, hexToRgba(theme.accent || glow, 0.10));
+            grad.addColorStop(0.70, hexToRgba(glow, 0.5));
+            grad.addColorStop(1.00, hexToRgba(glow, 0.0));
+            ctx.fillStyle = grad;
+            ctx.beginPath();
+            ctx.arc(this.x, this.y, outer, 0, Math.PI*2);
+            ctx.fill();
+            ctx.restore();
+        }
 
         const isPlayer = (party[0] === this);
         if (isPlayer) {
@@ -1075,8 +1228,8 @@ class Pet {
             }
 
         const isPlayer2 = (party[0] === this);
-        const healthR = isPlayer2 ? 18 : 16;
-        const ultR = isPlayer2 ? 25 : 22;
+        const healthR = isPlayer2 ? 20 : 18;
+        const ultR = isPlayer2 ? 25 : 23;
 
         const hpPct = Math.max(0, Math.min(1, (this.hpDisplay !== undefined ? this.hpDisplay : this.hp) / this.maxHp));
         const mobile = (window.innerWidth <= 768) || ('ontouchstart' in window);
@@ -1094,35 +1247,38 @@ class Pet {
         const skinCol = (party[0] === this) ? getSkinTheme().primary : (C.colors[this.type.toLowerCase()] || '#f0f');
         drawSolidRing.call(this, ultR, '#111', skinCol, ultPct, 5);
 
-        if (this.ultCharge >= 100) {
-            ctx.save();
-            ctx.globalCompositeOperation = 'lighter';
-            const isPlayerUnit = (party[0] === this);
-            const theme = isPlayerUnit ? getSkinTheme() : { primary: (C.colors[this.type.toLowerCase()] || '#fff'), accent: '#ffffff' };
-            const glow = theme.primary || '#fff';
-            const inner = ultR - 1;
-            const outer = ultR + 16;
-            const grad = ctx.createRadialGradient(this.x, this.y, inner, this.x, this.y, outer);
-            grad.addColorStop(0.00, hexToRgba(glow, 0.55));
-            grad.addColorStop(0.35, hexToRgba(theme.accent || glow, 0.38));
-            grad.addColorStop(0.70, hexToRgba(glow, 0.22));
-            grad.addColorStop(1.00, hexToRgba(glow, 0.0));
-            ctx.fillStyle = grad;
-            ctx.beginPath();
-            ctx.arc(this.x, this.y, outer, 0, Math.PI*2);
-            ctx.fill();
-            ctx.lineWidth = 8;
-            ctx.strokeStyle = hexToRgba(theme.primary || glow, 0.85);
-            ctx.beginPath();
-            ctx.arc(this.x, this.y, ultR, 0, Math.PI*2);
-            ctx.stroke();
-            ctx.lineWidth = 4;
-            ctx.strokeStyle = hexToRgba(theme.accent || '#fff', 0.6);
-            ctx.beginPath();
-            ctx.arc(this.x, this.y, ultR - 4, 0, Math.PI*2);
-            ctx.stroke();
-            ctx.restore();
-        }
+        try {
+            const now = performance.now();
+            if (this._boostGlowUntil && now < this._boostGlowUntil) {
+                ctx.save();
+                ctx.globalCompositeOperation = 'lighter';
+                const theme = getSkinTheme();
+                const glow = theme.primary || '#fff';
+                const inner = (isPlayer2 ? 18 : 16);
+                const baseOuter = inner + 22;
+                const windowMs = Math.max(1, this._boostGlowUntil - (this._boostStartTs || (this._boostGlowUntil - 500)));
+                const remaining = Math.max(0, this._boostGlowUntil - now);
+                const pct = Math.min(1, Math.max(0, remaining / windowMs));
+                const outer = inner + 12 + 20 * pct;
+                const a0 = 0.55 * pct;
+                const a1 = 0.26 * pct;
+                const ringA = 0.85 * pct;
+                const grad = ctx.createRadialGradient(this.x, this.y, inner, this.x, this.y, outer);
+                grad.addColorStop(0.00, hexToRgba(glow, a0));
+                grad.addColorStop(0.60, hexToRgba(glow, a1));
+                grad.addColorStop(1.00, hexToRgba(glow, 0.0));
+                ctx.fillStyle = grad;
+                ctx.beginPath();
+                ctx.arc(this.x, this.y, outer, 0, Math.PI*2);
+                ctx.fill();
+                ctx.lineWidth = 6;
+                ctx.strokeStyle = hexToRgba(glow, ringA);
+                ctx.beginPath();
+                ctx.arc(this.x, this.y, inner + 6, 0, Math.PI*2);
+                ctx.stroke();
+                ctx.restore();
+            }
+        } catch(_) {}
 
         if (this.beamActive) {
             let t = null;
@@ -1143,7 +1299,7 @@ class Pet {
                 const bigBeamActive = (this.powerup.type === 'BIG' && this.powerup.time > 0 && (meta.rateLvl || 0) >= 15);
                 const isPlayer = (party[0] === this);
                 const baseCol = C.colors[this.type.toLowerCase()];
-                const theme = isPlayer ? getSkinTheme() : { primary: baseCol, accent: '#fff' };
+                const theme = isPlayer ? getSkinTheme() : { primary: baseCol, accent: baseCol };
                 ctx.shadowColor = theme.accent || baseCol;
                 ctx.strokeStyle = theme.accent || baseCol;
                 ctx.lineWidth = bigBeamActive ? 32 : 8;
@@ -1202,6 +1358,7 @@ class Enemy {
         this.deadProcessed = false;
         if(isBoss) this.shootTimer = 0; 
         this.contactTimer = 0; 
+        this.dotEffects = []; 
     }
 
     update() {
@@ -1209,6 +1366,29 @@ class Enemy {
         this.x += Math.sin(GAME.time * 0.05 + this.wobble) * 0.5;
 
         if(this.contactTimer > 0) this.contactTimer -= GAME.dt / 60;
+
+        if (this.dotEffects && this.dotEffects.length) {
+            const dtSec = GAME.dt / 60;
+            for (let i = this.dotEffects.length - 1; i >= 0; i--) {
+                const eff = this.dotEffects[i];
+                eff.elapsed += dtSec;
+                eff.tickAcc += dtSec;
+                while (eff.tickAcc >= eff.tickInterval && eff.remaining > 0) {
+                    eff.tickAcc -= eff.tickInterval;
+                    const apply = Math.min(eff.perTick, eff.remaining);
+                    this.hp -= apply;
+                    try { spawnDamagePopup(this, apply, 'small'); } catch(_) {}
+                    eff.remaining -= apply;
+                    if (this.hp <= 0) {
+                        this.hp = 0;
+                        break;
+                    }
+                }
+                if (eff.elapsed >= eff.duration || eff.remaining <= 0 || this.hp <= 0) {
+                    this.dotEffects.splice(i, 1);
+                }
+            }
+        }
 
         if(this.rank === 'BOSS') {
             const shootRateFrames = Math.max(50, 140 - GAME.floor * 5);
@@ -1255,10 +1435,18 @@ class Enemy {
                                 if (p.isMain && getSelectedSkin() === 'STARCORE') {
                                     const mult = SKIN_PERKS.STARCORE.armorMult || 0.75;
                                     const reduced = Math.max(1, Math.round(scaled * mult));
-                                    p.hp -= reduced;
+                                    {
+                                        const invul = (party[0] && party[0]._boostInvulUntil && performance.now() < party[0]._boostInvulUntil);
+                                        const apply = invul ? Math.round(reduced * 0.2) : reduced;
+                                        p.hp -= apply;
+                                    }
                                     spawnPlayerDamagePopup(p, reduced, true);
                                 } else {
-                                    p.hp -= scaled;
+                                    {
+                                        const invul = (party[0] && party[0]._boostInvulUntil && performance.now() < party[0]._boostInvulUntil);
+                                        const apply = invul ? Math.round(scaled * 0.2) : scaled;
+                                        p.hp -= apply;
+                                    }
                                     spawnPlayerDamagePopup(p, scaled, true);
                                 }
                                 playSfx('hit', 0.4);
@@ -1305,10 +1493,18 @@ class Enemy {
                     if (p.isMain && getSelectedSkin() === 'STARCORE') {
                         const mult = SKIN_PERKS.STARCORE.armorMult || 0.75;
                         const reduced = Math.max(1, Math.round(dmg * mult));
-                        p.hp -= reduced;
+                        {
+                            const invul = (party[0] && party[0]._boostInvulUntil && performance.now() < party[0]._boostInvulUntil);
+                            const apply = invul ? Math.round(reduced * 0.2) : reduced;
+                            p.hp -= apply;
+                        }
                         spawnPlayerDamagePopup(p, reduced, this.rank === 'BOSS');
                     } else {
-                        p.hp -= dmg;
+                        {
+                            const invul = (party[0] && party[0]._boostInvulUntil && performance.now() < party[0]._boostInvulUntil);
+                            const apply = invul ? Math.round(dmg * 0.2) : dmg;
+                            p.hp -= apply;
+                        }
                         spawnPlayerDamagePopup(p, dmg, this.rank === 'BOSS');
                     }
                     playSfx('hit', 0.4);
@@ -1397,7 +1593,7 @@ class PowerupEntity {
     constructor() {
         this.x = Math.random() * (canvas.width - 60) + 30;
         this.y = C.spawnY;
-        this.size = 12;
+        this.size = 14;
         this.speed = 1.0 + (GAME.floor * 0.05);
         this.wobble = Math.random() * Math.PI;
         const colors = ['#0ff', '#0ff', '#0ff', '#0ff', '#0ff'];
@@ -1556,6 +1752,27 @@ class Bullet {
                 playSfx('hit', 0.4);
                 GAME.shake = Math.max(GAME.shake, e.rank === 'BOSS' ? 4 : 2.5);
                 createParticles(this.x, this.y, this.color, 3);
+                try {
+                    const selSkin = getSelectedSkin ? getSelectedSkin() : 'DEFAULT';
+                    if (selSkin && selSkin !== 'DEFAULT') {
+                        const total = Math.max(1, Math.round(this.dmg * 0.05));
+                        const duration = 3.0;
+                        const tickInterval = 0.5; 
+                        const ticks = Math.max(1, Math.round(duration / tickInterval));
+                        const perTick = Math.max(1, Math.floor(total / ticks));
+                        const leftover = total - perTick * ticks;
+                        e.dotEffects.push({
+                            duration,
+                            elapsed: 0,
+                            tickInterval,
+                            tickAcc: 0,
+                            perTick,
+                            remaining: total,
+                        });
+                        const last = e.dotEffects[e.dotEffects.length - 1];
+                        last.tickAcc = Math.min(last.tickInterval * 0.6, last.tickInterval);
+                    }
+                } catch(_) {}
                 if(e.hp <= 0 && !e.deadProcessed) {
                     e.deadProcessed = true;
                     playSfx('die', 0.4);
@@ -2023,9 +2240,12 @@ function loop() {
                     const mult = SKIN_PERKS.STARCORE.armorMult || 0.75;
                     breachDmg = Math.round(breachDmg * mult);
                 }
-                party[0].hp -= breachDmg;
+                const p0 = party[0];
+                const invul = (p0 && p0._boostInvulUntil && performance.now() < p0._boostInvulUntil);
+                const applied = invul ? Math.round(breachDmg * 0.2) : breachDmg; 
+                party[0].hp -= applied;
                 playSfx('hit', 0.4);
-                GAME.shake = Math.max(GAME.shake, 5); 
+                GAME.shake = Math.max(GAME.shake, invul ? 3 : 5);
             }
             enemies[i]._remove = true;
             onEnemyKilled(enemies[i], 'CRASH');
@@ -2224,8 +2444,8 @@ function loop() {
         const kx = easeOutCubic(t);
         const offsetX = 6 + 26 * kx + 10 * (t * t);
         const offsetY = -6 * (1 - t) * 0.6 + 22 * (t * t);
-        const jx = (Math.random() - 0.5) * 1.2;
-        const jy = (Math.random() - 0.5) * 1.2;
+        const jx = (Math.random() - 0.5) * 3; 
+        const jy = (Math.random() - 0.5) * 3; 
         let alpha = t < 0.65 ? 1 : (1 - (t - 0.65) / 0.35);
         alpha = Math.max(0, Math.min(1, alpha));
         const x = p.x0 + offsetX + jx;
@@ -2356,6 +2576,90 @@ window.addEventListener('keyup', (e) => {
     if(c === 'ArrowDown' || c === 'KeyS') input.down = false;
 });
 
+function triggerBoostDodge(){
+    const p0 = party && party[0];
+    if (!p0 || p0.hp <= 0) return;
+    const now = performance.now();
+    const last = p0._boostCooldownTs || 0;
+    if (now - last < 2000) return; 
+    let dx = 0, dy = 0;
+    if (typeof p0.lastMoveX === 'number' || typeof p0.lastMoveY === 'number') {
+        dx = p0.lastMoveX || 0; dy = p0.lastMoveY || 0;
+    }
+    if (Math.abs(dx) + Math.abs(dy) < 0.01) {
+        if (GAME.target && enemies.includes(GAME.target)) {
+            const ang = Math.atan2(GAME.target.y - p0.y, GAME.target.x - p0.x);
+            dx = Math.cos(ang); dy = Math.sin(ang);
+        } else {
+            dy = -1;
+        }
+    }
+    const len = Math.hypot(dx, dy) || 1; dx /= len; dy /= len;
+    const boostSpeed = 22; 
+    p0._boostVX = dx * boostSpeed;
+    p0._boostVY = dy * boostSpeed;
+    p0._boostActive = true;
+    p0._boostHitTs = new Map();
+    p0._boostDecay = 0.90; 
+    p0._boostCooldownTs = now;
+    p0._boostStartTs = now;
+    p0._boostInvulUntil = now + 500;
+    p0._boostGlowUntil = p0._boostInvulUntil;
+    p0._postBoostPhase = 'decel';
+    p0._postBoostTs = now;
+    p0._postBoostDecelMs = 420; 
+    p0._postBoostAccelMs = 0;  
+    try { playSfx('dodge', 0.6); } catch(_){}
+    GAME.shake = Math.max(GAME.shake, 3);
+    try {
+        const theme = getSkinTheme ? getSkinTheme() : { primary: '#ff00ff', accent: '#00ffff' };
+        blooms.push({
+            x: p0.x,
+            y: p0.y,
+            radius: 0,
+            maxRadius: 100,
+            ringRadius: 50,
+            ringColor: theme.primary || '#ff00ff',
+            colors: [theme.primary || '#ff00ff', theme.accent || theme.primary || '#ffffff', theme.primary || '#ff00ff'],
+            life: 0.6,
+            maxLife: 0.6,
+            slow: false,
+            pulse: 0
+        });
+        
+        const base = Math.max(4, 6 + (meta.dmgLvl || 0));
+        const peakDamage = Math.round(base * 0.6);
+        const effectiveRadius = 140;
+        enemies.forEach(e => {
+            if (!e || e.hp <= 0) return;
+            const dx = e.x - p0.x;
+            const dy = e.y - p0.y;
+            const dist = Math.hypot(dx, dy);
+            if (dist <= effectiveRadius + e.size) {
+                const t = Math.min(1, Math.max(0, dist / effectiveRadius));
+                const mul = 0.20 + (0.75 - 0.20) * (1 - t);
+                const dmg = Math.max(1, Math.round(peakDamage * mul));
+                try { playSfx('die', 0.25); } catch(_){}
+                e.hp -= dmg;
+                try { spawnDamagePopup(e, dmg, 'small'); } catch(_){}
+                createParticles(e.x, e.y, '#f00', 4);
+                if (e.hp <= 0 && !e.deadProcessed) {
+                    e.deadProcessed = true;
+                    playSfx('die', 0.4);
+                    createRainbowExplosion(e.x, e.y, e.rank === 'BOSS' ? 80 : 40);
+                    onEnemyKilled(e, 'BOOST_SPLASH');
+                    if (GAME.target === e) GAME.target = null;
+                }
+            }
+        });
+    } catch(_) {}
+}
+window.addEventListener('keydown', (e) => {
+    if (e.code === 'ShiftLeft' || e.code === 'ShiftRight') {
+        triggerBoostDodge();
+    }
+});
+
 canvas.addEventListener('mousedown', (e) => {
     if(GAME.state !== 'PLAY') return;
     const { x, y } = toCanvasCoords(e.clientX, e.clientY);
@@ -2480,15 +2784,17 @@ function applyPlayerMovement() {
     if (p.entering) return;
     if (typeof p.vx !== 'number') p.vx = 0;
     if (typeof p.vy !== 'number') p.vy = 0;
-    let dirX = 0, dirY = 0, magnitude = 0;
+    let dirX = 0, dirY = 0;
+    let magnitude = 0;
     if (input.joystickActive) {
-        dirX = input.jVecX; dirY = input.jVecY;
-        magnitude = Math.min(1, Math.max(0, input.jMagnitude));
+        dirX = input.jVecX || 0;
+        dirY = input.jVecY || 0;
+        magnitude = Math.min(1, Math.max(0, input.jMagnitude || Math.hypot(dirX, dirY)));
     } else {
-        if(input.left) dirX -= 1;
-        if(input.right) dirX += 1;
-        if(input.up) dirY -= 1;
-        if(input.down) dirY += 1;
+        if (input.left) dirX -= 1;
+        if (input.right) dirX += 1;
+        if (input.up) dirY -= 1;
+        if (input.down) dirY += 1;
         const len = Math.hypot(dirX, dirY);
         if (len > 0) { dirX /= len; dirY /= len; magnitude = 1; }
     }
@@ -2506,15 +2812,83 @@ function applyPlayerMovement() {
     }
     const { accel, maxSpeed, friction } = moveParams(ACCESS.moveLevel || 3);
 
+    const nowTs = performance.now();
+    let accelMult = 1;
+    let frictionMult = 1;
+    if (p._postBoostPhase) {
+        const decelMs = p._postBoostDecelMs || 420;
+        const elapsed = nowTs - (p._postBoostTs || nowTs);
+        if (p._postBoostPhase === 'decel') {
+            frictionMult = 2.4;
+            accelMult = 0.7;
+            const curSp = Math.hypot(p.vx, p.vy);
+            const capSp = 0.9;
+            if (curSp > capSp) {
+                const s = capSp / (curSp || 1);
+                p.vx *= s; p.vy *= s;
+            }
+            if (elapsed >= decelMs) {
+                p._postBoostPhase = null;
+                p._postBoostTs = 0;
+            }
+        }
+    }
+
     if (magnitude > 0.01) {
-        p.vx += dirX * accel * magnitude * GAME.dt;
-        p.vy += dirY * accel * magnitude * GAME.dt;
+        p.vx += dirX * (accel * accelMult) * magnitude * GAME.dt;
+        p.vy += dirY * (accel * accelMult) * magnitude * GAME.dt;
     } else {
-        const fr = Math.pow(1 - friction, GAME.dt);
+        const fr = Math.pow(1 - (friction * frictionMult), GAME.dt);
         p.vx *= fr;
         p.vy *= fr;
         if (Math.abs(p.vx) < 0.02) p.vx = 0;
         if (Math.abs(p.vy) < 0.02) p.vy = 0;
+    }
+
+    if (p._boostActive) {
+        p.x += p._boostVX;
+        p.y += p._boostVY;
+        p._boostVX *= p._boostDecay;
+        p._boostVY *= p._boostDecay;
+        try {
+            const base = Math.max(6, 8 + (meta.dmgLvl || 0));
+            const contactDamage = Math.round(base * 1.0);
+            const contactRadius = 28; 
+            for (let i = 0; i < enemies.length; i++) {
+                const e = enemies[i];
+                if (!e || e.hp <= 0) continue;
+                const now = performance.now();
+                const graceMs = 80;
+                const lastTs = p._boostHitTs ? (p._boostHitTs.get(e._eid) || 0) : 0;
+                if (lastTs && (now - lastTs) < graceMs) continue;
+                const d = Math.hypot(e.x - p.x, e.y - p.y);
+                if (d <= (e.size + contactRadius)) {
+                    if (p._boostHitTs) p._boostHitTs.set(e._eid, now);
+                    try { playSfx('die', 0.25); } catch(_){}
+                    e.hp -= contactDamage;
+                    try { spawnDamagePopup(e, contactDamage, 'mid'); } catch(_){}
+                    createParticles(e.x, e.y, '#f00', 6);
+                    if (e.hp <= 0 && !e.deadProcessed) {
+                        e.deadProcessed = true;
+                        e._remove = true; 
+                        playSfx('die', 0.4);
+                        createRainbowExplosion(e.x, e.y, e.rank === 'BOSS' ? 80 : 40);
+                        onEnemyKilled(e, 'BOOST_CONTACT');
+                        if (GAME.target === e) GAME.target = null;
+                    }
+                }
+            }
+        } catch(_) {}
+        if (Math.hypot(p._boostVX, p._boostVY) < 0.5) {
+            p._boostActive = false;
+            p._boostVX = 0; p._boostVY = 0;
+            p._boostInvulUntil = 0;
+            p._boostHitTs = null;
+            if (!p._postBoostPhase) {
+                p._postBoostPhase = 'decel';
+                p._postBoostTs = performance.now();
+            }
+        }
     }
 
     const sp = Math.hypot(p.vx, p.vy);
@@ -2592,7 +2966,7 @@ function activateUlt(pet) {
     if (tid === 'sniper') { activateSniperUlt(pet, chargeBoost); return; }
     if (tid === 'gatling') {
         pet.beamActive = true; pet.beamTime = 10; pet.beamSfxTimer = 0; pet.beamSfxBurstLeft = 10;
-        LOOPING.play('laser1', 0.9);
+        LOOPING.play('laser1', 0.6);
         return;
     }
     if (tid === 'shotgun') { activateShotgunUlt(pet, chargeBoost); return; }
@@ -2627,7 +3001,7 @@ function activateUlt(pet) {
 
 function activateSniperUlt(pet, chargeBoost, opts = {}) {
     const target = GAME.target && enemies.includes(GAME.target) ? GAME.target : findClosestEnemy(pet.x, pet.y);
-    if (target) playSfx('cannon', 0.1);
+    if (target) playSfx('cannon', 0.6);
     if (!target) return;
     const ang = Math.atan2(target.y - pet.y, target.x - pet.x);
     const spd = 14; 
@@ -2657,6 +3031,7 @@ function activateSniperUlt(pet, chargeBoost, opts = {}) {
                 const e = enemies[i];
                 const d = Math.hypot(this.x - e.x, this.y - e.y);
                 if (d < this.radius + e.size) {
+                    playSfx('ult', 0.8);
                     e.hp -= mainDamage;
                     try { spawnDamagePopup(e, mainDamage, 'large'); } catch(_){}
                     if (e.hp <= 0 && !e.deadProcessed) {
@@ -2911,7 +3286,7 @@ const LAUNCH = {
 
 function beginLaunch() {
     if (LAUNCH.active) return;
-    try { MUSIC.stop({ fadeOutMs: 800 }); } catch(_){}
+    try { stopMenuMusic(); } catch(_){}
     const overlay = document.createElement('canvas');
     overlay.id = 'launch-overlay';
     overlay.width = BASE_W; overlay.height = BASE_H;
@@ -2955,7 +3330,36 @@ function beginLaunch() {
     document.addEventListener('touchstart', onClick, { passive: false });
     LAUNCH.skipFns = [ ['keydown', onKey], ['mousedown', onClick], ['touchstart', onClick] ];
 
-    try { MUSIC.play('waltuh', { loop: true, volume: .2 }); } catch(_){}
+    try {
+        if (AudioEngine && AudioEngine.state && AudioEngine.state.ready) {
+            const ok = AudioEngine.playMusic('waltuh', 0.2, true, 0);
+            if (!ok) { MUSIC.play('waltuh', { loop: true, volume: .2, fadeInMs: 0 }); }
+        } else {
+            MUSIC.play('waltuh', { loop: true, volume: .2, fadeInMs: 0 });
+        }
+    } catch(_){ }
+
+    setTimeout(() => {
+        try {
+            const playingWebAudio = !!(AudioEngine && AudioEngine.state && AudioEngine.state.currentMusic);
+            const playingHtmlAudio = !!(MUSIC && MUSIC.current);
+            if (!playingWebAudio && !playingHtmlAudio) {
+                const track = bgm.waltuh;
+                if (track) {
+                    try {
+                        track.loop = true;
+                        track.muted = false;
+                        track.volume = SETTINGS.musicMuted ? 0 : 0.2;
+                        const p = track.play();
+                        if (p && typeof p.then === 'function') {
+                            p.catch(()=>{});
+                        }
+                        MUSIC.current = track; MUSIC.name = 'waltuh'; MUSIC.targetVolume = track.volume;
+                    } catch(_) {}
+                }
+            }
+        } catch(_) {}
+    }, 300);
 
     LAUNCH.frame = requestAnimationFrame(launchLoop);
 }
@@ -3048,7 +3452,10 @@ function endLaunch(skipped) {
 
 function showDraft() {
     GAME.state = 'DRAFT';
-    stopAllAudio();
+    try { stopGunAudio(); } catch(_){ }
+    try { LOOPING.stopAll(); } catch(_){ }
+    try { MUSIC.stop({ fadeOutMs: 1000 }); } catch(_){ }
+    try { if (AudioEngine && AudioEngine.stopMusic) AudioEngine.stopMusic(1000); } catch(_){ }
     const con = document.getElementById('draft-cards');
     con.innerHTML = '';
     bullets = [];
@@ -3167,13 +3574,13 @@ function resume() {
     MUSIC.play(trackName, { fadeInMs: 0, loop: true, volume: .2 });
     const p0 = party[0];
     if (p0 && p0.beamActive) {
-        if ((meta.rateLvl || 0) >= 15) {
-            LOOPING.play('laser2', 0.8);
+            if ((meta.rateLvl || 0) >= 15) {
+            LOOPING.play('laser2', 0.5);
             if (p0.powerup && p0.powerup.type === 'BIG' && p0.powerup.time > 0) {
-                LOOPING.play('laser3', 0.9);
+                LOOPING.play('laser3', 0.5);
             }
         } else {
-            LOOPING.play('laser1', 0.9);
+            LOOPING.play('laser1', 0.6);
         }
     }
     loop();
@@ -3254,11 +3661,18 @@ window.restartRun = restartRun;
 
 function closeGameOver() {
     const go = document.getElementById('game-over');
-    if(go) go.classList.add('hidden');
+    if (!go) return;
+    go.classList.add('closing');
+    setTimeout(() => { go.classList.remove('closing'); go.classList.add('hidden'); }, 240);
     document.getElementById('start-screen').classList.remove('hidden');
     GAME.state = 'MENU';
 }
 window.closeGameOver = closeGameOver;
+    const draft = document.getElementById('draft-screen');
+    if (draft) {
+        draft.classList.add('closing');
+        setTimeout(() => { draft.classList.remove('closing'); draft.classList.add('hidden'); }, 240);
+    }
 
 function updateUI() {
     const bossIsPresent = enemies.some(e => e.rank === 'BOSS');
@@ -3283,7 +3697,10 @@ function updateUI() {
         DISPLAY.gameEssence = to;
     }
 
-    document.getElementById('high-score').innerText = `RECORD: ${meta.highScore}`;
+    const hsEl = document.getElementById('high-score');
+    const recValEl = document.getElementById('record-floor');
+    if (recValEl) { recValEl.innerText = `${meta.highScore}`; }
+    else if (hsEl) { hsEl.innerText = `RECORD: SECTOR ${meta.highScore}`; }
     {
         const el = document.getElementById('meta-essence-display');
         const from = DISPLAY.metaEssence;
@@ -3344,9 +3761,9 @@ function grantRandomPowerup(p) {
     const pick = options[Math.floor(Math.random()*options.length)];
     p.powerup.type = pick;
     if (pick === 'BIG' && (meta.rateLvl || 0) >= 15) {
-        p.powerup.time = 12;
-        LOOPING.play('laser3', 0.9);
-        setTimeout(() => { LOOPING.stop('laser3'); }, 12000);
+    p.powerup.time = 12;
+    LOOPING.play('laser3', 0.5);
+    setTimeout(() => { LOOPING.stop('laser3'); }, 12000);
     } else {
         p.powerup.time = 10;
     }
@@ -3403,12 +3820,21 @@ function initResetConfirmEvents() {
     const cancelBtn = document.getElementById('reset-cancel-btn');
     if (!modal || !confirmBtn || !cancelBtn) return;
     const hide = () => modal.classList.add('hidden');
-    confirmBtn.addEventListener('click', () => { playSfx('click',0.3); resetUpgrades(); hide(); });
-    cancelBtn.addEventListener('click', () => { playSfx('click',0.3); hide(); });
+    const animatedClose = () => {
+        const dlg = modal.querySelector('.reset-dialog');
+        if (dlg) {
+            dlg.classList.add('closing');
+            setTimeout(() => { dlg.classList.remove('closing'); hide(); }, 240);
+        } else {
+            hide();
+        }
+    };
+    confirmBtn.addEventListener('click', () => { playSfx('click',0.3); resetUpgrades(); animatedClose(); });
+    cancelBtn.addEventListener('click', () => { playSfx('click',0.3); animatedClose(); });
     modal.addEventListener('click', (e) => {
         const dlg = document.querySelector('#reset-confirm .reset-dialog');
         if (!dlg) return;
-        if (!dlg.contains(e.target)) hide();
+        if (!dlg.contains(e.target)) animatedClose();
     });
 }
 
@@ -3513,9 +3939,22 @@ function openAccessibility(){
         const valEl = document.getElementById('sfx-level-val');
         sfxLevel.value = String(ACCESS.sfxLevel || 3);
         if (valEl) valEl.textContent = sfxLevel.value;
+        try {
+            const min = parseFloat(sfxLevel.min||'1');
+            const max = parseFloat(sfxLevel.max||'5');
+            const val = parseFloat(sfxLevel.value||String(ACCESS.sfxLevel||3));
+            const pct = Math.max(0, Math.min(1, (val - min) / Math.max(1, (max - min)))) * 100;
+            sfxLevel.style.setProperty('--fill', pct + '%');
+        } catch(_){}
         sfxLevel.oninput = () => {
             const v = Math.min(5, Math.max(1, parseInt(sfxLevel.value)||3));
             ACCESS.sfxLevel = v; if (valEl) valEl.textContent = String(v);
+            try {
+                const min = parseFloat(sfxLevel.min||'1');
+                const max = parseFloat(sfxLevel.max||'5');
+                const pct = Math.max(0, Math.min(1, (v - min) / Math.max(1, (max - min)))) * 100;
+                sfxLevel.style.setProperty('--fill', pct + '%');
+            } catch(_){}
             applyVolumeLevels(); saveAccessibility();
         };
     }
@@ -3523,19 +3962,30 @@ function openAccessibility(){
         const valEl = document.getElementById('music-level-val');
         musicLevel.value = String(ACCESS.musicLevel || 3);
         if (valEl) valEl.textContent = musicLevel.value;
+        try {
+            const min = parseFloat(musicLevel.min||'1');
+            const max = parseFloat(musicLevel.max||'5');
+            const val = parseFloat(musicLevel.value||String(ACCESS.musicLevel||3));
+            const pct = Math.max(0, Math.min(1, (val - min) / Math.max(1, (max - min)))) * 100;
+            musicLevel.style.setProperty('--fill', pct + '%');
+        } catch(_){}
         musicLevel.oninput = () => {
             const v = Math.min(5, Math.max(1, parseInt(musicLevel.value)||3));
             ACCESS.musicLevel = v; if (valEl) valEl.textContent = String(v);
+            try {
+                const min = parseFloat(musicLevel.min||'1');
+                const max = parseFloat(musicLevel.max||'5');
+                const pct = Math.max(0, Math.min(1, (v - min) / Math.max(1, (max - min)))) * 100;
+                musicLevel.style.setProperty('--fill', pct + '%');
+            } catch(_){}
             applyVolumeLevels(); saveAccessibility();
         };
     }
     const closeBtn = document.getElementById('acc-close-btn');
-    if (closeBtn) closeBtn.onclick = () => {
-        modal.classList.add('hidden');
-    };
+    if (closeBtn) closeBtn.onclick = () => { closeAccessibility(); };
     const onKey = (e) => {
         if (e.code === 'Escape') {
-            modal.classList.add('hidden');
+            closeAccessibility();
             document.removeEventListener('keydown', onKey);
         }
     };
@@ -3544,13 +3994,29 @@ function openAccessibility(){
 }
 window.openAccessibility = openAccessibility;
 
+function closeAccessibility(){
+    const modal = document.getElementById('accessibility-modal');
+    if (!modal) return;
+    const dlg = modal.querySelector('.reset-dialog');
+    if (dlg) {
+        dlg.classList.add('closing');
+        setTimeout(() => { dlg.classList.remove('closing'); modal.classList.add('hidden'); }, 240);
+    } else {
+        modal.classList.add('hidden');
+    }
+}
+window.closeAccessibility = closeAccessibility;
+
 function levelToGain(level){
     const l = Math.min(5, Math.max(1, level||3));
-    if (l <= 1) return 0.0;
-    if (l === 2) return 0.4;
-    if (l === 3) return 1.0;
-    if (l === 4) return 1.3;
-    return 1.6;
+    switch (l) {
+        case 1: return 0.0;   
+        case 2: return 0.25;  
+        case 3: return 0.70;  
+        case 4: return 0.85;  
+        case 5: return 1.00;  
+    }
+    return 0.70;
 }
 
 function applyVolumeLevels(){
@@ -3590,12 +4056,27 @@ document.addEventListener('DOMContentLoaded', () => {
 
 function openSkins(){
     const modal = document.getElementById('skins-modal');
-    if (modal) modal.classList.remove('hidden');
+    if (!modal) return;
+    modal.classList.remove('hidden');
     initSkinsEvents();
+    const onKey = (e) => {
+        if (e.code === 'Escape') {
+            modal.classList.add('hidden');
+            document.removeEventListener('keydown', onKey);
+        }
+    };
+    document.addEventListener('keydown', onKey);
 }
 function closeSkins(){
     const modal = document.getElementById('skins-modal');
-    if (modal) modal.classList.add('hidden');
+    if (!modal) return;
+    const dlg = modal.querySelector('.reset-dialog');
+    if (dlg) {
+        dlg.classList.add('closing');
+        setTimeout(() => { dlg.classList.remove('closing'); modal.classList.add('hidden'); }, 240);
+    } else {
+        modal.classList.add('hidden');
+    }
 }
 window.openSkins = openSkins;
 window.closeSkins = closeSkins;
@@ -3612,9 +4093,9 @@ const SKIN_PERKS = {
 };
 const SKIN_THEMES = {
     DEFAULT:  { primary: '#ff00ff', accent: '#ffaaff' },
-    STARCORE: { primary: '#ffffff', accent: '#ffbbff' },
-    MOONLIGHT:{ primary: '#00ff88', accent: '#002820' },
-    DARKMATTER:{ primary: '#cc0000', accent: '#880000' }
+    STARCORE: { primary: '#ffffff', accent: '#ff66ff' },
+    MOONLIGHT:{ primary: '#00ff88', accent: '#008844' },
+    DARKMATTER:{ primary: '#bb0000', accent: '#880000' }
 };
 const SkinImages = {
     DEFAULT: (() => { const i = new Image(); i.src = 'skins/DEFAULT.png'; return i; })(),
@@ -3642,13 +4123,6 @@ function renderSkinCards(){
         if (!perkEl) {
             perkEl = document.createElement('div');
             perkEl.className = 'skin-perk';
-            perkEl.style.fontFamily = 'Orbitron, monospace';
-            perkEl.style.fontWeight = '600';
-            perkEl.style.fontSize = '12px';
-            perkEl.style.letterSpacing = '0.5px';
-            perkEl.style.marginTop = '2px';
-            perkEl.style.marginBottom = '6px';
-            perkEl.style.color = '#00ffff';
             if (nameEl) nameEl.insertAdjacentElement('afterend', perkEl);
         }
         const purchased = skinId === 'DEFAULT' ? true : !!data.purchased[skinId];
@@ -3663,7 +4137,6 @@ function renderSkinCards(){
         const perk = SKIN_PERKS[skinId];
         if (perkEl) {
             perkEl.textContent = perk ? perk.label : '';
-            perkEl.style.color = '#00ffff';
         }
         card.classList.toggle('selected', isSelected);
     });
@@ -3812,6 +4285,27 @@ function drawJoystickOverlay() {
     ctx.strokeStyle = '#808';
     ctx.fillStyle = 'rgba(255,0,255,0.15)';
     ctx.arc(baseX, baseY, JOY.radius, 0, Math.PI*2); ctx.fill(); ctx.stroke();
+    try {
+        const p0 = party && party[0];
+        const theme = getSkinTheme ? getSkinTheme() : { primary: '#ff00ff' };
+        const last = p0 && p0._boostCooldownTs || 0;
+        const elapsed = last ? (performance.now() - last) : Infinity;
+        const cdMs = 2000;
+        const pct = Math.min(1, Math.max(0, elapsed / cdMs));
+        const startAng = -Math.PI/2; 
+        const endAng = startAng + pct * Math.PI * 2;
+        const trackR = JOY.radius + 0;
+        ctx.beginPath();
+        ctx.strokeStyle = 'rgba(255,255,255,0.15)';
+        ctx.lineWidth = 3;
+        ctx.arc(baseX, baseY, trackR, 0, Math.PI*2);
+        ctx.stroke();
+        ctx.beginPath();
+        ctx.strokeStyle = hexToRgba(theme.primary || '#00ffff', 0.9);
+        ctx.lineWidth = 4;
+        ctx.arc(baseX, baseY, trackR, startAng, endAng);
+        ctx.stroke();
+    } catch(_) {}
     const sx = baseX + JOY.stickX * 0.65;
     const sy = baseY + JOY.stickY * 0.65;
     ctx.beginPath();
