@@ -195,8 +195,8 @@ canvas {
 .control-btn svg path { stroke-width: 2.25; }
 #player-aura {
     position: absolute;
-    width: 82px;
-    height: 82px;
+    width: 76px;
+    height: 76px;
     left: 0; top: 0;
     transform: translate(-50%, -50%);
     border-radius: 50%;

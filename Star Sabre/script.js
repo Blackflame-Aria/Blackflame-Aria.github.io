@@ -30,11 +30,11 @@ const ACCESS = (function(){
             joyRight: !!d.joyRight,
             moveLevel: Math.min(5, Math.max(1, d.moveLevel || 3)),
             shakeLevel: Math.min(5, Math.max(1, d.shakeLevel || 3)),
-            sfxLevel: Math.min(5, Math.max(1, d.sfxLevel || 3)),
-            musicLevel: Math.min(5, Math.max(1, d.musicLevel || 3))
+            sfxLevel: Math.min(5, Math.max(1, d.sfxLevel || 5)),
+            musicLevel: Math.min(5, Math.max(1, d.musicLevel || 5))
         };
     } catch(_) {
-        return { joyRight:false, moveLevel:3, shakeLevel:3, sfxLevel:3, musicLevel:3 };
+        return { joyRight:false, moveLevel:3, shakeLevel:3, sfxLevel:5, musicLevel:5 };
     }
 })();
 
@@ -349,7 +349,7 @@ const AudioEngine = (() => {
             master.gain.value = 1;
             sfx.gain.value = SETTINGS.sfxMuted ? 0 : 1;
             try {
-                const initialLevel = (typeof levelToGain === 'function') ? levelToGain(ACCESS.musicLevel || 3) : 0.7;
+                const initialLevel = (typeof levelToGain === 'function') ? levelToGain(ACCESS.musicLevel || 5) : 0.7;
                 music.gain.value = SETTINGS.musicMuted ? 0 : Math.max(0, Math.min(1, initialLevel));
             } catch(_) {
                 music.gain.value = SETTINGS.musicMuted ? 0 : 0.7;
@@ -454,7 +454,7 @@ const AudioEngine = (() => {
             if (m) {
                 state.musicGain.gain.value = 0;
             } else {
-                const lvl = (typeof levelToGain === 'function') ? levelToGain(ACCESS.musicLevel || 3) : 0.7;
+                const lvl = (typeof levelToGain === 'function') ? levelToGain(ACCESS.musicLevel || 5) : 0.7;
                 state.musicGain.gain.value = Math.max(0, Math.min(1, lvl));
             }
         } catch(_) {}
@@ -1103,7 +1103,7 @@ class Pet {
         
         if (isMainUnit && (meta.dmgLvl || 0) >= 15) {
             const chargeBoost = 1 + (meta.chargeLvl || 0) * 0.20;
-            playSfx('cannon', 0.6);
+            playSfx('cannon', 0.1);
             GAME.shake = Math.max(GAME.shake, 15);
             activateSniperUlt(this, chargeBoost, { colorOverride: '#ff00ff' });
             return;
@@ -1117,13 +1117,16 @@ class Pet {
             let shape = 'round';
             if (this.powerup.type === 'BIG') { dmg *= 3; bulletSizeMult = 3; shape = 'crescent'; }
             if (this.powerup.type === 'PIERCE') { piercing = true; }
-            const impact15 = (meta.dmgLvl || 0) >= 15;
+            const impact15 = (meta.dmgLvl || 0) >= 15 && (this.isMain || this.trait.id !== 'sniper');
             const opts = { bulletSizeMult, piercing, shape };
             if (impact15) {
                 opts.bigImpact = true;
                 opts.sprite = 'BIGshot';
                 if (this.powerup.type !== 'BIG') {
                     opts.bulletSizeMult = bulletSizeMult * 1.5;
+                }
+                if (this.powerup.type === 'BIG') {
+                    opts.bulletSizeMult = Math.max(1, bulletSizeMult * 0.75);
                 }
             }
             if (this.isMain) {
@@ -1161,8 +1164,8 @@ class Pet {
             const isPlayerUnit = (party[0] === this);
             const theme = isPlayerUnit ? getSkinTheme() : { primary: (C.colors[this.type.toLowerCase()] || '#fff'), accent: '#ffffff' };
             const glow = theme.primary || '#fff';
-            const inner = 18;
-            const outer = inner + 22;
+            const inner = 14;
+            const outer = inner + 18;
             const grad = ctx.createRadialGradient(this.x, this.y, inner, this.x, this.y, outer);
             grad.addColorStop(0.00, hexToRgba(glow, 0.15));
             grad.addColorStop(0.35, hexToRgba(theme.accent || glow, 0.10));
@@ -2581,6 +2584,12 @@ window.addEventListener('keydown', (e) => {
         console.log('[Audio] beamActive:', !!(p0 && p0.beamActive), 'rate15:', (meta.rateLvl||0)>=15,
             'BIG:', (p0 && p0.powerup && p0.powerup.type === 'BIG' && p0.powerup.time > 0));
     }
+    if (c === 'KeyJ') {
+        meta.essence = 0;
+        try { localStorage.setItem('neonTowerSave', JSON.stringify(meta)); } catch(_){}
+        updateUI();
+        try { console.log('[ESSENCE] Stored essence reset to 0'); } catch(_){}
+    }
 });
 window.addEventListener('keyup', (e) => {
     const c = e.code;
@@ -2614,14 +2623,14 @@ function triggerBoostDodge(){
     p0._boostVY = dy * boostSpeed;
     p0._boostActive = true;
     p0._boostHitTs = new Map();
-    p0._boostDecay = 0.90; 
+    p0._boostDecay = .90; 
     p0._boostCooldownTs = now;
     p0._boostStartTs = now;
     p0._boostInvulUntil = now + 500;
     p0._boostGlowUntil = p0._boostInvulUntil;
     p0._postBoostPhase = 'decel';
     p0._postBoostTs = now;
-    p0._postBoostDecelMs = 420; 
+    p0._postBoostDecelMs = 10; 
     p0._postBoostAccelMs = 0;  
     try { playSfx('dodge', 0.6); } catch(_){}
     GAME.shake = Math.max(GAME.shake, 3);
@@ -3015,7 +3024,7 @@ function activateUlt(pet) {
 
 function activateSniperUlt(pet, chargeBoost, opts = {}) {
     const target = GAME.target && enemies.includes(GAME.target) ? GAME.target : findClosestEnemy(pet.x, pet.y);
-    if (target) playSfx('cannon', 0.6);
+    if (target) playSfx('cannon', 0.3);
     if (!target) return;
     const ang = Math.atan2(target.y - pet.y, target.x - pet.x);
     const spd = 14; 
@@ -3633,7 +3642,7 @@ document.addEventListener('DOMContentLoaded', updateAudioButtons);
 
 function skipDraft() {
     playSfx('click', 0.2);
-    party.forEach(p => p.hp = p.maxHp);
+    party.forEach(p => { if (p && p.hp > 0) p.hp = p.maxHp; });
     GAME.draftCount = (GAME.draftCount || 0) + 1;
     resume();
 }
@@ -3951,17 +3960,17 @@ function openAccessibility(){
     }
     if (sfxLevel) {
         const valEl = document.getElementById('sfx-level-val');
-        sfxLevel.value = String(ACCESS.sfxLevel || 3);
+        sfxLevel.value = String(ACCESS.sfxLevel || 5);
         if (valEl) valEl.textContent = sfxLevel.value;
         try {
             const min = parseFloat(sfxLevel.min||'1');
             const max = parseFloat(sfxLevel.max||'5');
-            const val = parseFloat(sfxLevel.value||String(ACCESS.sfxLevel||3));
+            const val = parseFloat(sfxLevel.value||String(ACCESS.sfxLevel||5));
             const pct = Math.max(0, Math.min(1, (val - min) / Math.max(1, (max - min)))) * 100;
             sfxLevel.style.setProperty('--fill', pct + '%');
         } catch(_){}
         sfxLevel.oninput = () => {
-            const v = Math.min(5, Math.max(1, parseInt(sfxLevel.value)||3));
+            const v = Math.min(5, Math.max(1, parseInt(sfxLevel.value)||5));
             ACCESS.sfxLevel = v; if (valEl) valEl.textContent = String(v);
             try {
                 const min = parseFloat(sfxLevel.min||'1');
@@ -3974,17 +3983,17 @@ function openAccessibility(){
     }
     if (musicLevel) {
         const valEl = document.getElementById('music-level-val');
-        musicLevel.value = String(ACCESS.musicLevel || 3);
+        musicLevel.value = String(ACCESS.musicLevel || 5);
         if (valEl) valEl.textContent = musicLevel.value;
         try {
             const min = parseFloat(musicLevel.min||'1');
             const max = parseFloat(musicLevel.max||'5');
-            const val = parseFloat(musicLevel.value||String(ACCESS.musicLevel||3));
+            const val = parseFloat(musicLevel.value||String(ACCESS.musicLevel||5));
             const pct = Math.max(0, Math.min(1, (val - min) / Math.max(1, (max - min)))) * 100;
             musicLevel.style.setProperty('--fill', pct + '%');
         } catch(_){}
         musicLevel.oninput = () => {
-            const v = Math.min(5, Math.max(1, parseInt(musicLevel.value)||3));
+            const v = Math.min(5, Math.max(1, parseInt(musicLevel.value)||5));
             ACCESS.musicLevel = v; if (valEl) valEl.textContent = String(v);
             try {
                 const min = parseFloat(musicLevel.min||'1');
@@ -4034,8 +4043,8 @@ function levelToGain(level){
 }
 
 function applyVolumeLevels(){
-    const sfxGain = levelToGain(ACCESS.sfxLevel || 3);
-    const musicGain = levelToGain(ACCESS.musicLevel || 3);
+    const sfxGain = levelToGain(ACCESS.sfxLevel || 5);
+    const musicGain = levelToGain(ACCESS.musicLevel || 5);
     try {
         if (AudioEngine.state.sfxGain) AudioEngine.state.sfxGain.gain.value = SETTINGS.sfxMuted ? 0 : sfxGain;
         if (AudioEngine.state.musicGain) AudioEngine.state.musicGain.gain.value = SETTINGS.musicMuted ? 0 : Math.min(1, musicGain);
@@ -4058,11 +4067,11 @@ document.addEventListener('DOMContentLoaded', () => {
         const sfxVal = document.getElementById('sfx-level-val');
         const musicVal = document.getElementById('music-level-val');
         if (sfxLevel) {
-            sfxLevel.value = String(ACCESS.sfxLevel || 3);
+            sfxLevel.value = String(ACCESS.sfxLevel || 5);
             if (sfxVal) sfxVal.textContent = sfxLevel.value;
         }
         if (musicLevel) {
-            musicLevel.value = String(ACCESS.musicLevel || 3);
+            musicLevel.value = String(ACCESS.musicLevel || 5);
             if (musicVal) musicVal.textContent = musicLevel.value;
         }
     } catch(_){}
