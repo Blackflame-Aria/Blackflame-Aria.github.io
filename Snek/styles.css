@@ -453,3 +453,15 @@ html, body, * {
   -ms-user-select: none;
   user-select: none;
 }
+
+/* Moved from inline styles in index.html */
+.player-instructions {
+  color: #ffffff;
+  text-align: center;
+  margin: 5px 0;
+  font-size: 14px;
+}
+
+.hidden {
+  display: none;
+}

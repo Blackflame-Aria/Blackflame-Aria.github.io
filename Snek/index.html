@@ -2,9 +2,8 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta name="description" content="Play Snek - New Battle Mode">
-  <meta name="theme-color" content="#00ff00">
   <meta property="og:title" content="Battle Snek">
   <meta property="og:description" content="Play Snek - New Battle Mode">
   <meta property="og:image" content="images/computer-worm-hero.avif">
@@ -31,7 +30,7 @@
           <option value="pvp" selected>Battle</option>
         </select>
       </div>
-      <div id="health-bars-container" class="health-container" style="display: none;">
+      <div id="health-bars-container" class="health-container hidden">
         <div class="health-bars-wrapper">
           <div class="health-bar-group">
             <div class="health-label">Player HP:</div>
@@ -50,7 +49,7 @@
       <div id="respawn-timer" class="respawn-timer">Enemy Respawn: <span id="timer-value">0:20</span></div>
     </div>
     <canvas id="gameCanvas"></canvas>
-    <div class="player-instructions" style="color: white; text-align: center; margin: 5px 0; font-size: 14px;">Player: Green Snek | Swipe or Arrow keys to move</div>
+    <div class="player-instructions">Player: Green Snek | Swipe or Arrow keys to move</div>
     <div class="controls-container">
       <div class="menu-buttons">
         <button id="startButton">Start Game</button>
@@ -58,7 +57,7 @@
         <div class="score">Score: <span id="scoreValue">0</span></div>
         <div class="high-score">High Score: <span id="highScoreValue">0</span></div>
         <div class="snakes-eaten">Snakes Eaten: <span id="snakesEatenValue">0</span></div>
-        <button id="return-button"><a href="../index.html">Home</a></button>
+        <a href="../index.html" id="return-button">Home</a>
       </div>
 
     </div>

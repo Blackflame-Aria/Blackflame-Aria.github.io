@@ -1,6 +1,5 @@
 window.pvpHighScore = localStorage.getItem('snakePvpHighScore') ? parseInt(localStorage.getItem('snakePvpHighScore')) : 0;
 
-const tileCount = 15;
 
 function generateFoodLocal() {
   let newFood;

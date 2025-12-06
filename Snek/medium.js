@@ -1,6 +1,5 @@
 window.mediumHighScore = localStorage.getItem('snakeMediumHighScore') ? parseInt(localStorage.getItem('snakeMediumHighScore')) : 0;
 
-const tileCount = 15;
 
 function generateFoodLocal() {
   let newFood;
