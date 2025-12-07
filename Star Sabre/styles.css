@@ -1,3 +1,5 @@
+@import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Share+Tech+Mono&display=swap');
+
 html, body { height:100%; }
 
 #game-wrapper {
@@ -35,7 +37,6 @@ html, body { height:100%; }
         transform: scale(0.9);
     }
 }
-@import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Share+Tech+Mono&display=swap');
 
 :root {
     --bg: #090009;
@@ -64,7 +65,7 @@ h2.subtitle{
     width: 100%;
     text-align: center;
     margin-top: 0px;
-    margin-bottom: 0%;
+    margin-bottom: -1%;
 }
 h2 {
     text-shadow: 0 0 10px var(--neon-pink);
@@ -352,7 +353,7 @@ h1 {
 .shop-grid {
     display: grid;
     grid-template-columns: repeat(2, 1fr);
-    gap: 12px;
+    gap: 8px;
     margin-bottom: 14px;
     width: 88%;
     max-width: 520px;
@@ -459,7 +460,6 @@ h4 {
 }
 .controls-panel {
     border: 2px solid #f0f;
-    font-family: 'Share Tech Mono', monospace;
     padding: 8px 12px;
     width: 88%;
     max-width: 360px;
@@ -467,14 +467,16 @@ h4 {
     margin-bottom: 20%;
     color: #fff;
 }
-.controls-panel h4 {
+h4 {
     margin: 0 0 6px 0; 
     color: #f0f; 
     font-size: 16px; 
+    font-family: orbitron, sans-serif;
 }
-.controls-panel .control-line { 
+.control-line { 
     font-size: 15px; 
     color: #0ff;
+    font-family: monospace;
 }
 
 .ult-glow {

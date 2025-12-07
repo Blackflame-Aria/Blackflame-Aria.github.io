@@ -49,7 +49,7 @@ async function ensureIntroPlaying() {
         if (!MUSIC.current && !(AudioEngine && AudioEngine.state && AudioEngine.state.currentMusic)) {
             try {
                 if (AudioEngine && AudioEngine.state && AudioEngine.state.ready) {
-                    AudioEngine.playMusic('intro1', 0.25, true, 0);
+                    AudioEngine.playMusic('intro1', 1, true, 0);
                     return;
                 }
             } catch(_){}
@@ -79,7 +79,7 @@ async function startMenuMusic() {
     if (INTRO_PLAYING) return;
     try {
         if (AudioEngine && AudioEngine.state && AudioEngine.state.ready) {
-            const result = await AudioEngine.playMusic('intro1', 0.25, true, 0);
+            const result = await AudioEngine.playMusic('intro1', 1, true, 0);
             if (result) { INTRO_PLAYING = true; return; }
         }
     } catch(_){}
@@ -92,12 +92,12 @@ async function startMenuMusic() {
             p.then(() => {
                 INTRO_PLAYING = true;
                 if (!SETTINGS.musicMuted) {
-                    try { bgm.intro1.muted = false; bgm.intro1.volume = 0.25; } catch(_){}
+                    try { bgm.intro1.muted = false; bgm.intro1.volume = levelToGain(ACCESS.musicLevel || 5); } catch(_){}
                 }
             }).catch(() => { INTRO_PLAYING = false; });
         } else {
             INTRO_PLAYING = true;
-            try { bgm.intro1.muted = false; bgm.intro1.volume = 0.25; } catch(_){}
+            try { bgm.intro1.muted = false; bgm.intro1.volume = levelToGain(ACCESS.musicLevel || 5); } catch(_){}
         }
     } catch(_){}
 }
@@ -129,7 +129,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 console.warn('Audio init failed, using fallback:', e);
                 try {
                     bgm.intro1.loop = true;
-                    bgm.intro1.volume = 0.25;
+                    bgm.intro1.volume = levelToGain(ACCESS.musicLevel || 5);
                     await bgm.intro1.play();
                     INTRO_PLAYING = true;
                 } catch(_) {}
@@ -372,7 +372,7 @@ const AudioEngine = (() => {
             state.ctx = ctx; state.masterGain = master; state.sfxGain = sfx; state.musicGain = music;
             state.ready = true;
         } catch(e) {
-            console.warn('AudioEngine init failed (expected before user gesture):', e.message);
+            console.warn('AudioEngine init error:', e);
         }
     }
     function unlockOnGesture() {
@@ -391,7 +391,6 @@ const AudioEngine = (() => {
     unlockOnGesture();
     async function loadBuffer(name, url) {
         if (!state.enabled) return;
-        if (!state.ctx) await init();
         if (!state.ctx) return;
         if (state.buffers.has(name)) return;
         try {
@@ -414,7 +413,7 @@ const AudioEngine = (() => {
             src.buffer = buf;
             try { src.playbackRate.value = speed || 1; } catch(_){}
             const g = state.ctx.createGain();
-            g.gain.value = Math.max(0, Math.min(1, volume));
+            g.gain.value = 1.0;
             src.connect(g); g.connect(state.sfxGain);
             src.start(state.ctx.currentTime);
             src.onended = () => { try { src.disconnect(); g.disconnect(); } catch(_){} };
@@ -422,9 +421,7 @@ const AudioEngine = (() => {
         } catch(_) { return false; }
     }
     async function playMusic(name, volume = 0.2, loop = true, fadeInMs = 0) {
-        if (!state.ready || !state.ctx) {
-            try { await init(); } catch(_) {}
-        }
+        if (!state.ready || !state.ctx) return false;
         if (!state.ctx) return false;
         if (state.ctx.state === 'suspended') {
             try { await state.ctx.resume(); } catch(_) { return false; }
@@ -440,12 +437,11 @@ const AudioEngine = (() => {
             const now = state.ctx.currentTime;
             if (!SETTINGS.musicMuted) {
                 try {
-                    const target = Math.max(0, Math.min(1, volume));
                     if (fadeInMs > 0) {
                         trackGain.gain.setValueAtTime(0, now);
-                        trackGain.gain.linearRampToValueAtTime(target, now + Math.max(0, fadeInMs/1000));
+                        trackGain.gain.linearRampToValueAtTime(1.0, now + Math.max(0, fadeInMs/1000));
                     } else {
-                        trackGain.gain.setValueAtTime(target, now);
+                        trackGain.gain.setValueAtTime(1.0, now);
                     }
                 } catch(_) {}
             } else {
@@ -488,7 +484,6 @@ const AudioEngine = (() => {
 function preloadAudioAssets() {
     const sfxList = [
         { name: 'shoot', url: 'sfx/shoot.wav' },
-        { name: 'gat', url: 'sfx/gat.wav' },
         { name: 'beam', url: 'sfx/beam.wav' },
         { name: 'shotgun', url: 'sfx/shotgun.wav' },
         { name: 'hit', url: 'sfx/hit.wav' },
@@ -660,11 +655,6 @@ const sfxIndex = { shoot: 0, gat: 0, beam: 0 };
         a.preload = 'auto';
         sfxPool.shoot.push(a);
     }
-    for (let i = 0; i < gatChannels; i++) {
-        const a = new Audio('sfx/gat.wav');
-        a.preload = 'auto';
-        sfxPool.gat.push(a);
-    }
     for (let i = 0; i < beamChannels; i++) {
         const a = new Audio('sfx/beam.wav');
         a.preload = 'auto';
@@ -682,10 +672,10 @@ const LOOPING = {
             if (!base) return;
             a = base.cloneNode();
             a.loop = true;
-            a.volume = Math.max(0, Math.min(1, volume));
+            a.volume = 1.0;
             this.map.set(name, a);
         }
-        try { a.volume = Math.max(0, Math.min(1, volume)); a.play().catch(()=>{}); } catch(_){ }
+        try { a.play().catch(()=>{}); } catch(_){ }
     },
     stop(name, resetTime = true) {
         const a = this.map.get(name);
@@ -791,7 +781,7 @@ function stopGunAudio() {
         const a = activeAudio[i];
         try {
             const src = (a && a.src) || '';
-            if (src.includes('shoot.wav') || src.includes('gat.wav')) {
+            if (src.includes('shoot.wav')) {
                 a.pause(); a.currentTime = 0; activeAudio.splice(i, 1);
             }
         } catch(e){}
@@ -947,7 +937,7 @@ class Pet {
             if (this.beamSfxBurstLeft <= 0) {
                 this.beamSfxBurstLeft = 0; 
             } else if (this.beamSfxTimer <= 0) {
-                playSfx('beam', 0.35);
+                playSfx('beam');
                 this.beamSfxBurstLeft--;
                 this.beamSfxTimer = .8;
             }
@@ -1003,8 +993,8 @@ class Pet {
                                     e.takeDamage(0);
                                 } else {
                                     e.deadProcessed = true;
-                                    playSfx('die', 0.4);
-                                    createRainbowExplosion(e.x, e.y, e.rank === 'BOSS' ? 20 : 10);
+                                    playSfx('die');
+                                    createRainbowExplosion(e.x, e.y, e.rank === 'BOSS' ? 15 : 10);
                                     onEnemyKilled(e, 'GATLING_BEAM');
                                     if (GAME.target === e) GAME.target = null;
                                 }
@@ -1083,8 +1073,8 @@ class Pet {
                                 e.takeDamage(0);
                             } else {
                                 e.deadProcessed = true;
-                                playSfx('die', 0.35);
-                                createRainbowExplosion(e.x, e.y, e.rank === 'BOSS' ? 40 : 18);
+                                playSfx('die');
+                                createRainbowExplosion(e.x, e.y, e.rank === 'BOSS' ? 30 : 18);
                                 onEnemyKilled(e, 'BLACK_HOLE');
                                 if (GAME.target === e) GAME.target = null;
                             }
@@ -1098,14 +1088,20 @@ class Pet {
 
     shoot(target) {
         this.recoil = 8;
-        if (!this.isMain) {
+        if (this.isMain) {
+            const now = Date.now();
+            if (now - (GAME.lastShootSfxTime || 0) >= 150) {
+                playSfx('shoot');
+                GAME.lastShootSfxTime = now;
+            }
+        } else {
             if (this.trait.id === 'shotgun') {
-                playSfx('shotgun', 0.5);
+                playSfx('shotgun');
             } else if (this.trait.id === 'gatling') {
             } else if (this.trait.id === 'sniper') {
-                playSfx('shoot', 0.5);
+                playSfx('shoot');
             } else {
-                playSfx('shoot', 0.5);
+                playSfx('shoot');
             }
         }
 
@@ -1116,7 +1112,6 @@ class Pet {
                 this.gatSfxTimer = 0;
             }
             if (this.gatSfxTimer <= 0 && this.gatSfxBurstLeft > 0) {
-                playSfx('gat', 0.12);
                 this.gatSfxBurstLeft--;
                 this.gatSfxTimer = 1.0;
             }
@@ -1131,7 +1126,7 @@ class Pet {
                 this.beamTime = 1e9;
                 this.beamSfxTimer = 0;
                 this.beamSfxBurstLeft = 10;
-                LOOPING.play('laser2', 0.5);
+                LOOPING.play('laser2');
             }
             return;
         }
@@ -1142,7 +1137,7 @@ class Pet {
         
         if (isMainUnit && (meta.dmgLvl || 0) >= 15) {
             const chargeBoost = 1 + (meta.chargeLvl || 0) * 0.20;
-            playSfx('cannon', 0.1);
+            playSfx('cannon');
             GAME.shake = Math.max(GAME.shake, 15);
             activateSniperUlt(this, chargeBoost, { colorOverride: '#ff00ff' });
             return;
@@ -1229,7 +1224,7 @@ class Pet {
                     angle = Math.atan2(this.lastMoveY, this.lastMoveX);
                 }
                 this.facingAngle = angle;
-                const size = 28; 
+                const size = 30; 
                 ctx.save();
                 ctx.translate(this.x, drawY);
                 ctx.rotate(angle + Math.PI/2);
@@ -1242,7 +1237,7 @@ class Pet {
             if(this.type === 'Lydia') {
                 const img = SkinImages.DEFAULT;
                 if (img && img.complete) {
-                    const size = 22;
+                    const size = 24;
                     ctx.save();
                     ctx.translate(this.x, drawY);
                     ctx.drawImage(img, -size/2, -size/2, size, size);
@@ -1251,9 +1246,27 @@ class Pet {
                     drawPoly(this.x, drawY, 12, 3, 0);
                 }
             } else if (this.type === 'Cybil') {
-                ctx.beginPath(); ctx.arc(this.x, drawY, 10, 0, Math.PI*2); ctx.fill();
+                const img = SkinImages.Cybil;
+                if (img && img.complete) {
+                    const size = 24;
+                    ctx.save();
+                    ctx.translate(this.x, drawY);
+                    ctx.drawImage(img, -size/2, -size/2, size, size);
+                    ctx.restore();
+                } else {
+                    ctx.beginPath(); ctx.arc(this.x, drawY, 10, 0, Math.PI*2); ctx.fill();
+                }
             } else {
-                drawPoly(this.x, drawY, 10, 4, Math.PI/4);
+                const img = SkinImages.Sofia;
+                if (img && img.complete) {
+                    const size = 24;
+                    ctx.save();
+                    ctx.translate(this.x, drawY);
+                    ctx.drawImage(img, -size/2, -size/2, size, size);
+                    ctx.restore();
+                } else {
+                    drawPoly(this.x, drawY, 10, 4, Math.PI/4);
+                }
             }
         }
 
@@ -1430,8 +1443,8 @@ class Enemy {
                         if (!this.deadProcessed) {
                             this.deadProcessed = true;
                             this._remove = true;
-                            try { playSfx('die', 0.35); } catch(_) {}
-                            try { createRainbowExplosion(this.x, this.y, this.rank === 'BOSS' ? 80 : 40); } catch(_) {}
+                            try { playSfx('die'); } catch(_) {}
+                            try { createRainbowExplosion(this.x, this.y, this.rank === 'BOSS' ? 40 : 40); } catch(_) {}
                             try { onEnemyKilled(this, 'DOT'); } catch(_) {}
                             if (GAME && GAME.target === this) GAME.target = null;
                         }
@@ -1503,7 +1516,7 @@ class Enemy {
                                     }
                                     spawnPlayerDamagePopup(p, scaled, true);
                                 }
-                                playSfx('hit', 0.4);
+                                playSfx('hit');
                                 GAME.shake = Math.max(GAME.shake, 5);
                                 this.active = false;
                                 break;
@@ -1561,7 +1574,7 @@ class Enemy {
                         }
                         spawnPlayerDamagePopup(p, dmg, this.rank === 'BOSS');
                     }
-                    playSfx('hit', 0.4);
+                    playSfx('hit');
                     GAME.shake = Math.max(GAME.shake, this.rank === 'BOSS' ? 16 : 12);
                     this.contactTimer = 1.5;
                     if(p.hp <= 0) p.hp = 0;
@@ -1772,7 +1785,7 @@ class Cannon {
         ));
         
         this.recoil = 8;
-        playSfx('cannon', 0.15);
+        playSfx('cannon');
     }
 
     spawnEnemy() {
@@ -1786,7 +1799,6 @@ class Cannon {
         enemies.push(enemy);
         
         this.recoil = 8;
-        playSfx('gat', 0.2);
     }
 
     takeDamage(dmg) {
@@ -1809,7 +1821,7 @@ class Cannon {
     }
 
     onDeath() {
-        playSfx('die', 0.5);
+        playSfx('die');
         createRainbowExplosion(this.x, this.y, 40);
         GAME.shake = 10;
         
@@ -1943,9 +1955,10 @@ class WarshipBoss {
         if (allDead && !this.exploding) {
             this.exploding = true;
             this.explosionTimer = 0;
-            playSfx('die', 1);
+            playSfx('die');
             createRainbowExplosion(this.x, this.y + this.height / 2, 120);
             GAME.shake = 20;
+            GAME.essence = (GAME.essence || 0) + 1000;
             GAME.bossesSpawned = GAME.bossQuota;
             GAME.enemiesKilled = GAME.enemiesRequired + GAME.bossQuota;
         }
@@ -1996,9 +2009,9 @@ class Bullet {
         if (this.type === 'warship') {
             this.color = '#ff0000';
             this.vx = opts.vx || 0;
-            this.vy = opts.vy || 3;
-            this.w = 6;
-            this.h = 18;
+            this.vy = opts.vy || 4;
+            this.w = 8;
+            this.h = 22;
             this.trail = [];
             this.active = true;
             return;
@@ -2068,12 +2081,12 @@ class Bullet {
                 const dx = this.x - p.x;
                 const dy = this.y - p.y;
                 const dist = Math.sqrt(dx * dx + dy * dy);
-                if (dist < 16) {
+                if (dist < 20) {
                     p.hp -= this.dmg;
                     spawnPlayerDamagePopup(p, this.dmg, false);
                     this.active = false;
                     createParticles(this.x, this.y, this.color, 8);
-                    playSfx('hit', 0.3);
+                    playSfx('hit');
                     if (p.hp <= 0) {
                         p.hp = 0;
                         gameOver();
@@ -2130,7 +2143,7 @@ class Bullet {
                 if (dist < cannon.radius + hitPad) {
                     cannon.takeDamage(this.dmg);
                     createParticles(this.x, this.y, '#ff0000', 6);
-                    playSfx('hit', 0.4);
+                    playSfx('hit');
                     GAME.shake = Math.max(GAME.shake, 3);
                     
                     if (this.shape === 'crescent' || this.pierceChain) {
@@ -2192,7 +2205,7 @@ class Bullet {
             if(hit) {
                 e.hp -= this.dmg;
                 try { spawnDamagePopup(e, this.dmg, (this.shape === 'crescent') ? 'mid' : 'regular'); } catch(_){}
-                playSfx('hit', 0.4);
+                playSfx('hit');
                 GAME.shake = Math.max(GAME.shake, e.rank === 'BOSS' ? 4 : 2.5);
                 createParticles(this.x, this.y, this.color, 3);
                 try {
@@ -2220,9 +2233,9 @@ class Bullet {
                 } catch(_) {}
                 if(e.hp <= 0 && !e.deadProcessed) {
                     e.deadProcessed = true;
-                    playSfx('die', 0.4);
+                    playSfx('die');
                     GAME.shake = Math.max(GAME.shake, e.rank === 'BOSS' ? 14 : 7);
-                    createRainbowExplosion(e.x, e.y, e.rank === 'BOSS' ? 80 : 40);
+                    createRainbowExplosion(e.x, e.y, e.rank === 'BOSS' ? 40 : 40);
                     onEnemyKilled(e, 'PROJECTILE');
                     if(GAME.target === e) GAME.target = null;
                 }
@@ -2705,7 +2718,7 @@ function loop() {
             GAME._pendingBossWarning = true;
             const warnEl = document.getElementById('boss-warning');
             if (warnEl) warnEl.classList.remove('hidden');
-            playSfx('warning', 0.15);
+            playSfx('warning');
             setTimeout(() => {
                 if (warnEl) warnEl.classList.add('hidden');
                 if (GAME.floor === 5 && !GAME.warship && GAME.enemiesKilled >= GAME.enemiesRequired) {
@@ -2757,7 +2770,7 @@ function loop() {
     for(let i=enemies.length-1; i>=0; i--) {
         let res = enemies[i].update();
             if(res === 'CRASH') {
-            playSfx('die', 0.4);
+            playSfx('die');
             createParticles(enemies[i].x, enemies[i].y, C.colors.enemy, 8);
             if (party[0]) {
                 let breachDmg = (enemies[i].rank === 'BOSS') ? 80 : 20;
@@ -2769,7 +2782,7 @@ function loop() {
                 const invul = (p0 && p0._boostInvulUntil && performance.now() < p0._boostInvulUntil);
                 const applied = invul ? Math.round(breachDmg * 0.2) : breachDmg; 
                 party[0].hp -= applied;
-                playSfx('hit', 0.4);
+                playSfx('hit');
                 GAME.shake = Math.max(GAME.shake, invul ? 3 : 5);
             }
             enemies[i]._remove = true;
@@ -2837,7 +2850,7 @@ function loop() {
             ally.deadProcessed = true;
             stopGunAudio();
             createRainbowExplosion(ally.x, ally.y, 40);
-            playSfx('die', 0.4);
+            playSfx('die');
             if (GAME.target === ally) GAME.target = null;
         }
     }
@@ -2851,7 +2864,7 @@ function loop() {
             if (p0 && !p0.deadProcessed) {
                 p0.deadProcessed = true;
                 createRainbowExplosion(p0.x, p0.y, 60);
-                playSfx('die', 0.5);
+                playSfx('die');
                 if (GAME.target === p0) GAME.target = null;
             }
         }
@@ -3011,25 +3024,9 @@ function loop() {
 
     updateUI();
 
-    const hasGat = party.some(p => p && p.hp > 0 && p.trait && p.trait.id === 'gatling');
-    if (hasGat && GAME.state === 'PLAY' && !GAME.awaitingDraft) {
-        GAME.gatAmbientTimer -= realSec;
-        if (GAME.gatAmbientTimer <= 0) {
-            const prevState = GAME.state;
-            playSfx('gat', 0.15);
-            GAME.gatAmbientTimer = 1.0;
-        }
-    } else {
-        GAME.gatAmbientTimer = 0; 
-    }
 
-    if (party[0] && party[0].hp > 0 && GAME.state === 'PLAY' && !GAME.awaitingDraft) {
-        GAME.shootAmbientTimer -= realSec;
-        if (GAME.shootAmbientTimer <= 0) {
-            playSfx('shoot', 0.2);
-            GAME.shootAmbientTimer = 0.35;
-        }
-    } else {
+
+    if (party[0] && party[0].hp <= 0) {
         GAME.shootAmbientTimer = 0;
     }
 
@@ -3140,7 +3137,7 @@ function triggerBoostDodge(){
     p0._postBoostTs = now;
     p0._postBoostDecelMs = 10; 
     p0._postBoostAccelMs = 0;  
-    try { playSfx('dodge', 0.6); } catch(_){}
+    try { playSfx('dodge'); } catch(_){}
     GAME.shake = Math.max(GAME.shake, 3);
     try {
         const theme = getSkinTheme ? getSkinTheme() : { primary: '#ff00ff', accent: '#00ffff' };
@@ -3170,14 +3167,14 @@ function triggerBoostDodge(){
                 const t = Math.min(1, Math.max(0, dist / effectiveRadius));
                 const mul = 0.20 + (0.75 - 0.20) * (1 - t);
                 const dmg = Math.max(1, Math.round(peakDamage * mul));
-                try { playSfx('die', 0.25); } catch(_){}
+                try { playSfx('die'); } catch(_){}
                 e.hp -= dmg;
                 try { spawnDamagePopup(e, dmg, 'small'); } catch(_){}
                 createParticles(e.x, e.y, '#f00', 4);
                 if (e.hp <= 0 && !e.deadProcessed) {
                     e.deadProcessed = true;
-                    playSfx('die', 0.4);
-                    createRainbowExplosion(e.x, e.y, e.rank === 'BOSS' ? 80 : 40);
+                    playSfx('die');
+                    createRainbowExplosion(e.x, e.y, e.rank === 'BOSS' ? 40 : 40);
                     onEnemyKilled(e, 'BOOST_SPLASH');
                     if (GAME.target === e) GAME.target = null;
                 }
@@ -3196,7 +3193,7 @@ canvas.addEventListener('mousedown', (e) => {
     const { x, y } = toCanvasCoords(e.clientX, e.clientY);
     const traitClicked = detectUltButton(x, y);
     if(traitClicked) {
-        playSfx('click', 0.3);
+        playSfx('click');
         if (traitClicked === 'default') {
             const p = party[0];
             if (p && p.ultCharge >= 100) activateUlt(p);
@@ -3205,7 +3202,7 @@ canvas.addEventListener('mousedown', (e) => {
         }
         return;
     }
-    playSfx('click', 0.3);
+    playSfx('click');
     const selectionR = 90;
     let best = null; let bestDist = Infinity; let bestType = null; let bestPet = null;
     for(let en of enemies) {
@@ -3420,15 +3417,15 @@ function applyPlayerMovement() {
                 const d = Math.hypot(e.x - p.x, e.y - p.y);
                 if (d <= (e.size + contactRadius)) {
                     if (p._boostHitTs) p._boostHitTs.set(e._eid, now);
-                    try { playSfx('die', 0.25); } catch(_){}
+                    try { playSfx('die'); } catch(_){}
                     e.hp -= contactDamage;
                     try { spawnDamagePopup(e, contactDamage, 'mid'); } catch(_){}
                     createParticles(e.x, e.y, '#f00', 6);
                     if (e.hp <= 0 && !e.deadProcessed) {
                         e.deadProcessed = true;
                         e._remove = true; 
-                        playSfx('die', 0.4);
-                        createRainbowExplosion(e.x, e.y, e.rank === 'BOSS' ? 80 : 40);
+                        playSfx('die');
+                        createRainbowExplosion(e.x, e.y, e.rank === 'BOSS' ? 40 : 40);
                         onEnemyKilled(e, 'BOOST_CONTACT');
                         if (GAME.target === e) GAME.target = null;
                     }
@@ -3507,12 +3504,12 @@ function activateUlt(pet) {
         pet.blackHoleActive = true;
         pet.blackHoleTime = 10.0;
         pet.blackHoleAngle = 0;
-        playSfx('blackhole', 0.9);
+        playSfx('blackhole');
         GAME.shake = 22;
         pet.ultMeter = 0;
         return; 
     }
-    playSfx('ult', 0.8);
+    playSfx('ult');
     ctx.fillStyle = 'rgba(255,255,255,0.5)';
     ctx.fillRect(0,0,canvas.width,canvas.height);
 
@@ -3522,7 +3519,7 @@ function activateUlt(pet) {
     if (tid === 'sniper') { activateSniperUlt(pet, chargeBoost); return; }
     if (tid === 'gatling') {
         pet.beamActive = true; pet.beamTime = 10; pet.beamSfxTimer = 0; pet.beamSfxBurstLeft = 10;
-        LOOPING.play('laser1', 0.6);
+        LOOPING.play('laser1');
         return;
     }
     if (tid === 'shotgun') { activateShotgunUlt(pet, chargeBoost); return; }
@@ -3545,8 +3542,8 @@ function activateUlt(pet) {
             createParticles(e.x, e.y, '#f00', 6);
             if (e.hp <= 0 && !e.deadProcessed) {
                 e.deadProcessed = true;
-                playSfx('die', 0.4);
-                createRainbowExplosion(e.x, e.y, e.rank === 'BOSS' ? 80 : 40);
+                playSfx('die');
+                createRainbowExplosion(e.x, e.y, e.rank === 'BOSS' ? 40 : 40);
                 onEnemyKilled(e, 'ULT_BLAST');
                 if (GAME.target === e) GAME.target = null;
             }
@@ -3557,7 +3554,7 @@ function activateUlt(pet) {
 
 function activateSniperUlt(pet, chargeBoost, opts = {}) {
     const target = GAME.target && isValidTarget(GAME.target) ? GAME.target : findClosestEnemy(pet.x, pet.y);
-    if (target) playSfx('cannon', 0.3);
+    if (target) playSfx('cannon');
     if (!target) return;
     const ang = Math.atan2(target.y - pet.y, target.x - pet.x);
     const spd = 14; 
@@ -3594,7 +3591,7 @@ function activateSniperUlt(pet, chargeBoost, opts = {}) {
                 const targetSize = e._cid ? (e.radius || 20) : (e.size || 20);
                 const d = Math.hypot(this.x - e.x, this.y - e.y);
                 if (d < this.radius + targetSize) {
-                    playSfx('ult', 0.8);
+                    playSfx('ult');
                     e.hp -= mainDamage;
                     try { spawnDamagePopup(e, mainDamage, 'large'); } catch(_){}
                     if (e.hp <= 0 && !e.deadProcessed && !e.dead) {
@@ -3602,8 +3599,8 @@ function activateSniperUlt(pet, chargeBoost, opts = {}) {
                             e.takeDamage(0);
                         } else {
                             e.deadProcessed = true;
-                            playSfx('die', 0.4);
-                            createRainbowExplosion(e.x, e.y, e.rank === 'BOSS' ? 80 : 40);
+                            playSfx('die');
+                            createRainbowExplosion(e.x, e.y, e.rank === 'BOSS' ? 40 : 40);
                             onEnemyKilled(e, 'SNIPER_MAIN');
                             if (GAME.target === e) GAME.target = null;
                         }
@@ -3621,8 +3618,8 @@ function activateSniperUlt(pet, chargeBoost, opts = {}) {
                                     o.takeDamage(0);
                                 } else {
                                     o.deadProcessed = true;
-                                    playSfx('die', 0.4);
-                                    createRainbowExplosion(o.x, o.y, o.rank === 'BOSS' ? 80 : 40);
+                                    playSfx('die');
+                                    createRainbowExplosion(o.x, o.y, o.rank === 'BOSS' ? 40 : 40);
                                     onEnemyKilled(o, 'SNIPER_SPLASH');
                                     if (GAME.target === o) GAME.target = null;
                                 }
@@ -3718,12 +3715,12 @@ function activateShotgunUlt(pet, chargeBoost) {
                     if (d < (this.radius + e.size)) {
                         e.hp -= this.dmg;
                         try { spawnDamagePopup(e, this.dmg, 'regular'); } catch(_){}
-                        playSfx('hit', 0.3);
+                        playSfx('hit');
                         createParticles(e.x, e.y, this.color, 3);
                         if (e.hp <= 0 && !e.deadProcessed) {
                             e.deadProcessed = true;
-                            playSfx('die', 0.4);
-                            createRainbowExplosion(e.x, e.y, e.rank === 'BOSS' ? 80 : 40);
+                            playSfx('die');
+                            createRainbowExplosion(e.x, e.y, e.rank === 'BOSS' ? 40 : 40);
                             onEnemyKilled(e, 'SHOTGUN');
                             if (GAME.target === e) GAME.target = null;
                         }
@@ -3846,8 +3843,10 @@ async function startGame() {
         if (AudioEngine.state.ctx && AudioEngine.state.ctx.state === 'suspended') {
             await AudioEngine.state.ctx.resume();
         }
-        if (AudioEngine.state.musicName !== trackName) {
-            await AudioEngine.playMusic(trackName, 0.15, true, 800);
+        const isAlreadyPlaying = (AudioEngine.state.musicName === trackName) || (MUSIC.name === trackName);
+        if (!isAlreadyPlaying) {
+            try { MUSIC.stop({ fadeOutMs: 0 }); } catch(_){}
+            await AudioEngine.playMusic(trackName, 1.0, true, 800);
         }
     } catch(e) {
         console.warn('Music start failed:', e);
@@ -3918,14 +3917,16 @@ function beginLaunch() {
     document.addEventListener('touchstart', onClick, { passive: false });
     LAUNCH.skipFns = [ ['keydown', onKey], ['mousedown', onClick], ['touchstart', onClick] ];
 
-    try {
-        if (AudioEngine && AudioEngine.state && AudioEngine.state.ready) {
-            const ok = AudioEngine.playMusic('waltuh', 0.2, true, 0);
-            if (!ok) { MUSIC.play('waltuh', { loop: true, volume: .2, fadeInMs: 0 }); }
-        } else {
-            MUSIC.play('waltuh', { loop: true, volume: .2, fadeInMs: 0 });
-        }
-    } catch(_){ }
+    (async () => {
+        try {
+            if (AudioEngine && AudioEngine.state && AudioEngine.state.ready) {
+                const ok = await AudioEngine.playMusic('waltuh', 1, true, 0);
+                if (!ok) { MUSIC.play('waltuh', { loop: true, fadeInMs: 0 }); }
+            } else {
+                MUSIC.play('waltuh', { loop: true, fadeInMs: 0 });
+            }
+        } catch(_){ }
+    })();
 
     setTimeout(() => {
         try {
@@ -4087,7 +4088,7 @@ function showDraft() {
             </div>
         `;
         d.onclick = () => {
-            playSfx('click', 0.2);
+            playSfx('click');
             if (draftCost > 0 && (GAME.essence || 0) < draftCost) {
                 return;
             }
@@ -4122,7 +4123,7 @@ function onEnemyKilled(enemy, cause) {
     try {
         const isBoss = enemy && enemy.rank === 'BOSS';
         if (isBoss) {
-            GAME.essence += Math.floor(5 * GAME.floor * 0.8);
+            GAME.essence += Math.floor(7 * GAME.floor * 0.8);
         } else {
             GAME.essence += (1 + GAME.floor);
         }
@@ -4175,20 +4176,20 @@ async function resume() {
         if (AudioEngine.state.ctx && AudioEngine.state.ctx.state === 'suspended') {
             await AudioEngine.state.ctx.resume();
         }
-        await AudioEngine.playMusic(trackName, 0.15, true, 800);
+        await AudioEngine.playMusic(trackName, 1, true, 800);
     } catch(e) {
         console.warn('Music resume failed:', e);
-        MUSIC.play(trackName, { fadeInMs: 0, loop: true, volume: .2 });
+        MUSIC.play(trackName, { fadeInMs: 0, loop: true });
     }
     const p0 = party[0];
     if (p0 && p0.beamActive) {
             if ((meta.rateLvl || 0) >= 15) {
-            LOOPING.play('laser2', 0.5);
+            LOOPING.play('laser2');
             if (p0.powerup && p0.powerup.type === 'BIG' && p0.powerup.time > 0) {
-                LOOPING.play('laser3', 0.5);
+                LOOPING.play('laser3');
             }
         } else {
-            LOOPING.play('laser1', 0.6);
+            LOOPING.play('laser1');
         }
     }
     loop();
@@ -4226,7 +4227,7 @@ function updateAudioButtons() {
 document.addEventListener('DOMContentLoaded', updateAudioButtons);
 
 function skipDraft() {
-    playSfx('click', 0.2);
+    playSfx('click');
     party.forEach(p => { if (p && p.hp > 0) p.hp = p.maxHp; });
     GAME.draftCount = (GAME.draftCount || 0) + 1;
     resume();
@@ -4251,11 +4252,13 @@ function gameOver() {
         if (totalEssenceEl) totalEssenceEl.innerText = meta.essence || 0;
         go.classList.remove('hidden');
     }
+    try { LOOPING.stopAll(); } catch(e){}
     activeAudio.forEach(a => { try { a.pause(); a.currentTime = 0; } catch(e){} });
     activeAudio.length = 0;
     try {
         (sfxPool.shoot || []).forEach(a => { try { a.pause(); a.currentTime = 0; } catch(e){} });
         (sfxPool.gat || []).forEach(a => { try { a.pause(); a.currentTime = 0; } catch(e){} });
+        (sfxPool.beam || []).forEach(a => { try { a.pause(); a.currentTime = 0; } catch(e){} });
     } catch(e){}
     document.getElementById('start-screen').classList.add('hidden');
     document.getElementById('draft-screen').classList.add('hidden');
@@ -4274,6 +4277,7 @@ function closeGameOver() {
     setTimeout(() => { go.classList.remove('closing'); go.classList.add('hidden'); }, 240);
     document.getElementById('start-screen').classList.remove('hidden');
     GAME.state = 'MENU';
+    try { startMenuMusic(); } catch(_){}
 }
 window.closeGameOver = closeGameOver;
     const draft = document.getElementById('draft-screen');
@@ -4370,17 +4374,17 @@ function grantRandomPowerup(p) {
     p.powerup.type = pick;
     if (pick === 'BIG' && (meta.rateLvl || 0) >= 15) {
     p.powerup.time = 12;
-    LOOPING.play('laser3', 0.5);
+    LOOPING.play('laser3');
     setTimeout(() => { LOOPING.stop('laser3'); }, 12000);
     } else {
         p.powerup.time = 10;
     }
     const messages = {
-        TRIPLE: 'POWER-UP: TRIPLE SHOT',
-        FIRE2X: 'POWER-UP: RAPID SHOT',
-        PIERCE: 'POWER-UP: PIERCING SHOT',
-        BIG: 'POWER-UP: BIG SHOT',
-        SEXTUPLE: 'POWER-UP: MULTI SHOT'
+        TRIPLE: 'TRIPLE SHOT',
+        FIRE2X: 'RAPID SHOT',
+        PIERCE: 'PIERCING SHOT',
+        BIG: 'BIG SHOT',
+        SEXTUPLE: 'MULTI SHOT'
     };
     const el = document.getElementById('powerup-warning');
     if (el) {
@@ -4388,7 +4392,7 @@ function grantRandomPowerup(p) {
         el.classList.remove('hidden');
         setTimeout(() => el.classList.add('hidden'), 1500);
     }
-    playSfx('powerup', 0.6);
+    playSfx('powerup');
 }
 
 function resetUpgrades() {
@@ -4417,7 +4421,7 @@ window.resetUpgrades = resetUpgrades;
 function openResetConfirm() {
     const modal = document.getElementById('reset-confirm');
     if (!modal) return;
-    playSfx('click', 0.3);
+    playSfx('click');
     modal.classList.remove('hidden');
 }
 window.openResetConfirm = openResetConfirm;
@@ -4437,8 +4441,8 @@ function initResetConfirmEvents() {
             hide();
         }
     };
-    confirmBtn.addEventListener('click', () => { playSfx('click',0.3); resetUpgrades(); animatedClose(); });
-    cancelBtn.addEventListener('click', () => { playSfx('click',0.3); animatedClose(); });
+    confirmBtn.addEventListener('click', () => { playSfx('click'); resetUpgrades(); animatedClose(); });
+    cancelBtn.addEventListener('click', () => { playSfx('click'); animatedClose(); });
     modal.addEventListener('click', (e) => {
         const dlg = document.querySelector('#reset-confirm .reset-dialog');
         if (!dlg) return;
@@ -4447,31 +4451,15 @@ function initResetConfirmEvents() {
 }
 
 document.addEventListener('DOMContentLoaded', initResetConfirmEvents);
-document.addEventListener('DOMContentLoaded', () => {
-    try {
-        try {
-            AudioEngine.init().then(() => {
-                try {
-                    if (AudioEngine.state.ready && AudioEngine.playMusic('intro1', 0.25, true, 600)) return;
-                } catch(_){}
-                try { MUSIC.play('intro1', { loop: true, volume: 0.25, fadeInMs: 600 }); } catch(_){}
-            }).catch(() => {
-                try { MUSIC.play('intro1', { loop: true, volume: 0.25, fadeInMs: 600 }); } catch(_){}
-            });
-        } catch(_) {
-            try { MUSIC.play('intro1', { loop: true, volume: 0.25, fadeInMs: 600 }); } catch(_){}
-        }
-    } catch(_) {}
-});
 
 (function setupIntroAutoplayFallback(){
     function startIntro(){
         try {
             if (!MUSIC.current && !AudioEngine.state.currentMusic) {
                 if (AudioEngine.state.ready) {
-                    AudioEngine.playMusic('intro1', 0.25, true, 0);
+                    AudioEngine.playMusic('intro1', 1, true, 0);
                 } else {
-                    MUSIC.play('intro1', { loop: true, volume: 0.25, fadeInMs: 0 });
+                    MUSIC.play('intro1', { loop: true, fadeInMs: 0 });
                 }
             }
         } catch(_) {}
@@ -4710,6 +4698,8 @@ const SkinImages = {
     STARCORE: (() => { const i = new Image(); i.src = 'skins/STARCORE.png'; return i; })(),
     MOONLIGHT: (() => { const i = new Image(); i.src = 'skins/MOONLIGHT.png'; return i; })(),
     DARKMATTER: (() => { const i = new Image(); i.src = 'skins/DARKMATTER.png'; return i; })(),
+    Cybil: (() => { const i = new Image(); i.src = 'skins/Cybil.png'; return i; })(),
+    Sofia: (() => { const i = new Image(); i.src = 'skins/Sofia.png'; return i; })(),
 };
 
 function getSkinData(){
@@ -4761,9 +4751,9 @@ function tryPurchaseOrSelectSkin(skinId){
             setSkinData(data);
             localStorage.setItem('neonTowerSave', JSON.stringify(meta));
             updateUI();
-            playSfx('powerup', 0.8);
+            playSfx('powerup');
         } else {
-            playSfx('warning', 0.8);
+            playSfx('warning');
             return;
         }
     }
@@ -4799,27 +4789,27 @@ function buyUpgrade(type) {
     if (type === 'hp') type = 'charge';
     const isSpecialActive = (meta.dmgLvl >= 15) || (meta.rateLvl >= 15) || (meta.chargeLvl >= 15);
     if (isSpecialActive && type !== 'support') {
-        if (type === 'dmg' && (meta.rateLvl >= 15 || meta.chargeLvl >= 15) && (meta.dmgLvl >= 14)) { playSfx('click',0.3); return updateUI(); }
-        if (type === 'rate' && (meta.dmgLvl >= 15 || meta.chargeLvl >= 15) && (meta.rateLvl >= 14)) { playSfx('click',0.3); return updateUI(); }
-        if (type === 'charge' && (meta.dmgLvl >= 15 || meta.rateLvl >= 15) && (meta.chargeLvl >= 14)) { playSfx('click',0.3); return updateUI(); }
+        if (type === 'dmg' && (meta.rateLvl >= 15 || meta.chargeLvl >= 15) && (meta.dmgLvl >= 14)) { playSfx('click'); return updateUI(); }
+        if (type === 'rate' && (meta.dmgLvl >= 15 || meta.chargeLvl >= 15) && (meta.rateLvl >= 14)) { playSfx('click'); return updateUI(); }
+        if (type === 'charge' && (meta.dmgLvl >= 15 || meta.rateLvl >= 15) && (meta.chargeLvl >= 14)) { playSfx('click'); return updateUI(); }
     }
     if (type === 'support') {
         const current = Math.max(0, meta.supportCount || 0);
-        if (current >= 10) { playSfx('click',0.3); updateUI(); return; }
+        if (current >= 10) { playSfx('click'); updateUI(); return; }
         const supportCost = 1000 + 500 * current;
-        if ((meta.essence || 0) < supportCost) { playSfx('click',0.3); return; }
+        if ((meta.essence || 0) < supportCost) { playSfx('click'); return; }
         meta.essence -= supportCost;
         meta.supportCount = current + 1;
         if (meta.supportCount > 10) meta.supportCount = 10;
-        playSfx('click', 0.3);
+        playSfx('click');
         updateUI();
         localStorage.setItem('neonTowerSave', JSON.stringify(meta));
         return;
     }
     const cost = computeUpgradeCost(meta.totalUpgrades || 0);
-    if (meta.essence < cost) { playSfx('click',0.3); return; }
+    if (meta.essence < cost) { playSfx('click'); return; }
     meta.essence -= cost;
-    playSfx('upgrade', 0.7);
+    playSfx('upgrade');
     if (type === 'dmg') meta.dmgLvl = (meta.dmgLvl || 0) + 1;
     if (type === 'rate') meta.rateLvl = (meta.rateLvl || 0) + 1;
     if (type === 'charge') meta.chargeLvl = (meta.chargeLvl || 0) + 1;
