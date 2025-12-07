@@ -3295,12 +3295,18 @@ canvas.addEventListener('touchmove', (e) => {
     let dx = x - baseX;
     let dy = y - baseY;
     const dist = Math.hypot(dx, dy);
-    if (dist > 14) input.jMoved = true;
+    const deadzone = 20;
+    if (dist > deadzone) input.jMoved = true;
     const maxR = JOY.radius;
     const clamped = Math.min(dist, maxR);
     const scale = dist === 0 ? 0 : clamped / dist;
     dx *= scale; dy *= scale;
-    input.jVecX = dx / maxR; input.jVecY = dy / maxR; input.jMagnitude = clamped / maxR;
+    const normDx = dx / maxR;
+    const normDy = dy / maxR;
+    const normDist = Math.hypot(normDx, normDy);
+    input.jVecX = normDx;
+    input.jVecY = normDy;
+    input.jMagnitude = normDist > (deadzone / maxR) ? 1 : 0;
     e.preventDefault();
 },{passive:false});
 
@@ -3334,7 +3340,12 @@ function applyPlayerMovement() {
     if (input.joystickActive) {
         dirX = input.jVecX || 0;
         dirY = input.jVecY || 0;
-        magnitude = Math.min(1, Math.max(0, input.jMagnitude || Math.hypot(dirX, dirY)));
+        const vecLen = Math.hypot(dirX, dirY);
+        if (vecLen > 0) {
+            dirX /= vecLen;
+            dirY /= vecLen;
+        }
+        magnitude = input.jMagnitude;
     } else {
         if (input.left) dirX -= 1;
         if (input.right) dirX += 1;
