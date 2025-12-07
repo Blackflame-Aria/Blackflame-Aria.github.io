@@ -1691,7 +1691,7 @@ class Cannon {
         this.hpDisplay = 5000;
         this.baseSize = 64;
         this.size = this.baseSize;
-        this.radius = this.size * 0.6;
+        this.radius = this.size * 0.4;
         this.angle = 0;
         this.fireTimer = 0;
         this.fireRate = 60;
@@ -1699,7 +1699,7 @@ class Cannon {
         this.dead = false;
         this._cid = Math.random();
         this._eid = Math.random();
-        this.rank = 'CANNON';
+        this.rank = 'BOSS';
         this.isMiddle = isMiddle;
         this.spawnTimer = 0;
     }
@@ -1827,7 +1827,7 @@ class Cannon {
 
         const scaleRatio = this.warship.width / this.warship.baseImgW;
         this.size = this.baseSize * scaleRatio;
-        this.radius = this.size * 0.6;
+        this.radius = this.size * 0.4;
 
         const recoilOffset = this.recoil;
         const recoilAngle = this.angle - Math.PI / 2;
@@ -1906,14 +1906,16 @@ class WarshipBoss {
             this.explosionTimer += GAME.dt;
             this.alpha = Math.max(0, 1 - this.explosionTimer / 60);
             
-            if (this.explosionTimer >= 120 && !GAME.awaitingDraft) {
-                GAME.warship = null;
-                GAME.awaitingDraft = true;
-                GAME.postBossTimer = 3;
-                try { stopGunAudio(); } catch(_){}
-                LOOPING.stop('laser2');
-                GAME.gatAmbientTimer = 0;
-                GAME.shootAmbientTimer = 0;
+            if (this.explosionTimer >= 120) {
+                if (!GAME.awaitingDraft) {
+                    GAME.warship = null;
+                    GAME.awaitingDraft = true;
+                    GAME.postBossTimer = 3;
+                    try { stopGunAudio(); } catch(_){}
+                    try { LOOPING.stop('laser2'); } catch(_){}
+                    GAME.gatAmbientTimer = 0;
+                    GAME.shootAmbientTimer = 0;
+                }
             }
             return;
         }
@@ -2413,7 +2415,7 @@ function spawnDamagePopup(enemy, amount, category = 'regular') {
     if (!eid) return;
     const baseSize = category === 'large' ? 20 : (category === 'mid' ? 14 : 9);
     const scale = Math.min((enemy.size || 14) / 14, 2.2);
-    const fontSize = Math.max(8, Math.round(baseSize * scale));
+    const fontSize = Math.max(14, Math.round(baseSize * scale));
     const life = category === 'large' ? 1.1 : 0.8;
     const val = Math.max(1, Math.round((amount || 0) * 99));
     const startX = enemy.x + (enemy.size || 14) * 0.7;
@@ -2436,7 +2438,7 @@ function spawnDamagePopup(enemy, amount, category = 'regular') {
         enemyId: eid,
         x0: startX,
         y0: startY,
-        size: fontSize,
+        size:fontSize,
         life,
         age: 0,
         t: 0,
@@ -2698,7 +2700,7 @@ function loop() {
                 GAME.spawnTimer -= GAME.dt / 60; 
             }
         }
-    } else if (!bossIsPresent && GAME.bossesSpawned < GAME.bossQuota && !GAME.warship) {
+    } else if (!bossIsPresent && GAME.bossesSpawned < GAME.bossQuota && !GAME.warship && GAME.enemiesKilled >= GAME.enemiesRequired) {
         if (!GAME._pendingBossWarning) {
             GAME._pendingBossWarning = true;
             const warnEl = document.getElementById('boss-warning');
@@ -2706,10 +2708,11 @@ function loop() {
             playSfx('warning', 0.15);
             setTimeout(() => {
                 if (warnEl) warnEl.classList.add('hidden');
-                if (GAME.floor === 5 && !GAME.warship) {
+                if (GAME.floor === 5 && !GAME.warship && GAME.enemiesKilled >= GAME.enemiesRequired) {
                     GAME.warship = new WarshipBoss();
                     GAME.bossesSpawned = GAME.bossQuota;
-                } else if (!enemies.some(e => e.rank === 'BOSS') && GAME.bossesSpawned < GAME.bossQuota) {
+                    GAME._warshipSpawned = true;
+                } else if (!enemies.some(e => e.rank === 'BOSS') && GAME.bossesSpawned < GAME.bossQuota && GAME.floor !== 5) {
                     enemies.push(new Enemy(true));
                     GAME.bossesSpawned++;
                 }
@@ -2725,9 +2728,7 @@ function loop() {
             GAME.powerupSpawnTimer = 6 + (powerups.length * 2) + Math.random()*1.5; 
         }
     }
-    const warshipComplete = GAME.warship ? (GAME.warship.exploding && GAME.warship.explosionTimer >= 120) : true;
-    const warshipFullyDone = !GAME.warship || warshipComplete;
-    if (GAME.bossesSpawned >= GAME.bossQuota && !bossIsPresent && warshipFullyDone && GAME.enemiesKilled >= GAME.enemiesRequired + GAME.bossQuota && !GAME.awaitingDraft) {
+    if (GAME.bossesSpawned >= GAME.bossQuota && !bossIsPresent && !GAME.warship && GAME.enemiesKilled >= GAME.enemiesRequired + GAME.bossQuota && !GAME.awaitingDraft) {
         GAME.awaitingDraft = true;
         GAME.postBossTimer = 3;
         try { stopGunAudio(); } catch(_){}
@@ -2746,9 +2747,11 @@ function loop() {
         }
     }
 
-    if (GAME.warship && !GAME.warship.exploding) {
+    if (GAME.warship) {
         GAME.warship.update();
-        GAME.warship.draw();
+        if (GAME.warship) {
+            GAME.warship.draw();
+        }
     }
 
     for(let i=enemies.length-1; i>=0; i--) {
@@ -3542,7 +3545,7 @@ function activateUlt(pet) {
 }
 
 function activateSniperUlt(pet, chargeBoost, opts = {}) {
-    const target = GAME.target && enemies.includes(GAME.target) ? GAME.target : findClosestEnemy(pet.x, pet.y);
+    const target = GAME.target && isValidTarget(GAME.target) ? GAME.target : findClosestEnemy(pet.x, pet.y);
     if (target) playSfx('cannon', 0.3);
     if (!target) return;
     const ang = Math.atan2(target.y - pet.y, target.x - pet.x);
@@ -3577,7 +3580,7 @@ function activateSniperUlt(pet, chargeBoost, opts = {}) {
             
             for (let i = 0; i < allTargets.length; i++) {
                 const e = allTargets[i];
-                const targetSize = e.size || (e.radius || 20);
+                const targetSize = e._cid ? (e.radius || 20) : (e.size || 20);
                 const d = Math.hypot(this.x - e.x, this.y - e.y);
                 if (d < this.radius + targetSize) {
                     playSfx('ult', 0.8);
@@ -3812,6 +3815,9 @@ async function startGame() {
     GAME.bossesSpawned = 0;
     GAME.powerupsSpawned = 0;
     GAME.powerupSpawnTimer = 0;
+    GAME.warship = null;
+    GAME._warshipSpawned = false;
+    GAME._pendingBossWarning = false;
     bossSpawnedThisFloor = false;
     GAME.state = 'PLAY';
     document.getElementById('game-over')?.classList.add('hidden');
@@ -4128,6 +4134,9 @@ async function resume() {
     GAME.enemiesSpawned = 0;
     GAME.enemiesKilled = 0; 
     GAME.target = null;
+    GAME.warship = null;
+    GAME._warshipSpawned = false;
+    GAME._pendingBossWarning = false;
     bossSpawnedThisFloor = false;
     bullets = [];
     resetParticlePool();
