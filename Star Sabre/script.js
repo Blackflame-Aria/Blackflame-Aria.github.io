@@ -322,7 +322,8 @@ const sfx = {
     laser1: new Audio('sfx/laser1.wav'),
     laser2: new Audio('sfx/laser2.wav'),
     laser3: new Audio('sfx/laser3.wav'),
-    cannon: new Audio('sfx/cannon.wav')
+    laser4: new Audio('sfx/laser4.wav'),
+    cannon: new Audio('sfx/gat.wav')
 };
 const activeAudio = [];
 const SETTINGS = { sfxMuted: false, musicMuted: false };
@@ -497,7 +498,8 @@ function preloadAudioAssets() {
         { name: 'laser1', url: 'sfx/laser1.wav' },
         { name: 'laser2', url: 'sfx/laser2.wav' },
         { name: 'laser3', url: 'sfx/laser3.wav' },
-        { name: 'cannon', url: 'sfx/cannon.wav' }
+        { name: 'laser4', url: 'sfx/laser4.wav' },
+        { name: 'cannon', url: 'sfx/gat.wav' }
     ];
     const musicList = [
         { name: 'intro1', url: 'sfx/1.wav' },
@@ -1699,9 +1701,9 @@ class Cannon {
         this.offsetY = y;
         this.img = img;
         this.warship = warship;
-        this.hp = 5000;
-        this.maxHp = 5000;
-        this.hpDisplay = 5000;
+        this.hp = 4000;
+        this.maxHp = 4000;
+        this.hpDisplay = 4000;
         this.baseSize = 64;
         this.size = this.baseSize;
         this.radius = this.size * 0.4;
@@ -1822,7 +1824,7 @@ class Cannon {
 
     onDeath() {
         playSfx('die');
-        createRainbowExplosion(this.x, this.y, 40);
+        createRainbowExplosion(this.x, this.y, 30);
         GAME.shake = 10;
         
         if (GAME.target === this) {
@@ -1956,7 +1958,7 @@ class WarshipBoss {
             this.exploding = true;
             this.explosionTimer = 0;
             playSfx('die');
-            createRainbowExplosion(this.x, this.y + this.height / 2, 120);
+            createRainbowExplosion(this.x, this.y + this.height / 2, 50);
             GAME.shake = 20;
             GAME.essence = (GAME.essence || 0) + 1000;
             GAME.bossesSpawned = GAME.bossQuota;
@@ -2235,7 +2237,7 @@ class Bullet {
                     e.deadProcessed = true;
                     playSfx('die');
                     GAME.shake = Math.max(GAME.shake, e.rank === 'BOSS' ? 14 : 7);
-                    createRainbowExplosion(e.x, e.y, e.rank === 'BOSS' ? 40 : 40);
+                    createRainbowExplosion(e.x, e.y, e.rank === 'BOSS' ? 25 : 25);
                     onEnemyKilled(e, 'PROJECTILE');
                     if(GAME.target === e) GAME.target = null;
                 }
@@ -2722,6 +2724,7 @@ function loop() {
             setTimeout(() => {
                 if (warnEl) warnEl.classList.add('hidden');
                 if (GAME.floor === 5 && !GAME.warship && GAME.enemiesKilled >= GAME.enemiesRequired) {
+                    playSfx('laser4');
                     GAME.warship = new WarshipBoss();
                     GAME.bossesSpawned = GAME.bossQuota;
                     GAME._warshipSpawned = true;
@@ -3174,7 +3177,7 @@ function triggerBoostDodge(){
                 if (e.hp <= 0 && !e.deadProcessed) {
                     e.deadProcessed = true;
                     playSfx('die');
-                    createRainbowExplosion(e.x, e.y, e.rank === 'BOSS' ? 40 : 40);
+                    createRainbowExplosion(e.x, e.y, e.rank === 'BOSS' ? 25 : 25);
                     onEnemyKilled(e, 'BOOST_SPLASH');
                     if (GAME.target === e) GAME.target = null;
                 }
@@ -3425,7 +3428,7 @@ function applyPlayerMovement() {
                         e.deadProcessed = true;
                         e._remove = true; 
                         playSfx('die');
-                        createRainbowExplosion(e.x, e.y, e.rank === 'BOSS' ? 40 : 40);
+                        createRainbowExplosion(e.x, e.y, e.rank === 'BOSS' ? 25 : 25);
                         onEnemyKilled(e, 'BOOST_CONTACT');
                         if (GAME.target === e) GAME.target = null;
                     }
@@ -3543,7 +3546,7 @@ function activateUlt(pet) {
             if (e.hp <= 0 && !e.deadProcessed) {
                 e.deadProcessed = true;
                 playSfx('die');
-                createRainbowExplosion(e.x, e.y, e.rank === 'BOSS' ? 40 : 40);
+                createRainbowExplosion(e.x, e.y, e.rank === 'BOSS' ? 25 : 25);
                 onEnemyKilled(e, 'ULT_BLAST');
                 if (GAME.target === e) GAME.target = null;
             }
@@ -3600,7 +3603,7 @@ function activateSniperUlt(pet, chargeBoost, opts = {}) {
                         } else {
                             e.deadProcessed = true;
                             playSfx('die');
-                            createRainbowExplosion(e.x, e.y, e.rank === 'BOSS' ? 40 : 40);
+                            createRainbowExplosion(e.x, e.y, e.rank === 'BOSS' ? 25 : 25);
                             onEnemyKilled(e, 'SNIPER_MAIN');
                             if (GAME.target === e) GAME.target = null;
                         }
@@ -3720,7 +3723,7 @@ function activateShotgunUlt(pet, chargeBoost) {
                         if (e.hp <= 0 && !e.deadProcessed) {
                             e.deadProcessed = true;
                             playSfx('die');
-                            createRainbowExplosion(e.x, e.y, e.rank === 'BOSS' ? 40 : 40);
+                            createRainbowExplosion(e.x, e.y, e.rank === 'BOSS' ? 25 : 25);
                             onEnemyKilled(e, 'SHOTGUN');
                             if (GAME.target === e) GAME.target = null;
                         }
@@ -3844,12 +3847,18 @@ async function startGame() {
             await AudioEngine.state.ctx.resume();
         }
         const isAlreadyPlaying = (AudioEngine.state.musicName === trackName) || (MUSIC.name === trackName);
-        if (!isAlreadyPlaying) {
+        if (isAlreadyPlaying) {
+            console.log('Music already playing:', trackName);
+        } else {
             try { MUSIC.stop({ fadeOutMs: 0 }); } catch(_){}
-            await AudioEngine.playMusic(trackName, 1.0, true, 800);
+            const ok = await AudioEngine.playMusic(trackName, 1.0, true, 800);
+            if (!ok) {
+                MUSIC.play(trackName, { fadeInMs: 800, loop: true });
+            }
         }
     } catch(e) {
         console.warn('Music start failed:', e);
+        try { MUSIC.play(trackName, { fadeInMs: 800, loop: true }); } catch(_){}
     }
     
     loop();
@@ -4176,10 +4185,19 @@ async function resume() {
         if (AudioEngine.state.ctx && AudioEngine.state.ctx.state === 'suspended') {
             await AudioEngine.state.ctx.resume();
         }
-        await AudioEngine.playMusic(trackName, 1, true, 800);
+        const isAlreadyPlaying = (AudioEngine.state.musicName === trackName) || (MUSIC.name === trackName);
+        if (isAlreadyPlaying) {
+            console.log('Music already playing:', trackName);
+        } else {
+            try { MUSIC.stop({ fadeOutMs: 0 }); } catch(_){}
+            const ok = await AudioEngine.playMusic(trackName, 1, true, 800);
+            if (!ok) {
+                MUSIC.play(trackName, { fadeInMs: 800, loop: true });
+            }
+        }
     } catch(e) {
         console.warn('Music resume failed:', e);
-        MUSIC.play(trackName, { fadeInMs: 0, loop: true });
+        try { MUSIC.play(trackName, { fadeInMs: 800, loop: true }); } catch(_){}
     }
     const p0 = party[0];
     if (p0 && p0.beamActive) {
