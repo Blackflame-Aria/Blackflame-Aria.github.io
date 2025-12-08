@@ -288,7 +288,7 @@
     chargeHeal: new Audio('Sounds/Charge Heal.wav'),
     chargeAttack: new Audio('Sounds/Charge Attack.wav'),
     murder: new Audio('Sounds/Murder.wav'),
-    curse: new Audio('Sounds/Curse .wav'),
+    curse: new Audio('Sounds/Curse.wav'),
     defend: new Audio('Sounds/Defend.wav')
   };
   SOUNDS.restart = new Audio('Sounds/Restart.wav');
