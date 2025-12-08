@@ -503,7 +503,8 @@ function preloadAudioAssets() {
         { name: 'laser2', url: 'sfx/laser2.wav' },
         { name: 'laser3', url: 'sfx/laser3.wav' },
         { name: 'laser4', url: 'sfx/laser4.wav' },
-        { name: 'cannon', url: 'sfx/cannon.wav' }
+        { name: 'warcannon', url: 'sfx/warcannon.wav' },
+        
     ];
     const musicList = [
         { name: 'intro1', url: 'sfx/1.wav' },
@@ -1899,7 +1900,7 @@ class Cannon {
         ));
         
         this.recoil = 8;
-        playSfx('cannon');
+        playSfx('warcannon');
     }
 
     spawnEnemy() {
