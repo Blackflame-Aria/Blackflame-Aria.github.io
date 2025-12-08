@@ -1311,7 +1311,7 @@ class Pet {
             }
         } else {
             if(this.type === 'Lydia') {
-                const img = SkinImages.DEFAULT;
+                const img = SkinImages.Lydia;
                 if (img && img.complete) {
                     const size = 24;
                     ctx.save();
@@ -4905,6 +4905,7 @@ const SkinImages = {
     DARKMATTER: (() => { const i = new Image(); i.src = 'skins/DARKMATTER.png'; return i; })(),
     Cybil: (() => { const i = new Image(); i.src = 'skins/Cybil.png'; return i; })(),
     Sofia: (() => { const i = new Image(); i.src = 'skins/Sofia.png'; return i; })(),
+    Lydia: (() => { const i = new Image(); i.src = 'skins/Lydia.png'; return i; })(),
 };
 
 function getSkinData(){
