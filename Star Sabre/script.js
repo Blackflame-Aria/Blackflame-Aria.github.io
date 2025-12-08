@@ -128,7 +128,6 @@ document.addEventListener('DOMContentLoaded', () => {
             } catch(e) {
                 console.warn('Audio init failed, using fallback:', e);
             }
-            // Always attempt to start menu music directly on user gesture
             try {
                 await startMenuMusic();
             } catch(e) {
@@ -479,7 +478,6 @@ const AudioEngine = (() => {
             if (m) {
                 state.musicGain.gain.value = 0;
             } else {
-                // Always use current slider value for music volume
                 const gain = (typeof levelToGain === 'function') ? levelToGain(ACCESS.musicLevel || 5) : 1;
                 state.musicGain.gain.value = Math.max(0, Math.min(1, gain));
             }
@@ -505,7 +503,7 @@ function preloadAudioAssets() {
         { name: 'laser2', url: 'sfx/laser2.wav' },
         { name: 'laser3', url: 'sfx/laser3.wav' },
         { name: 'laser4', url: 'sfx/laser4.wav' },
-        { name: 'cannon', url: 'sfx/gat.wav' }
+        { name: 'cannon', url: 'sfx/cannon.wav' }
     ];
     const musicList = [
         { name: 'intro1', url: 'sfx/1.wav' },
@@ -539,11 +537,25 @@ bgm.rusty.preload = 'auto';
 function pickTrackForSector(sector) {
     if (sector <= 1) return 'waltuh';
     if (sector === 2) return 'waltuhLoop';
-    const r = ((sector - 3) % 10 + 10) % 10; 
-    if (r <= 1) return 'waltuhLoop2'; 
-    if (r <= 3) return 'rustyLoop'; 
-    if (r <= 6) return 'rusty';
-    return 'waltuhLoop';
+    if (sector === 3) return 'waltuhLoop2';
+    if (sector === 4) return 'rustyLoop';
+    if (sector === 5) return 'rusty';
+    if (sector === 6) return 'waltuhLoop';
+    if (sector === 7) return 'waltuhLoop2';
+    if (sector === 8) return 'waltuhLoop2';
+    if (sector === 9) return 'rustyLoop';
+    if (sector === 10) return 'rusty';
+    if (sector === 11) return 'waltuhLoop';
+    if (sector === 12) return 'waltuhLoop2';
+    if (sector === 13) return 'waltuhLoop2';
+    if (sector === 14) return 'rustyLoop';
+    if (sector === 15) return 'rusty';
+    if (sector === 16) return 'waltuhLoop';
+    if (sector === 17) return 'waltuhLoop2';
+    if (sector === 18) return 'waltuhLoop2';
+    if (sector === 19) return 'rustyLoop';
+    if (sector === 20) return 'rusty';
+    if (sector > 20) return 'extreme';
 }
 
 function musicUrlForName(name) {
@@ -554,6 +566,7 @@ function musicUrlForName(name) {
         case 'waltuhLoop2': return 'sfx/Waltuh-loop2.mp3';
         case 'rustyLoop': return 'sfx/Rusty-loop.mp3';
         case 'rusty': return 'sfx/Rusty.mp3';
+        case 'extreme': return 'sfx/3.wav';
         default: return `sfx/${name}.mp3`;
     }
 }
@@ -878,6 +891,8 @@ class Pet {
         this.ultCharge = 0;
         this.ultMeter = 0;
         this.powerup = { type: null, time: 0 };
+        this.shieldActive = false;
+        this.shieldTimer = 0;
         this.gatSfxTimer = 0;
         this.gatSfxBurstLeft = 0;
         this.beamSfxTimer = 0;
@@ -897,6 +912,13 @@ class Pet {
     }
 
     update(idx, total) {
+        if (this.shieldActive) {
+            this.shieldTimer -= (GAME.dt / 60);
+            if (this.shieldTimer <= 0) {
+                this.shieldActive = false;
+                this.shieldTimer = 0;
+            }
+        }
         if (this.isMain && this.entering) {
             const ease = 0.12 * GAME.dt;
             this.x += (this.targetX - this.x) * Math.min(1, ease);
@@ -1013,6 +1035,18 @@ class Pet {
                     if (GAME.warship && GAME.warship.cannons) {
                         allTargets.push(...GAME.warship.cannons.filter(c => !c.dead));
                     }
+                        if (this.shieldActive) {
+                            ctx.save();
+                            ctx.globalAlpha = 0.55 + 0.25 * Math.sin(performance.now() / 120);
+                            ctx.beginPath();
+                            ctx.arc(this.x, drawY, 28, 0, Math.PI*2);
+                            ctx.strokeStyle = '#00eaff';
+                            ctx.lineWidth = 5;
+                            ctx.shadowColor = '#00eaff';
+                            ctx.shadowBlur = 18;
+                            ctx.stroke();
+                            ctx.restore();
+                        }
                     for (let e of allTargets) {
                         if (!e || e.hp <= 0) continue;
                         const ax = this.x, ay = this.y;
@@ -1462,8 +1496,9 @@ class Enemy {
     }
 
     update() {
-        this.y += this.speed * GAME.dt;
-        this.x += Math.sin(GAME.time * 0.05 + this.wobble) * 0.5;
+        const slowMult = (window.timeWarpActive) ? 0.7 : 1.0;
+        this.y += this.speed * GAME.dt * slowMult;
+        this.x += Math.sin(GAME.time * 0.05 + this.wobble) * 0.5 * (slowMult + 0.3);
 
         if(this.contactTimer > 0) this.contactTimer -= GAME.dt / 60;
 
@@ -1567,6 +1602,18 @@ class Enemy {
                         if(this.y > canvas.height+30 || this.x < -30 || this.x > canvas.width+30) this.active = false;
                     },
                     draw() {
+                                        if (window.timeWarpActive) {
+                                            ctx.save();
+                                            ctx.globalAlpha = 0.7 + 0.2 * Math.sin(performance.now() / 80 + this.x);
+                                            ctx.beginPath();
+                                            ctx.arc(this.x, this.y, this.size + 10, 0, Math.PI*2);
+                                            ctx.strokeStyle = '#ff00e6';
+                                            ctx.lineWidth = 3;
+                                            ctx.shadowColor = '#ff00e6';
+                                            ctx.shadowBlur = 12;
+                                            ctx.stroke();
+                                            ctx.restore();
+                                        }
                         ctx.save();
                         ctx.globalCompositeOperation = 'lighter';
                         if (this.trail && this.trail.length) {
@@ -1652,6 +1699,23 @@ class Enemy {
         ctx.fill();
         ctx.stroke();
         ctx.shadowBlur = 0;
+
+        if (window.timeWarpActive) {
+            ctx.save();
+            ctx.globalCompositeOperation = 'lighter';
+            const outerR = this.size + 28;
+            const grad = ctx.createRadialGradient(this.x, this.y, this.size, this.x, this.y, outerR);
+            grad.addColorStop(0.00, 'rgba(255,0,255,0.0)');
+            grad.addColorStop(0.45, 'rgba(255,0,255,0.45)');
+            grad.addColorStop(0.75, 'rgba(255,0,200,0.32)');
+            grad.addColorStop(1.00, 'rgba(200,0,255,0.22)');
+            ctx.strokeStyle = grad;
+            ctx.lineWidth = 6;
+            ctx.beginPath();
+            ctx.arc(this.x, this.y, outerR - 6, 0, Math.PI * 2);
+            ctx.stroke();
+            ctx.restore();
+        }
 
         if(this === GAME.target) {
             const extra = (this.rank === 'BOSS') ? 28 : 14;
@@ -2802,6 +2866,14 @@ function loop() {
             GAME.powerupSpawnTimer = 6 + (powerups.length * 2) + Math.random()*1.5; 
         }
     }
+    if (window.timeWarpActive) {
+        window.timeWarpTimer -= GAME.dt / 60;
+        if (window.timeWarpTimer <= 0) {
+            window.timeWarpActive = false;
+            window.timeWarpTimer = 0;
+            try { playSfx('powerdown'); } catch(_) {}
+        }
+    }
     if (GAME.bossesSpawned >= GAME.bossQuota && !bossIsPresent && !GAME.warship && GAME.enemiesKilled >= GAME.enemiesRequired + GAME.bossQuota && !GAME.awaitingDraft) {
         GAME.awaitingDraft = true;
         GAME.postBossTimer = 3;
@@ -3925,7 +3997,6 @@ async function startGame() {
                 MUSIC.play(trackName, { fadeInMs: 800, loop: true });
             }
         }
-        // Always apply correct volume/mute after music starts
         applyVolumeLevels();
     } catch(e) {
         console.warn('Music start failed:', e);
@@ -4282,7 +4353,6 @@ async function resume() {
                 MUSIC.play(trackName, { fadeInMs: 800, loop: true });
             }
         }
-        // Always apply correct volume/mute after music starts
         applyVolumeLevels();
     } catch(e) {
         console.warn('Music resume failed:', e);
@@ -4477,7 +4547,7 @@ function updateUI() {
 function grantRandomPowerup(p) {
     if (!p) return;
     const hasSpecial = (meta.dmgLvl || 0) >= 15 || (meta.rateLvl || 0) >= 15;
-    const options = hasSpecial ? ['BIG'] : ['TRIPLE','FIRE2X','PIERCE','BIG','SEXTUPLE'];
+    const options = hasSpecial ? ['BIG','SHIELD','TIMEWARP'] : ['TRIPLE','FIRE2X','PIERCE','BIG','SEXTUPLE','SHIELD','TIMEWARP'];
     const pick = options[Math.floor(Math.random()*options.length)];
     p.powerup.type = pick;
     if (pick === 'BIG' && (meta.rateLvl || 0) >= 15) {
@@ -4492,13 +4562,23 @@ function grantRandomPowerup(p) {
         FIRE2X: 'RAPID SHOT',
         PIERCE: 'PIERCING SHOT',
         BIG: 'BIG SHOT',
-        SEXTUPLE: 'MULTI SHOT'
+        SEXTUPLE: 'MULTI SHOT',
+        SHIELD: 'SHIELD',
+        TIMEWARP: 'TIME WARP'
     };
     const el = document.getElementById('powerup-warning');
     if (el) {
         el.textContent = messages[pick] || 'POWER-UP ACQUIRED';
         el.classList.remove('hidden');
-        setTimeout(() => el.classList.add('hidden'), 1500);
+        setTimeout(() => el.classList.add('hidden'), 1800);
+    }
+    if (pick === 'SHIELD') {
+        try { p.shieldActive = true; p.shieldTimer = p.powerup.time || 12; } catch(_) {}
+        try { vibrate(120); } catch(_) {}
+    }
+    if (pick === 'TIMEWARP') {
+        try { window.timeWarpActive = true; window.timeWarpTimer = p.powerup.time || 10; } catch(_) {}
+        try { vibrate(140); } catch(_) {}
     }
     playSfx('powerup');
 }
@@ -5235,8 +5315,10 @@ function spawnSpacedPowerup() {
         if (ok) { px = candX; break; }
     }
     const pu = new PowerupEntity();
-    pu.x = px; pu.y = py; 
-    powerups.push(pu);
+    pu.x = px; pu.y = py;
+    setTimeout(() => {
+        powerups.push(pu);
+    }, 3000);
 }
 
 function updatePlayerAura() {
@@ -5245,16 +5327,23 @@ function updatePlayerAura() {
     const p = party[0];
     if(!p || p.hp <= 0) {
         aura.classList.remove('active');
+        aura.classList.add('hidden');
         return;
     }
     aura.style.left = p.x + 'px';
     aura.style.top = p.y + 'px';
     aura.style.setProperty('--aura-color', getSkinTheme().primary);
-    if(p.ultCharge >= 100) {
+    if(p.ultCharge >= 100 || p.shieldActive) {
         aura.classList.add('active');
         aura.classList.remove('hidden');
     } else {
         aura.classList.remove('active');
         aura.classList.add('hidden');
+    }
+}
+
+function vibrate(pattern) {
+    if (navigator.vibrate) {
+        navigator.vibrate(pattern);
     }
 }

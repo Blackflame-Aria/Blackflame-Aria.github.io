@@ -212,7 +212,7 @@ canvas {
     filter: blur(2px);
     animation-play-state: paused; 
 }
-#player-aura.active { opacity: 0.6; animation-play-state: running; }
+#player-aura.active { opacity: 0.9; animation-play-state: running; transform: translate(-50%, -50%) scale(1.02); }
 @keyframes auraPulse {
     0% { transform: translate(-50%, -50%) scale(0.90); }
     50% { transform: translate(-50%, -50%) scale(1.03); }
@@ -773,4 +773,35 @@ h4 {
 #accessibility-modal input[type="range"]:focus-visible {
     outline: 2px solid var(--neon-blue);
     outline-offset: 4px;
+}
+
+.player-shield-ring {
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    width: 120px;
+    height: 120px;
+    transform: translate(-50%, -50%);
+    border-radius: 50%;
+    pointer-events: none;
+    z-index: 2;
+    opacity: 0.85;
+    background: radial-gradient(circle at 50% 50%, #ff00ff 0%, #ffff00 60%, #00ffff 100%);
+    box-shadow: 0 0 32px #ff00ff, 0 0 32px #ffff00, 0 0 32px #00ffff;
+    mix-blend-mode: screen;
+    animation: shieldPulse 1.8s infinite;
+}
+@keyframes shieldPulse {
+    0% { transform: translate(-50%, -50%) scale(1.0); }
+    50% { transform: translate(-50%, -50%) scale(1.08); }
+    100% { transform: translate(-50%, -50%) scale(1.0); }
+}
+
+.enemy-timewarp {
+    filter: drop-shadow(0 0 16px #ff00ff) drop-shadow(0 0 12px #00ffff) drop-shadow(0 0 8px #ffff00);
+    animation: timeWarpGlow 1.2s infinite alternate;
+}
+@keyframes timeWarpGlow {
+    0% { filter: drop-shadow(0 0 16px #ff00ff) drop-shadow(0 0 12px #00ffff) drop-shadow(0 0 8px #ffff00); }
+    100% { filter: drop-shadow(0 0 24px #ff00ff) drop-shadow(0 0 18px #00ffff) drop-shadow(0 0 12px #ffff00); }
 }
