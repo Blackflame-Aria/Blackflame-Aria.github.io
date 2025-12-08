@@ -127,6 +127,11 @@ document.addEventListener('DOMContentLoaded', () => {
                 await startMenuMusic();
             } catch(e) {
                 console.warn('Audio init failed, using fallback:', e);
+            }
+            // Always attempt to start menu music directly on user gesture
+            try {
+                await startMenuMusic();
+            } catch(e) {
                 try {
                     bgm.intro1.loop = true;
                     bgm.intro1.volume = levelToGain(ACCESS.musicLevel || 5);
@@ -474,8 +479,9 @@ const AudioEngine = (() => {
             if (m) {
                 state.musicGain.gain.value = 0;
             } else {
-                const lvl = (typeof levelToGain === 'function') ? levelToGain(ACCESS.musicLevel || 5) : 0.7;
-                state.musicGain.gain.value = Math.max(0, Math.min(1, lvl));
+                // Always use current slider value for music volume
+                const gain = (typeof levelToGain === 'function') ? levelToGain(ACCESS.musicLevel || 5) : 1;
+                state.musicGain.gain.value = Math.max(0, Math.min(1, gain));
             }
         } catch(_) {}
     }
@@ -641,6 +647,7 @@ const MUSIC = {
 
 function setSfxMuted(flag) {
     SETTINGS.sfxMuted = !!flag;
+    applyVolumeLevels();
     if (SETTINGS.sfxMuted) {
         stopAllAudio();
     }
@@ -653,6 +660,7 @@ window.toggleSfxMute = toggleSfxMute;
 
 function setMusicMuted(flag) {
     SETTINGS.musicMuted = !!flag;
+    applyVolumeLevels();
     const a = MUSIC.current;
     if (a) {
         try {
@@ -666,7 +674,6 @@ function setMusicMuted(flag) {
         } catch(_){}
     }
     try { AudioEngine.setMusicMuted(SETTINGS.musicMuted); } catch(_){ }
-    try { applyVolumeLevels(); } catch(_){}
     try { localStorage.setItem('neonAudio', JSON.stringify({ sfxMuted: SETTINGS.sfxMuted, musicMuted: SETTINGS.musicMuted })); } catch(_){}
     updateAudioButtons();
 }
@@ -718,7 +725,7 @@ const LOOPING = {
         try { a.pause(); if (resetTime) a.currentTime = 0; } catch(_){}
     },
     stopAll() {
-        for (const [name, a] of this.map.entries()) {
+        for (const a of this.map.values()) {
             try { a.pause(); a.currentTime = 0; } catch(_){}
         }
         this.map.clear();
@@ -3918,9 +3925,12 @@ async function startGame() {
                 MUSIC.play(trackName, { fadeInMs: 800, loop: true });
             }
         }
+        // Always apply correct volume/mute after music starts
+        applyVolumeLevels();
     } catch(e) {
         console.warn('Music start failed:', e);
         try { MUSIC.play(trackName, { fadeInMs: 800, loop: true }); } catch(_){ }
+        applyVolumeLevels();
     }
     
     loop();
@@ -4272,9 +4282,12 @@ async function resume() {
                 MUSIC.play(trackName, { fadeInMs: 800, loop: true });
             }
         }
+        // Always apply correct volume/mute after music starts
+        applyVolumeLevels();
     } catch(e) {
         console.warn('Music resume failed:', e);
         try { MUSIC.play(trackName, { fadeInMs: 800, loop: true }); } catch(_){ }
+        applyVolumeLevels();
     }
     const p0 = party[0];
     if (p0 && p0.beamActive) {
@@ -4648,6 +4661,7 @@ function openAccessibility(){
             } catch(_){}
             applyVolumeLevels(); saveAccessibility();
         };
+        sfxLevel.onchange = () => { saveAccessibility(); };
     }
     if (musicLevel) {
         const valEl = document.getElementById('music-level-val');
@@ -4671,6 +4685,7 @@ function openAccessibility(){
             } catch(_){}
             applyVolumeLevels(); saveAccessibility();
         };
+        musicLevel.onchange = () => { saveAccessibility(); };
     }
     const closeBtn = document.getElementById('acc-close-btn');
     if (closeBtn) closeBtn.onclick = () => { closeAccessibility(); };
@@ -4718,11 +4733,26 @@ function applyVolumeLevels(){
         if (AudioEngine.state.musicGain) AudioEngine.state.musicGain.gain.value = SETTINGS.musicMuted ? 0 : Math.min(1, musicGain);
     } catch(_){}
     try {
-        for (const a of activeAudio) { a.volume = SETTINGS.sfxMuted ? 0 : Math.max(0, Math.min(1, sfxGain)); }
-        LOOPING.map.forEach(a => { try { a.volume = SETTINGS.sfxMuted ? 0 : Math.max(0, Math.min(1, sfxGain)); } catch(_){} });
+        for (const a of activeAudio) {
+            if (a && typeof a.volume === 'number') {
+                a.volume = SETTINGS.sfxMuted ? 0 : Math.max(0, Math.min(1, sfxGain));
+                if (!a.paused && a.volume > 0 && typeof a.play === 'function') { try { a.play(); } catch(_){} }
+            }
+        }
+        LOOPING.map.forEach(a => {
+            try {
+                if (a && typeof a.volume === 'number') {
+                    a.volume = SETTINGS.sfxMuted ? 0 : Math.max(0, Math.min(1, sfxGain));
+                    if (!a.paused && a.volume > 0 && typeof a.play === 'function') { try { a.play(); } catch(_){} }
+                }
+            } catch(_){}
+        });
         if (MUSIC.current) {
             MUSIC.targetVolume = Math.max(0, Math.min(1, musicGain));
-            try { MUSIC.current.volume = SETTINGS.musicMuted ? 0 : MUSIC.targetVolume; } catch(_){}
+            try {
+                MUSIC.current.volume = SETTINGS.musicMuted ? 0 : MUSIC.targetVolume;
+                if (!MUSIC.current.paused && MUSIC.current.volume > 0 && typeof MUSIC.current.play === 'function') { try { MUSIC.current.play(); } catch(_){} }
+            } catch(_){}
         }
     } catch(_){}
 }
