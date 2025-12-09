@@ -329,6 +329,22 @@ const sfx = {
     laser4: new Audio('sfx/laser4.wav'),
     cannon: new Audio('sfx/warcannon.wav')
 };
+
+try {
+    sfx['warlaser-charge'] = new Audio('sfx/warlaser-charge.wav');
+} catch(_) {
+    sfx['warlaser-charge'] = new Audio('sfx/laser2.wav');
+}
+try {
+    sfx['warlaser-ready'] = new Audio('sfx/warlaser-ready.wav');
+} catch(_) {
+    sfx['warlaser-ready'] = new Audio('sfx/laser1.wav');
+}
+try {
+    sfx['warlaser'] = new Audio('sfx/warlaser.wav');
+} catch(_) {
+    sfx['warlaser'] = new Audio('sfx/laser2.wav');
+}
 const activeAudio = [];
 const SETTINGS = { sfxMuted: false, musicMuted: false };
 function loadAudioSettings() {
@@ -902,6 +918,9 @@ class Pet {
         this.beamTime = 0;
         this.deadProcessed = false;
 
+        this._cid = Math.random();
+        this._eid = Math.random();
+
         this.entering = false;
         this.targetX = 0;
         this.targetY = 0;
@@ -929,6 +948,8 @@ class Pet {
             if (arrived) {
                 this.x = this.targetX;
                 this.y = this.targetY;
+                    this.x += (this.targetX - this.x) * Math.min(1, ease);
+                    this.y += (this.targetY - this.y) * Math.min(1, ease);
                 this.entering = false;
                 this.cooldown = 0;
             }
@@ -952,8 +973,6 @@ class Pet {
             this.y += (targetY - this.y) * 0.14;
         }
         this.recoil *= 0.6;
-
-        if (this.hpDisplay === undefined) this.hpDisplay = this.hp;
         if (this.hpDisplay > this.hp) {
             const diff = this.hpDisplay - this.hp;
             const step = Math.max(diff * 0.18 * GAME.dt, 0.6 * GAME.dt);
@@ -1822,6 +1841,13 @@ class Cannon {
         this.rank = 'BOSS';
         this.isMiddle = isMiddle;
         this.spawnTimer = 0;
+        this.isRight = (!isMiddle && this.offsetX > 0);
+        this.rc_phase = 'track'; 
+        this.rc_timer = 0;
+        this.rc_particles = [];
+        this.rc_spawnAcc = 0;
+        this.rc_glow = 0;
+        this.rc_beamPlaying = false;
     }
 
     update() {
@@ -1842,6 +1868,128 @@ class Cannon {
             if (this.recoil < 0) this.recoil = 0;
         }
 
+        if (this.isRight && this.warship && this.warship.settled) {
+            const player = (party && party[0]) ? party[0] : null;
+            const msStep = GAME.dtMs || (GAME.dt * 16.6667);
+            this.rc_timer += GAME.dt / 60;
+
+            if (this.rc_phase === 'track') {
+                if (player) {
+                    const dxA = player.x - this.x;
+                    const dyA = player.y - this.y;
+                    this.angle = Math.atan2(dyA, dxA) - Math.PI / 2;
+                }
+                this.rc_spawnAcc += GAME.dt / 60;
+                const spawnInterval = 0.04;
+                while (this.rc_spawnAcc >= spawnInterval && this.rc_particles.length < 28) {
+                    this.rc_spawnAcc -= spawnInterval;
+                    if (!player) break;
+                    const dir = Math.atan2(player.y - this.y, player.x - this.x);
+                    const a = 195, b = 90;
+                    const t = Math.random() * Math.PI * 2;
+                    const px = Math.cos(t) * a;
+                    const py = Math.sin(t) * b;
+                    const cosd = Math.cos(dir), sind = Math.sin(dir);
+                    const sx = this.x + px * cosd - py * sind;
+                    const sy = this.y + px * sind + py * cosd;
+                    const life = 0.9 + Math.random() * 0.8;
+                    this.rc_particles.push({ sx, sy, life, age: 0, alpha: 1 });
+                }
+                for (let i = this.rc_particles.length - 1; i >= 0; i--) {
+                    const p = this.rc_particles[i];
+                    p.age += GAME.dt / 60;
+                    p.alpha = Math.max(0, 1 - (p.age / p.life));
+                    if (p.age >= p.life) this.rc_particles.splice(i, 1);
+                }
+                if (this.rc_timer >= 3.0) {
+                    try { LOOPING.stop('warlaser-charge'); } catch(_){ }
+                    this.rc_phase = 'stopped_before';
+                    this.rc_lockedAngle = this.angle;
+                    this.rc_timer = 0;
+                }
+                return;
+            } else if (this.rc_phase === 'stopped_before') {
+                const stopDur = 1.0;
+                const k = Math.min(1, this.rc_timer / stopDur);
+                for (let p of this.rc_particles) p.alpha = Math.max(0, 1 - k);
+                if (this.rc_timer >= stopDur) {
+                    this.rc_particles.length = 0;
+                    this.rc_phase = 'beam';
+                    this.rc_timer = 0;
+                    this.rc_beamPlaying = true;
+                    try { playSfx('warlaser-ready'); } catch(_){ }
+                    try { LOOPING.play('warlaser'); } catch(_){ try { playSfx('warlaser'); } catch(_){} }
+                }
+                return;
+            } else if (this.rc_phase === 'beam') {
+                const beamDur = 2.0;
+                if (this.rc_timer >= 0 && !this.rc_beamPlaying) { this.rc_beamPlaying = true; }
+                if (!player && this.rc_timer === 0) {
+                    this.rc_phase = 'stopped_after';
+                    this.rc_timer = 0;
+                    this.rc_beamPlaying = false;
+                    try { LOOPING.stop('warlaser'); } catch(_){ }
+                    return;
+                }
+                const locked = (this.rc_lockedAngle != null) ? this.rc_lockedAngle : this.angle;
+                const ang = locked + Math.PI / 2;
+                const dirX = Math.cos(ang), dirY = Math.sin(ang);
+                const beamLen = Math.max(canvas.width, canvas.height) * 1.5;
+                const ax = this.x, ay = this.y;
+                const bx = ax + dirX * beamLen, by = ay + dirY * beamLen;
+                const msElapsed = msStep;
+                const beamWidth = 20; 
+                const allTargets = [...enemies];
+                if (this.warship && this.warship.cannons) allTargets.push(...this.warship.cannons.filter(c => c && !c.dead));
+                allTargets.push(...party);
+                let hitCount = 0;
+                for (let t of allTargets) {
+                    if (!t || t === this) continue;
+                    if (t.hp === undefined || t.hp <= 0) continue;
+                    const ex = t.x, ey = t.y;
+                    const abx = bx - ax, aby = by - ay;
+                    const apx = ex - ax, apy = ey - ay;
+                    const abLen2 = abx * abx + aby * aby || 1;
+                    let proj = (apx * abx + apy * aby) / abLen2; proj = Math.max(0, Math.min(1, proj));
+                    const cx = ax + abx * proj, cy = ay + aby * proj;
+                    const dist = Math.hypot(ex - cx, ey - cy);
+                    const targetSize = (t.radius || (t.size ? (t.size * 0.5) : 12));
+                    if (dist <= beamWidth + targetSize) {
+                        const DAMAGE_PER_MS = 1 * 0.5; 
+                        const dmgF = Math.max(0, msElapsed * DAMAGE_PER_MS);
+                        t.hp -= dmgF;
+                        hitCount++;
+                        try { spawnDamagePopup(t, dmgF, 'large'); } catch(_){ }
+                        if (t.hp <= 0 && !t.deadProcessed) {
+                            t.deadProcessed = true;
+                            try { playSfx('die'); createRainbowExplosion(t.x, t.y, (t.rank === 'BOSS') ? 30 : 18); } catch(_){ }
+                            try { onEnemyKilled(t, 'RIGHT_BEAM'); } catch(_){ }
+                            if (GAME.target === t) GAME.target = null;
+                        }
+                    }
+                }
+                if (hitCount > 1) console.warn('Right-beam hit multiple targets this frame:', hitCount);
+                if (this.rc_timer >= beamDur) {
+                    this.rc_phase = 'stopped_after';
+                    this.rc_timer = 0;
+                    this.rc_beamPlaying = false;
+                    this.rc_glow = 0;
+                    try { LOOPING.stop('warlaser'); } catch(_){ }
+                    this.rc_lockedAngle = null;
+                }
+                return;
+            } else if (this.rc_phase === 'stopped_after') {
+                this.rc_timer += 0; 
+                const afterDur = 2.0;
+                if (this.rc_timer >= afterDur) {
+                    this.rc_phase = 'track';
+                    this.rc_timer = 0;
+                    this.rc_glow = 0;
+                    try { LOOPING.play('warlaser-charge'); } catch(_){ }
+                }
+                return;
+            }
+        }
         if (this.isMiddle) {
             this.angle = 0;
             
@@ -1851,9 +1999,9 @@ class Cannon {
                 let destroyedSides = 0;
                 if (left && left.dead) destroyedSides++;
                 if (right && right.dead) destroyedSides++;
-                let baseInterval = 3;
-                if (destroyedSides === 1) baseInterval = 2;
-                else if (destroyedSides >= 2) baseInterval = 1;
+                let baseInterval = 2.5;
+                if (destroyedSides === 1) baseInterval = 1.0;
+                else if (destroyedSides >= 2) baseInterval = 0.1;
                 this.spawnTimer += GAME.dt / 60;
                 if (this.spawnTimer >= baseInterval) {
                     this.spawnTimer = 0;
@@ -1868,8 +2016,8 @@ class Cannon {
 
             const aliveCannons = this.warship.cannons.filter(c => !c.dead).length;
             let rateMultiplier = 1;
-            if (aliveCannons === 2) rateMultiplier = 0.8;
-            else if (aliveCannons === 1) rateMultiplier = 0.64;
+            if (aliveCannons === 2) rateMultiplier = 0.75;
+            else if (aliveCannons === 1) rateMultiplier = 0.5;
             
             this.fireTimer++;
             if (this.fireTimer >= this.fireRate * rateMultiplier) {
@@ -1881,7 +2029,7 @@ class Cannon {
 
     shoot(target) {
         if (this.dead) return;
-        const speed = 3;
+        const speed = 5;
         const dx = target.x - this.x;
         const dy = target.y - this.y;
         const dist = Math.sqrt(dx*dx + dy*dy);
@@ -1961,6 +2109,41 @@ class Cannon {
         const drawX = this.x - Math.cos(recoilAngle) * recoilOffset;
         const drawY = this.y - Math.sin(recoilAngle) * recoilOffset;
 
+        if (this.isRight && this.rc_beamPlaying) {let ang;
+            const player = (party && party[0]) ? party[0] : null;
+            if (this.rc_lockedAngle != null) {
+                ang = this.rc_lockedAngle + Math.PI / 2;
+            } else if (player) {
+                ang = Math.atan2(player.y - this.y, player.x - this.x);
+            } else {
+                ang = 0;
+            }
+            const dirX = Math.cos(ang), dirY = Math.sin(ang);
+            const beamLen = Math.max(canvas.width, canvas.height) * 1.5;
+            const ax = this.x, ay = this.y;
+            const bx = ax + dirX * beamLen, by = ay + dirY * beamLen;
+
+            ctx.save();
+            ctx.globalCompositeOperation = 'lighter';
+            ctx.lineWidth = 44;
+            const grad = ctx.createLinearGradient(ax, ay, bx, by);
+            grad.addColorStop(0, 'rgba(80,200,255,0.0)');
+            grad.addColorStop(0.1, 'rgba(60,220,255,0.18)');
+            grad.addColorStop(0.5, 'rgba(80,255,220,0.25)');
+            grad.addColorStop(1, 'rgba(80,200,255,0.0)');
+            ctx.strokeStyle = grad;
+            ctx.beginPath(); ctx.moveTo(ax, ay); ctx.lineTo(bx, by); ctx.stroke();
+
+            ctx.lineWidth = 12;
+            ctx.strokeStyle = 'rgba(150,255,255,0.95)';
+            ctx.beginPath(); ctx.moveTo(ax, ay); ctx.lineTo(bx, by); ctx.stroke();
+
+            ctx.lineWidth = 2;
+            ctx.strokeStyle = 'rgba(200,255,255,1)';
+            ctx.beginPath(); ctx.moveTo(ax, ay); ctx.lineTo(bx, by); ctx.stroke();
+            ctx.restore();
+        }
+
         ctx.save();
         ctx.translate(drawX, drawY);
         ctx.rotate(this.angle);
@@ -1990,6 +2173,41 @@ class Cannon {
             ctx.restore();
             ctx.setLineDash([]);
             ctx.lineDashOffset = 0;
+        }
+
+        if (this.isRight) {
+            const player = (party && party[0]) ? party[0] : null;
+            if (this.rc_particles && this.rc_particles.length) {
+                ctx.save();
+                ctx.globalCompositeOperation = 'lighter';
+                for (let p of this.rc_particles) {
+                    const alpha = p.alpha != null ? p.alpha : 1;
+                    const t = Math.max(0, Math.min(1, (p.age || 0) / (p.life || 1)));
+                    const px = p.sx + (this.x - p.sx) * t;
+                    const py = p.sy + (this.y - p.sy) * t;
+                    const r = Math.max(0.8, (1 - t) * 5);
+                    ctx.fillStyle = `rgba(100,220,255,${0.18 * alpha * (1 - t)})`;
+                    ctx.beginPath(); ctx.arc(px, py, r * 2.6, 0, Math.PI * 2); ctx.fill();
+                    ctx.fillStyle = `rgba(180,255,255,${0.95 * alpha})`;
+                    ctx.beginPath(); ctx.arc(px, py, r, 0, Math.PI * 2); ctx.fill();
+                }
+                ctx.restore();
+            }
+
+            if (this.rc_glow && this.rc_glow > 0) {
+                ctx.save();
+                const g = ctx.createRadialGradient(this.x, this.y, 0, this.x, this.y, 80 * this.rc_glow);
+                g.addColorStop(0, `rgba(120,220,255,${0.55 * this.rc_glow})`);
+                g.addColorStop(0.6, `rgba(40,180,230,${0.18 * this.rc_glow})`);
+                g.addColorStop(1, 'rgba(0,0,0,0)');
+                ctx.globalCompositeOperation = 'lighter';
+                ctx.fillStyle = g;
+                ctx.beginPath();
+                ctx.arc(this.x, this.y, 80 * this.rc_glow, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.restore();
+            }
+
         }
 
         renderSmoothBar(
@@ -2193,6 +2411,8 @@ class Bullet {
             }
             
             for (let p of party) {
+                if (!p) continue;
+                if (p.hp <= 0 || p.deadProcessed) continue;
                 const dx = this.x - p.x;
                 const dy = this.y - p.y;
                 const dist = Math.sqrt(dx * dx + dy * dy);
@@ -2202,20 +2422,30 @@ class Bullet {
                     this.active = false;
                     createParticles(this.x, this.y, this.color, 8);
                     playSfx('hit');
-                            if (p.hp <= 0) {
-                                p.hp = 0;
-                                if (p.isMain) {
-                                    gameOver();
-                                } else {
-                                    try {
-                                        p.deadProcessed = true;
-                                        stopGunAudio();
-                                        createRainbowExplosion(p.x, p.y, 40);
-                                        playSfx('die');
-                                        if (GAME.target === p) GAME.target = null;
-                                    } catch(_){}
+                    if (p.hp <= 0) {
+                        p.hp = 0;
+                        if (p.isMain) {
+                            if (GAME.deathTimer <= 0) {
+                                GAME.deathTimer = 3;
+                                stopGunAudio();
+                                try { MUSIC.stop({ fadeOutMs: 3000 }); } catch(_){ }
+                                if (p && !p.deadProcessed) {
+                                    p.deadProcessed = true;
+                                    createRainbowExplosion(p.x, p.y, 60);
+                                    playSfx('die');
+                                    if (GAME.target === p) GAME.target = null;
                                 }
                             }
+                        } else {
+                            try {
+                                p.deadProcessed = true;
+                                stopGunAudio();
+                                createRainbowExplosion(p.x, p.y, 40);
+                                playSfx('die');
+                                if (GAME.target === p) GAME.target = null;
+                            } catch(_){ }
+                        }
+                    }
                     return;
                 }
             }
@@ -4466,7 +4696,7 @@ window.closeGameOver = closeGameOver;
     }
 
 function updateUI() {
-    const bossIsPresent = enemies.some(e => e.rank === 'BOSS');
+    const bossIsPresent = enemies.some(e => e.rank === 'BOSS') || (GAME.warship && !GAME.warship.exploding);
     let remaining = GAME.enemiesRequired - GAME.enemiesKilled;
     remaining = Math.max(0, remaining); 
     
