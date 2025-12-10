@@ -2114,8 +2114,9 @@ class Cannon {
 
         const recoilOffset = this.recoil;
         const recoilAngle = this.angle - Math.PI / 2;
-        const drawX = this.x - Math.cos(recoilAngle) * recoilOffset;
-        const drawY = this.y - Math.sin(recoilAngle) * recoilOffset;
+        const recoilSign = this.isRight ? -1 : 1;
+        const drawX = this.x + recoilSign * Math.cos(recoilAngle) * recoilOffset;
+        const drawY = this.y + recoilSign * Math.sin(recoilAngle) * recoilOffset;
 
         if (this.isRight && this.rc_beamPlaying) {let ang;
             const player = (party && party[0]) ? party[0] : null;
