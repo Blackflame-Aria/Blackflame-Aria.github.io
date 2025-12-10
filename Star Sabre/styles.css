@@ -491,11 +491,14 @@ h4 {
 .control-cell {
     text-align: center;
     padding: 1px 0;
-    margin-bottom: 1px;
+    margin-bottom: 0px;
 }
 .control-cell.header {
     font-weight: bold;
     color: #f0f;
+}
+.control-cell.keyboard, .control-cell.mobile, .control-cell.action, .separator {
+    margin: -1px;
 }
 .control-cell.keyboard, .control-cell.mobile {
     color: #0ff;
@@ -627,8 +630,15 @@ h4 {
     #powerup-warning { font-size: 28px; }
 }
 
-.launch-row { position: relative; width: 100%; display: flex; justify-content: center; align-items: center; }
-.launch-row .mega-btn { margin: 0 auto; }
+.launch-row { 
+    position: relative; 
+    width: 100%; 
+    display: flex; 
+    justify-content: center; 
+    align-items: center; }
+.launch-row .mega-btn { 
+    margin: 0 auto; 
+}
 .icon-btn { position: absolute; display:flex; align-items:center; justify-content:center; width:48px; height:48px; border:1px solid #ff0; background:transparent; color:#ff0; cursor:pointer; }
 .icon-btn.right { left: calc(50% + 155px); }
 .icon-btn.left { left: calc(50% - 193px); }
