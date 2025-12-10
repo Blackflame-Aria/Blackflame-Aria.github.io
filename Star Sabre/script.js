@@ -286,9 +286,9 @@ const C = {
         boss:  '#f00'
     },
     traits: [
-        { id: 'gatling', name: 'RAPID SHOT', desc: '2x SPEED' },
-        { id: 'sniper', name: 'HEAVY CANNON', desc: '3x IMPACT' },
-        { id: 'shotgun', name: 'BROADFIRE', desc: 'Triple shot' }
+        { id: 'gatling', name: 'RAPID SHOT', desc: '2x FIRE RATE' },
+        { id: 'sniper', name: 'HEAVY CANNON', desc: '2x IMPACT' },
+        { id: 'shotgun', name: 'BROADFIRE', desc: 'TRIPLE SHOT' }
     ]
 };
 
@@ -3488,6 +3488,8 @@ input.joystickActive = false;
 input.jIdentifier = null;
 input.jStartX = 0; input.jStartY = 0;
 input.jCurX = 0; input.jCurY = 0;
+let lastTapTime = 0;
+let tapTimeout = null;
 input.jVecX = 0; input.jVecY = 0;
 input.jMagnitude = 0;
 input.jMoved = false;
@@ -3705,19 +3707,31 @@ canvas.addEventListener('touchstart', (e) => {
     if (GAME.state !== 'PLAY') return;
     if (!e.changedTouches.length) return;
     const t = e.changedTouches[0];
-    input.jIdentifier = t.identifier;
     const { x, y } = toCanvasCoords(t.clientX, t.clientY);
     const jc = getJoyCenter();
     const baseX = jc.x; 
     const baseY = jc.y;
     const distToCenter = Math.hypot(x - baseX, y - baseY);
     if (distToCenter <= JOY.radius) {
+        input.jIdentifier = t.identifier;
         input.jStartX = baseX; input.jStartY = baseY; input.jCurX = x; input.jCurY = y;
         input.jVecX = 0; input.jVecY = 0; input.jMagnitude = 0; input.jMoved = false;
         input.joystickActive = true;
     } else {
-        input.joystickActive = false;
-        handleTap(x, y);
+        const now = Date.now();
+        if (now - lastTapTime < 300) {
+            if (tapTimeout) clearTimeout(tapTimeout);
+            triggerBoostDodge();
+            lastTapTime = 0;
+            tapTimeout = null;
+        } else {
+            lastTapTime = now;
+            tapTimeout = setTimeout(() => {
+                handleTap(x, y);
+                lastTapTime = 0;
+                tapTimeout = null;
+            }, 300);
+        }
     }
     e.preventDefault();
 },{passive:false});
@@ -4539,12 +4553,13 @@ function showDraft() {
         const type = allowedTypes[Math.floor(Math.random() * allowedTypes.length)];
         
         let d = document.createElement('div');
-        d.className = `card`;
+        d.className = `card ${type.toLowerCase()}`;
         d.innerHTML = `
+            <img src="skins/${type}.png" class="card-skin" alt="${type} skin">
             <h3>${type}</h3>
             <div class="trait">${trait.name}</div>
             <div class="stats">${trait.desc}</div>
-            <div class="card-cost" style="position:absolute; right:10px; top:10px; font-family: 'Orbitron', monospace; font-weight:500;">
+            <div class="card-cost" style="position:absolute; right:10px; top:10px; font-family: 'Orbitron', monospace; font-weight:500; z-index:1;">
                 <span style="color:#ffff00">ESSENCE:</span>
                 <span style="color:#00ffff">${draftCost}</span>
             </div>
@@ -4883,7 +4898,7 @@ function grantRandomPowerup(p) {
         setTimeout(() => el.classList.add('hidden'), 1800);
     }
     if (pick === 'SHIELD') {
-        try { p.shieldActive = true; p.shieldTimer = p.powerup.time || 12; } catch(_) {}
+        try { p.shieldActive = true; p.shieldTimer = p.powerup.time || 15; } catch(_) {}
         try { vibrate(120); } catch(_) {}
     }
     if (pick === 'TIMEWARP') {
