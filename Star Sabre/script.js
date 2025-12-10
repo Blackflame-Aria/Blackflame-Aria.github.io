@@ -1915,12 +1915,15 @@ class Cannon {
             } else if (this.rc_phase === 'stopped_before') {
                 const stopDur = 1.0;
                 const k = Math.min(1, this.rc_timer / stopDur);
+                this.rc_glow = k;
                 for (let p of this.rc_particles) p.alpha = Math.max(0, 1 - k);
                 if (this.rc_timer >= stopDur) {
                     this.rc_particles.length = 0;
                     this.rc_phase = 'beam';
                     this.rc_timer = 0;
                     this.rc_beamPlaying = true;
+                    this.recoil = Math.max(this.recoil, 12);
+                    this.rc_glow = 0;
                     try { playSfx('warlaser-ready'); } catch(_){ }
                     try { LOOPING.play('warlaser'); } catch(_){ try { playSfx('warlaser'); } catch(_){} }
                 }
@@ -2118,6 +2121,26 @@ class Cannon {
         const drawX = this.x + recoilSign * Math.cos(recoilAngle) * recoilOffset;
         const drawY = this.y + recoilSign * Math.sin(recoilAngle) * recoilOffset;
 
+        if (this.isRight && this.rc_phase === 'stopped_before' && (this.rc_glow || this.rc_glow === 0)) {
+            const k = Math.max(0, Math.min(1, this.rc_glow));
+            const base = Math.max(24, this.size * 0.6);
+            const radius = base + k * Math.max(canvas.width, canvas.height) * 0.08;
+            const alpha = 0.8 * (1 - k) + 0.30;
+            ctx.save();
+            ctx.globalCompositeOperation = 'lighter';
+            try { ctx.filter = 'blur(5px)'; } catch(_) { }
+            const innerR = Math.max(6, base * 0.35);
+            const g = ctx.createRadialGradient(this.x, this.y, innerR, this.x, this.y, radius);
+            g.addColorStop(0.00, `rgba(80,230,255,${Math.min(1, alpha)})`);
+            g.addColorStop(0.40, `rgba(80,230,255,${Math.min(1, alpha * 0.7)})`);
+            g.addColorStop(0.75, `rgba(80,230,255,${Math.min(1, alpha * 0.18)})`);
+            g.addColorStop(1.00, 'rgba(80,230,255,0.0)');
+            ctx.fillStyle = g;
+            ctx.beginPath(); ctx.arc(this.x, this.y, radius, 0, Math.PI*2); ctx.fill();
+            try { ctx.filter = 'none'; } catch(_) {  }
+            ctx.restore();
+        }
+
         if (this.isRight && this.rc_beamPlaying) {let ang;
             const player = (party && party[0]) ? party[0] : null;
             if (this.rc_lockedAngle != null) {
@@ -2135,26 +2158,30 @@ class Cannon {
             ctx.save();
             ctx.globalCompositeOperation = 'lighter';
             ctx.lineWidth = 44;
-            ctx.shadowBlur = 28;
-            ctx.shadowColor = 'rgba(80,255,220,0.55)';
+            ctx.shadowBlur = 34;
+            ctx.shadowColor = 'rgba(80,255,220,0.7)';
             const grad = ctx.createLinearGradient(ax, ay, bx, by);
-            grad.addColorStop(0, 'rgba(80,200,255,0.0)');
-            grad.addColorStop(0.1, 'rgba(60,220,255,0.18)');
-            grad.addColorStop(0.5, 'rgba(80,255,220,0.25)');
-            grad.addColorStop(1, 'rgba(80,200,255,0.0)');
+            grad.addColorStop(0.00, 'rgba(80,200,255,0.00)');
+            grad.addColorStop(0.06, 'rgba(60,230,255,0.36)');
+            grad.addColorStop(0.20, 'rgba(80,255,255,0.60)');
+            grad.addColorStop(0.50, 'rgba(80,255,255,0.36)');
+            grad.addColorStop(0.85, 'rgba(80,230,255,0.06)');
+            grad.addColorStop(1.00, 'rgba(80,200,255,0.00)');
             ctx.strokeStyle = grad;
+            try { ctx.filter = 'blur(4px)'; } catch(_) { }
             ctx.beginPath(); ctx.moveTo(ax, ay); ctx.lineTo(bx, by); ctx.stroke();
+            try { ctx.filter = 'none'; } catch(_) { }
 
             ctx.lineWidth = 12;
             ctx.shadowBlur = 20;
-            ctx.shadowColor = 'rgba(150,255,255,0.6)';
-            ctx.strokeStyle = 'rgba(150,255,255,0.95)';
+            ctx.shadowColor = 'rgba(150,255,255,0.7)';
+            ctx.strokeStyle = 'rgba(150,255,255,0.98)';
             ctx.beginPath(); ctx.moveTo(ax, ay); ctx.lineTo(bx, by); ctx.stroke();
 
             ctx.lineWidth = 2;
-            ctx.shadowBlur = 8;
-            ctx.shadowColor = 'rgba(255,255,255,0.9)';
-            ctx.strokeStyle = 'rgba(200,255,255,1)';
+            ctx.shadowBlur = 10;
+            ctx.shadowColor = 'rgba(255,255,255,0.95)';
+            ctx.strokeStyle = 'rgba(255,255,255,1)';
             ctx.beginPath(); ctx.moveTo(ax, ay); ctx.lineTo(bx, by); ctx.stroke();
             ctx.restore();
         }
