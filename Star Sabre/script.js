@@ -23,6 +23,9 @@ const GAME = {
     draftCount: 0,
     warship: null,
 };
+let ultGlowId = null;
+let ultGlowTime = 0;
+let ultPressedId = null;
 const ACCESS = (function(){
     try {
         const raw = localStorage.getItem('neonAccessibility');
@@ -3095,6 +3098,7 @@ function loop() {
     const realSec = rawDtMs / 1000;
     GAME.frame++;
     GAME.time++;
+    ultGlowTime = Math.max(0, ultGlowTime - GAME.dt / 60);
     
     ctx.fillStyle = '#08080c';
     if(GAME.shake > 0) {
@@ -3673,6 +3677,8 @@ canvas.addEventListener('mousedown', (e) => {
 function handleTap(x, y) {
     const traitClicked = detectUltButton(x, y);
     if(traitClicked) {
+        ultPressedId = traitClicked;
+        setTimeout(() => ultPressedId = null, 200);
         if (traitClicked === 'default') {
             const p = party[0];
             if (p && p.ultCharge >= 100) activateUlt(p);
@@ -3955,8 +3961,10 @@ function drawPlayerTrail(realSec) {
 function activateUlt(pet) {
     if (!pet || pet.hp <= 0) return;
     pet.ultCharge = 0;
-    GAME.shake = 15;
     const isDefaultTrait = !(pet.trait && pet.trait.id && (pet.trait.id === 'sniper' || pet.trait.id === 'gatling' || pet.trait.id === 'shotgun'));
+    ultGlowId = isDefaultTrait ? 'default' : pet.trait.id;
+    ultGlowTime = 0.5;
+    GAME.shake = 15;
     if (isDefaultTrait && (meta.chargeLvl || 0) >= 15) {
         pet.blackHoleActive = true;
         pet.blackHoleTime = 10.0;
@@ -5597,8 +5605,18 @@ function drawUltButtons() {
                 pct = Math.max(pct, Math.min(1, p.ultCharge/100));
                 if (p.ultCharge >= 100) anyReady = true;
             }
+            if (pos.ult.id === 'sniper') pos.ult.color = '#ff00ff';
+            else if (pos.ult.id === 'gatling') pos.ult.color = '#ffff00';
+            else if (pos.ult.id === 'shotgun') pos.ult.color = '#00ffff';
         }
         const radius = pos.ult.id === 'default' ? DEF_ULT_BTN_RADIUS : ULT_BTN_RADIUS;
+        const scale = (ultPressedId === pos.ult.id) ? 0.9 : 1;
+        ctx.save();
+        if (scale < 1) {
+            ctx.translate(pos.x, pos.y);
+            ctx.scale(scale, scale);
+            ctx.translate(-pos.x, -pos.y);
+        }
         ctx.beginPath();
         ctx.fillStyle = 'rgba(30,30,40,0.55)';
         ctx.strokeStyle = '#222';
@@ -5622,6 +5640,18 @@ function drawUltButtons() {
         ctx.font = 'bold 14px Orbitron, monospace';
         ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
         ctx.fillText(pos.ult.label, pos.x, pos.y);
+        if (scale < 1) ctx.restore();
+        if (ultGlowTime > 0 && ultGlowId === pos.ult.id) {
+            const glowRadius = (0.5 - ultGlowTime) / 0.5 * 80;
+            const alpha = ultGlowTime / 0.5;
+            const gradient = ctx.createRadialGradient(pos.x, pos.y, 0, pos.x, pos.y, glowRadius);
+            gradient.addColorStop(0, hexToRgba(pos.ult.color, alpha));
+            gradient.addColorStop(1, hexToRgba(pos.ult.color, 0));
+            ctx.fillStyle = gradient;
+            ctx.beginPath();
+            ctx.arc(pos.x, pos.y, glowRadius, 0, Math.PI*2);
+            ctx.fill();
+        }
     }
     ctx.restore();
 }
