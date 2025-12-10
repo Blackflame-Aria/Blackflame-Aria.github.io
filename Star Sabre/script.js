@@ -874,10 +874,10 @@ function stopAllAudio() {
 class Pet {
     constructor(type, trait, isMain = false) {
         this.type = type;
-        this.trait = trait || { id: 'none', name: 'STANDARD' };
+            this.trait = trait || { id: 'none', name: 'STANDARD' };
         this.isMain = isMain;
 
-        let baseDmg = 4 + (meta.dmgLvl * 1.5);
+        let baseDmg = 4 + (meta.dmgLvl * 1.5) + (this.trait.id === 'sniper' ? 2 : 0);
         let baseHp = isMain ? 120 : 80;
         let baseRate = 35;
 
@@ -1041,7 +1041,7 @@ class Pet {
                 }
                 if (t) {
                     const msElapsed = GAME.dt * 10;
-                    let dmg = msElapsed * 0.08;
+                    let dmg = msElapsed * 0.1;
                     const bigBeamActive = (this.powerup.type === 'BIG' && this.powerup.time > 0 && (meta.rateLvl || 0) >= 15);
                     if (bigBeamActive) dmg *= 2;
                     const ang = Math.atan2(t.y - this.y, t.x - this.x);
@@ -1291,6 +1291,10 @@ class Pet {
         if (this.ultCharge >= 100) {
             ctx.save();
             ctx.globalCompositeOperation = 'lighter';
+            ctx.shadowBlur = 28;
+            ctx.shadowColor = 'rgba(80,255,220,0.65)';
+            ctx.shadowBlur = 28;
+            ctx.shadowColor = 'rgba(80,255,220,0.65)';
             const isPlayerUnit = (party[0] === this);
             const theme = isPlayerUnit ? getSkinTheme() : { primary: (C.colors[this.type.toLowerCase()] || '#fff'), accent: '#ffffff' };
             const glow = theme.primary || '#fff';
@@ -1957,14 +1961,23 @@ class Cannon {
                     if (dist <= beamWidth + targetSize) {
                         const DAMAGE_PER_MS = 1 * 0.5; 
                         const dmgF = Math.max(0, msElapsed * DAMAGE_PER_MS);
-                        t.hp -= dmgF;
                         hitCount++;
-                        try { spawnDamagePopup(t, dmgF, 'large'); } catch(_){ }
-                        if (t.hp <= 0 && !t.deadProcessed) {
-                            t.deadProcessed = true;
-                            try { playSfx('die'); createRainbowExplosion(t.x, t.y, (t.rank === 'BOSS') ? 30 : 18); } catch(_){ }
-                            try { onEnemyKilled(t, 'RIGHT_BEAM'); } catch(_){ }
-                            if (GAME.target === t) GAME.target = null;
+                        if (t.takeDamage) {
+                            try {
+                                t.takeDamage(dmgF);
+                            } catch(_) {
+                                t.hp -= dmgF;
+                            }
+                            try { spawnDamagePopup(t, dmgF, 'large'); } catch(_){ }
+                        } else {
+                            t.hp -= dmgF;
+                            try { spawnDamagePopup(t, dmgF, 'large'); } catch(_){ }
+                            if (t.hp <= 0 && !t.deadProcessed) {
+                                t.deadProcessed = true;
+                                try { playSfx('die'); createRainbowExplosion(t.x, t.y, (t.rank === 'BOSS') ? 30 : 18); } catch(_){ }
+                                try { onEnemyKilled(t, 'RIGHT_BEAM'); } catch(_){ }
+                                if (GAME.target === t) GAME.target = null;
+                            }
                         }
                     }
                 }
@@ -1979,14 +1992,15 @@ class Cannon {
                 }
                 return;
             } else if (this.rc_phase === 'stopped_after') {
-                this.rc_timer += 0; 
-                const afterDur = 2.0;
-                if (this.rc_timer >= afterDur) {
-                    this.rc_phase = 'track';
-                    this.rc_timer = 0;
-                    this.rc_glow = 0;
-                    try { LOOPING.play('warlaser-charge'); } catch(_){ }
-                }
+                    const deadCannons = (this.warship && this.warship.cannons) ? this.warship.cannons.filter(c => c && c.dead).length : 0;
+                    const baseAfter = 1.0;
+                    const afterDur = Math.max(0, baseAfter - (deadCannons * 0.5));
+                    if (this.rc_timer >= afterDur) {
+                        this.rc_phase = 'track';
+                        this.rc_timer = 0;
+                        this.rc_glow = 0;
+                        try { LOOPING.play('warlaser-charge'); } catch(_){ }
+                    }
                 return;
             }
         }
@@ -2036,16 +2050,10 @@ class Cannon {
         const vx = (dx / dist) * speed;
         const vy = (dy / dist) * speed;
         
-        bullets.push(new Bullet(
-            this.x,
-            this.y,
-            target,
-            20,
-            'warship',
-            0,
-            null,
-            { vx, vy, enemy: true }
-        ));
+        const cannonSide = (this.isRight ? 'right' : (this.isMiddle ? 'middle' : 'left'));
+        const opts = { vx, vy, enemy: true, cannonSide };
+        if (cannonSide === 'left') opts.color = '#ffff00';
+        bullets.push(new Bullet(this.x, this.y, target, 20, 'warship', 0, null, opts));
         
         this.recoil = 8;
         playSfx('warcannon');
@@ -2126,6 +2134,8 @@ class Cannon {
             ctx.save();
             ctx.globalCompositeOperation = 'lighter';
             ctx.lineWidth = 44;
+            ctx.shadowBlur = 28;
+            ctx.shadowColor = 'rgba(80,255,220,0.55)';
             const grad = ctx.createLinearGradient(ax, ay, bx, by);
             grad.addColorStop(0, 'rgba(80,200,255,0.0)');
             grad.addColorStop(0.1, 'rgba(60,220,255,0.18)');
@@ -2135,10 +2145,14 @@ class Cannon {
             ctx.beginPath(); ctx.moveTo(ax, ay); ctx.lineTo(bx, by); ctx.stroke();
 
             ctx.lineWidth = 12;
+            ctx.shadowBlur = 20;
+            ctx.shadowColor = 'rgba(150,255,255,0.6)';
             ctx.strokeStyle = 'rgba(150,255,255,0.95)';
             ctx.beginPath(); ctx.moveTo(ax, ay); ctx.lineTo(bx, by); ctx.stroke();
 
             ctx.lineWidth = 2;
+            ctx.shadowBlur = 8;
+            ctx.shadowColor = 'rgba(255,255,255,0.9)';
             ctx.strokeStyle = 'rgba(200,255,255,1)';
             ctx.beginPath(); ctx.moveTo(ax, ay); ctx.lineTo(bx, by); ctx.stroke();
             ctx.restore();
@@ -2338,9 +2352,16 @@ class Bullet {
         this.dmg = dmg;
         this.enemy = !!opts.enemy;
         this.type = type;
-        
+
         if (this.type === 'warship') {
-            this.color = '#ff0000';
+            let col = (opts && opts.color) ? opts.color : null;
+            if (!col) {
+                if (opts && opts.cannonSide === 'left') col = '#ffff00';
+                else if (opts && opts.cannonSide === 'right') col = '#ffff00';
+                else col = '#ffff00';
+            }
+            this.color = col;
+            this.cannonSide = opts && opts.cannonSide ? opts.cannonSide : null;
             this.vx = opts.vx || 0;
             this.vy = opts.vy || 4;
             this.w = 8;
@@ -2651,8 +2672,8 @@ class Bullet {
                     ctx.translate(t.x, t.y);
                     ctx.rotate(angle);
                     ctx.shadowBlur = 20;
-                    ctx.shadowColor = 'rgba(255, 0, 0, 0.8)';
-                    ctx.fillStyle = `rgba(255, 0, 0, ${t.life * 0.5})`;
+                    ctx.shadowColor = this.color;
+                    ctx.fillStyle = hexToRgba ? hexToRgba(this.color, (t.life * 0.5) || 0.5) : this.color;
                     ctx.beginPath();
                     ctx.ellipse(0, 0, this.w / 2, this.h / 2, 0, 0, Math.PI * 2);
                     ctx.fill();
@@ -2663,8 +2684,8 @@ class Bullet {
             ctx.save();
             ctx.translate(this.x, this.y);
             ctx.rotate(angle);
-            ctx.shadowBlur = 25;
-            ctx.shadowColor = 'rgba(255, 0, 0, 1)';
+            ctx.shadowBlur = 20;
+            ctx.shadowColor = this.color;
             ctx.fillStyle = this.color;
             ctx.beginPath();
             ctx.ellipse(0, 0, this.w / 2, this.h / 2, 0, 0, Math.PI * 2);
@@ -2735,7 +2756,12 @@ function isValidTarget(target) {
     if (target.dead) return false;
     if (target.hp !== undefined && target.hp <= 0) return false;
     if (target._cid) return !target.dead;
-    if (target._eid) return enemies.includes(target) && target.hp > 0;
+    if (target._eid) {
+        if (!enemies.includes(target) || target.hp <= 0) return false;
+        const visibleRadius = target.size || target.radius || 0;
+        if (typeof target.y === 'number' && (target.y + visibleRadius) < -10) return false;
+        return true;
+    }
     return false;
 }
 
@@ -2743,6 +2769,8 @@ function findClosestEnemy(x, y) {
     let closest = null;
     let minD = Infinity;
     for(let e of enemies) {
+        const visR = e.size || e.radius || 0;
+        if (typeof e.y === 'number' && (e.y + visR) < -10) continue;
         let d = (e.x - x)**2 + (e.y - y)**2;
         if(d < minD) { minD = d; closest = e; }
     }
@@ -3127,6 +3155,28 @@ function loop() {
     if (GAME.warship) {
         GAME.warship.update();
         if (GAME.warship) {
+            for (let i = 0; i < bullets.length; i++) {
+                const b = bullets[i];
+                if (!b || !b.active) continue;
+                if (!b.enemy) continue;
+                if (b.cannonSide !== 'left') continue;
+                ctx.save();
+                ctx.globalCompositeOperation = 'lighter';
+                ctx.strokeStyle = '#ffff00';
+                ctx.lineWidth = Math.max(6, (b.width || 3));
+                ctx.shadowBlur = 28;
+                ctx.shadowColor = '#ffff00';
+                ctx.beginPath();
+                if (b.trail && b.trail.length > 0) ctx.moveTo(b.trail[0].x, b.trail[0].y);
+                ctx.lineTo(b.x, b.y);
+                ctx.stroke();
+                ctx.strokeStyle = 'rgba(255,255,200,0.95)';
+                ctx.lineWidth = Math.max(2, (b.width || 3) * 0.5);
+                ctx.beginPath(); if (b.trail && b.trail.length > 0) ctx.moveTo(b.trail[0].x, b.trail[0].y); ctx.lineTo(b.x, b.y); ctx.stroke();
+                ctx.restore();
+                b._drawnBehindFrame = GAME.frame;
+            }
+
             GAME.warship.draw();
         }
     }
@@ -3242,6 +3292,7 @@ function loop() {
         const b = bullets[i];
         b.update();
         if (!b.active) { b._remove = true; continue; }
+        if (b._drawnBehindFrame === GAME.frame) { delete b._drawnBehindFrame; continue; }
         b.draw();
     }
     {
@@ -4778,7 +4829,7 @@ function updateUI() {
 function grantRandomPowerup(p) {
     if (!p) return;
     const hasSpecial = (meta.dmgLvl || 0) >= 15 || (meta.rateLvl || 0) >= 15;
-    const options = hasSpecial ? ['BIG','SHIELD','TIMEWARP'] : ['TRIPLE','FIRE2X','PIERCE','BIG','SEXTUPLE','SHIELD','TIMEWARP'];
+    const options = hasSpecial ? ['BIG'] : ['TRIPLE','FIRE2X','PIERCE','BIG','SEXTUPLE','SHIELD','TIMEWARP'];
     const pick = options[Math.floor(Math.random()*options.length)];
     p.powerup.type = pick;
     if (pick === 'BIG' && (meta.rateLvl || 0) >= 15) {
