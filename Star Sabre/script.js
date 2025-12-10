@@ -5619,7 +5619,7 @@ function drawUltButtons() {
             ctx.stroke();
         }
         ctx.fillStyle = anyReady ? '#fff' : '#888';
-        ctx.font = 'bold 14px monospace';
+        ctx.font = 'bold 14px Orbitron, monospace';
         ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
         ctx.fillText(pos.ult.label, pos.x, pos.y);
     }
