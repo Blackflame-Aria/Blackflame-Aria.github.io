@@ -1,54 +1,88 @@
-// sounds.js - Handles audio (separate music and SFX)
-
 export class Sounds {
     constructor(game) {
         this.game = game;
         this.musicVolume = 0.5;
         this.sfxVolume = 0.5;
 
-        // Mapping of sound names to file paths (place your files into assets/sounds/)
         this.soundFiles = {
             boost: 'assets/sounds/boost.wav',
             hit: 'assets/sounds/hit.wav',
             damage: 'assets/sounds/damage.wav',
-            enemy_destroy: 'assets/sounds/enemy_destroy.wav'
+            enemy_destroy: 'assets/sounds/enemy_destroy.wav',
+            orb_hit: 'assets/sounds/orb_hit.wav'
         };
 
-        // Music file (single track, looped)
+        this.menuFile = 'assets/sounds/menu.mp3';
         this.musicFile = 'assets/sounds/background_music.mp3';
-
-        // Music audio element (single instance, looped)
         this.musicAudio = null;
-
-        // Optional preloaded SFX cache (stores Audio objects for quick reuse)
-        this._preloadedSFX = {};
+        this.audioCtx = null;
+        this.musicGain = null;
+        this.sfxGain = null;
+        this._sfxBuffers = {};
 
         this._init();
     }
 
     _init() {
-        // Create the music audio element
+        try {
+            this.audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        } catch(e) { this.audioCtx = null; }
+
         this.musicAudio = new Audio();
         this.musicAudio.src = this.musicFile;
         this.musicAudio.loop = true;
-        this.musicAudio.volume = this.musicVolume;
         this.musicAudio.preload = 'auto';
 
-        // Preload SFX (shallow preload: create an Audio object for each file so browser can cache)
-        Object.keys(this.soundFiles).forEach(key => {
-            const a = new Audio();
-            a.src = this.soundFiles[key];
-            a.preload = 'auto';
-            this._preloadedSFX[key] = a;
-        });
+        try {
+            const saved = JSON.parse(localStorage.getItem('mr_settings') || 'null');
+            if (saved) {
+                if (typeof saved.musicVolume === 'number') this.musicVolume = saved.musicVolume;
+                if (typeof saved.sfxVolume === 'number') this.sfxVolume = saved.sfxVolume;
+            }
+        } catch (e) { }
 
-        // Try to start music if allowed (some browsers block autoplay)
-        this._tryPlayMusic();
+        if (this.audioCtx) {
+            try {
+                this.musicGain = this.audioCtx.createGain();
+                this.sfxGain = this.audioCtx.createGain();
+                this.musicGain.gain.value = this.musicVolume;
+                this.sfxGain.gain.value = this.sfxVolume;
+                try {
+                    const srcNode = this.audioCtx.createMediaElementSource(this.musicAudio);
+                    srcNode.connect(this.musicGain);
+                    this.musicGain.connect(this.audioCtx.destination);
+                    this.sfxGain.connect(this.audioCtx.destination);
+                } catch(e) {
+                    this.musicAudio.volume = this.musicVolume;
+                }
+            } catch(e) {
+                this.musicAudio.volume = this.musicVolume;
+            }
+            Object.keys(this.soundFiles).forEach(key => {
+                const url = this.soundFiles[key];
+                fetch(url).then(r => r.arrayBuffer()).then(buf => {
+                    this.audioCtx.decodeAudioData(buf, (decoded) => {
+                        this._sfxBuffers[key] = decoded;
+                    }, () => {
+                    });
+                }).catch(()=>{});
+            });
+        } else {
+            this.musicAudio.volume = this.musicVolume;
+            this._preloadedSFX = {};
+            Object.keys(this.soundFiles).forEach(key => {
+                const a = new Audio();
+                a.src = this.soundFiles[key];
+                a.preload = 'auto';
+                a.volume = this.sfxVolume;
+                this._preloadedSFX[key] = a;
+            });
+        }
+
     }
 
     _tryPlayMusic() {
         if (!this.musicAudio) return;
-        // Attempt to play; if blocked, note it and play on first user interaction
         const p = this.musicAudio.play();
         if (p && p.catch) {
             p.catch(() => {
@@ -63,10 +97,9 @@ export class Sounds {
         }
     }
 
-    // Start/stop music explicitly
     playMusic() {
         if (!this.musicAudio) return;
-        this.musicAudio.volume = this.musicVolume;
+        try { if (this.audioCtx && this.audioCtx.state === 'suspended') this.audioCtx.resume(); } catch(e) {}
         this.musicAudio.play().catch(() => {});
     }
 
@@ -76,23 +109,35 @@ export class Sounds {
         this.musicAudio.currentTime = 0;
     }
 
-    // Play an SFX by name. Creates a new Audio node for overlapping playback.
     playSFX(name) {
         const src = this.soundFiles[name];
         if (!src) {
             console.warn('SFX not found:', name);
             return;
         }
+        try {
+            if (this.audioCtx && this._sfxBuffers[name]) {
+                const buf = this._sfxBuffers[name];
+                const srcNode = this.audioCtx.createBufferSource();
+                srcNode.buffer = buf;
+                const localGain = this.audioCtx.createGain();
+                const mul = (name === 'orb_hit') ? 0.12 : 1.0;
+                localGain.gain.value = Math.max(0, (this.sfxVolume || 0.5) * mul);
+                srcNode.connect(localGain);
+                localGain.connect(this.sfxGain);
+                srcNode.start(0);
+                return;
+            }
+        } catch(e) {}
 
-        // Create a new audio element so multiple instances can play simultaneously
         const a = new Audio();
         a.src = src;
-        a.volume = this.sfxVolume;
+        if (name === 'orb_hit') a.volume = Math.max(0, (this.sfxVolume || 0.5) * 0.12);
+        else a.volume = this.sfxVolume;
         a.preload = 'auto';
         a.play().catch(() => {});
     }
 
-    // Setters for volumes (independent)
     setMusicVolume(v) {
         this.musicVolume = parseFloat(v);
         if (this.musicAudio) this.musicAudio.volume = this.musicVolume;
@@ -102,12 +147,30 @@ export class Sounds {
         this.sfxVolume = parseFloat(v);
     }
 
-    // Convenience: change music track at runtime
-    setMusicTrack(src) {
+    setMusicTrack(src, autoplay = false) {
         if (!this.musicAudio) return;
+        try { if (this.audioCtx && this.audioCtx.state === 'suspended') this.audioCtx.resume(); } catch(e) {}
         this.musicAudio.pause();
         this.musicAudio.src = src;
         this.musicAudio.load();
-        this._tryPlayMusic();
+        if (autoplay) this._tryPlayMusic();
+    }
+
+    playMenuMusic() {
+        try {
+            if (!this.musicAudio) return;
+            this.setMusicTrack(this.menuFile, true);
+        } catch(e) {}
+    }
+
+    playBackgroundMusic() {
+        try {
+            if (!this.musicAudio) return;
+            if (this.game && this.game.isPlaying && !this.game._paused) {
+                this.setMusicTrack(this.musicFile, true);
+            } else {
+                this.setMusicTrack(this.musicFile, false);
+            }
+        } catch(e) {}
     }
 }

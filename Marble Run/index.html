@@ -3,61 +3,165 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>3D Marble Run</title>
+    <title>Marble thing</title>
     <link rel="stylesheet" href="css/styles.css">
-    <!-- Orbitron font for retro/cyberpunk look -->
     <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&display=swap" rel="stylesheet">
-    <!-- Babylon.js CDN -->
     <script src="https://cdn.babylonjs.com/babylon.js"></script>
     <script src="https://cdn.babylonjs.com/loaders/babylonjs.loaders.min.js"></script>
-    <!-- Cannon.js for physics -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/cannon.js/0.6.2/cannon.min.js"></script>
-    <!-- Babylon Cannon Plugin -->
-    <script src="https://cdn.babylonjs.com/plugins/cannon.js"></script>
+    <script>
+        (function(){
+            var cannonCandidates = [
+                'libs/cannon.min.js',
+                'https://cdnjs.cloudflare.com/ajax/libs/cannon.js/0.6.2/cannon.min.js',
+                'https://cdn.jsdelivr.net/npm/cannon@0.6.2/build/cannon.min.js',
+                'https://unpkg.com/cannon@0.6.2/build/cannon.min.js'
+            ];
+
+            var pluginCandidates = [
+                'libs/babylon.cannon.plugin.js',
+                'https://cdn.babylonjs.com/plugins/cannon.js',
+                'https://cdn.jsdelivr.net/npm/babylonjs@5.0.0/plugins/cannon.js',
+                'https://unpkg.com/babylonjs@5.0.0/plugins/cannon.js'
+            ];
+
+            function loadScript(src){
+                return new Promise(function(resolve, reject){
+                    var s = document.createElement('script');
+                    s.src = src;
+                    s.async = true;
+                    s.onload = function(){ resolve(src); };
+                    s.onerror = function(){ reject(new Error('failed: ' + src)); };
+                    document.head.appendChild(s);
+                });
+            }
+
+            function trySequential(list, testFn){
+                var i = 0;
+                function next(){
+                    if (i >= list.length) return Promise.reject(new Error('no candidate succeeded'));
+                    var src = list[i++];
+                    return loadScript(src).then(function(){
+                        if (typeof testFn === 'function'){
+                            try {
+                                if (testFn()) return Promise.resolve(src);
+                            } catch(e) {
+                            }
+                            return next();
+                        }
+                        return Promise.resolve(src);
+                    }).catch(function(){
+                        return next();
+                    });
+                }
+                return next();
+            }
+
+            function showPhysicsWarning(){
+                try{
+                    var overlay = document.createElement('div');
+                    overlay.id = 'physicsWarning';
+                    overlay.style.position = 'fixed';
+                    overlay.style.bottom = '18px';
+                    overlay.style.left = '18px';
+                    overlay.style.padding = '10px 14px';
+                    overlay.style.background = 'rgba(0,0,0,0.7)';
+                    overlay.style.color = '#0f0';
+                    overlay.style.border = '1px solid rgba(0,255,0,0.12)';
+                    overlay.style.borderRadius = '8px';
+                    overlay.style.zIndex = 2000;
+                    overlay.style.fontFamily = 'Orbitron, sans-serif';
+                    overlay.style.fontSize = '13px';
+                    overlay.innerHTML = 'Physics libraries failed to load from CDN. Physics disabled.\n\u2014 To enable physics, add `libs/cannon.min.js` and `libs/babylon.cannon.plugin.js` to the project or allow the CDN resources.';
+                    document.body.appendChild(overlay);
+                }catch(e){ console.warn('Could not show physics warning overlay', e); }
+            }
+
+            trySequential(cannonCandidates, function(){ return !!window.CANNON && typeof window.CANNON.NaiveBroadphase === 'function'; }).then(function(src){
+                console.log('Cannon loaded from', src);
+                return trySequential(pluginCandidates, function(){ return typeof BABYLON !== 'undefined' && !!BABYLON.CannonJSPlugin; });
+            }).then(function(pluginSrc){
+                console.log('Babylon Cannon plugin loaded from', pluginSrc);
+                window.MR_PHYSICS_AVAILABLE = !!(window.CANNON && typeof BABYLON !== 'undefined' && !!BABYLON.CannonJSPlugin);
+            }).catch(function(err){
+                console.warn('Physics load failed:', err);
+                window.MR_PHYSICS_AVAILABLE = false;
+                showPhysicsWarning();
+            }).finally(function(){
+                var m = document.createElement('script');
+                m.type = 'module';
+                m.src = 'js/main.js';
+                document.body.appendChild(m);
+            });
+        })();
+    </script>
 </head>
 <body>
-    <canvas id="renderCanvas"></canvas>
-    
-    <!-- Menu Overlay -->
-    <div id="menu">
-        <h1>3D Marble Run</h1>
-        <button id="playBtn">Play</button>
-        <button id="settingsBtn">Settings</button>
-        <button id="customizationBtn">Customization</button>
-        <button id="backBtn">Back to Site</button>
-    </div>
-    
-    <!-- Settings Submenu -->
-    <div id="settingsMenu" class="submenu hidden">
-        <h2>Settings</h2>
-        <label>Music Volume: <input type="range" id="musicVolume" min="0" max="1" step="0.1" value="0.5"></label>
-        <label>SFX Volume: <input type="range" id="sfxVolume" min="0" max="1" step="0.1" value="0.5"></label>
-        <label>Camera Shake: <input type="range" id="cameraShake" min="0" max="1" step="0.1" value="0.5"></label>
-        <label>Joycon Position: 
-            <select id="joyconPos">
-                <option value="left">Joystick Left, Button Right</option>
-                <option value="right">Joystick Right, Button Left</option>
-            </select>
+    <div id="viewport">
+        <canvas id="renderCanvas"></canvas>
+        <div id="overlays">
+            <div class="grid" aria-hidden="true"></div>
+            <div class="scanlines" aria-hidden="true"></div>
+            <div class="noise" aria-hidden="true"></div>
+            <div class="vignette" aria-hidden="true"></div>
+        </div>
+
+        <div id="menu">
+            <h1 class="title"><span class="glitch" data-text="Marble thing">MARBLE THING</span></h1>
+            <button id="playBtn" class="neon">Play</button>
+            <button id="settingsBtn" class="neon">Settings</button>
+            <button id="customizationBtn" class="neon">Customization</button>
+            <button id="backBtn" class="neon">Back to Site</button>
+        </div>
+
+        <div id="settingsMenu" class="submenu hidden">
+        <label>Music Volume:
+            <input class="range-terminal" type="range" id="musicVolume" min="0" max="1" step="0.1" value="0.5"
+                aria-label="Music Volume" title="Music Volume" role="slider" aria-valuemin="0" aria-valuemax="1" aria-valuenow="0.5">
         </label>
-        <label>Camera Follow: <input type="checkbox" id="cameraFollow" checked></label>
-        <button class="backToMenu">Back</button>
+        <label>Sound Volume:
+            <input class="range-terminal" type="range" id="sfxVolume" min="0" max="1" step="0.1" value="0.5"
+                aria-label="Sound Volume" title="Sound Volume" role="slider" aria-valuemin="0" aria-valuemax="1" aria-valuenow="0.5">
+        </label>
+        <label>Camera Shake:
+            <input class="range-terminal" type="range" id="cameraShake" min="0" max="1" step="0.1" value="0.5"
+                aria-label="Camera Shake" title="Camera Shake" role="slider" aria-valuemin="0" aria-valuemax="1" aria-valuenow="0.5">
+        </label>
+        <div class="menu-subsection">
+            <div class="menu-subtitle">Joycon Position</div>
+            <div class="menu-actions joycon-pos">
+                <button id="joyLeftBtn" class="neon">Left</button>
+                <button id="joyRightBtn" class="neon">Right</button>
+            </div>
+        </div>
+        <div class="menu-actions"><button class="backToMenu neon">Back</button></div>
     </div>
     
-    <!-- Customization Submenu -->
     <div id="customizationMenu" class="submenu hidden">
-        <h2>Customization</h2>
-        <label>Skin: <select id="skinSelect"></select></label>
-        <label>Accessories: <select id="accessorySelect" multiple></select></label>
-        <button class="backToMenu">Back</button>
+        <div class="menu-subsection">
+            <div class="menu-subtitle">Skins</div>
+            <div class="carousel" id="skinCarousel">
+                <button class="carousel-btn left" id="skinLeftBtn">◀</button>
+                <div class="slides" id="skinSlides"></div>
+                <button class="carousel-btn right" id="skinRightBtn">▶</button>
+            </div>
+        </div>
+
+        <div class="menu-subsection">
+            <div class="menu-subtitle">Accessories</div>
+            <div class="carousel" id="accCarousel">
+                <button class="carousel-btn left" id="accLeftBtn">◀</button>
+                <div class="slides" id="accSlides"></div>
+                <button class="carousel-btn right" id="accRightBtn">▶</button>
+            </div>
+        </div>
+
+        <div class="menu-actions"><button class="backToMenu neon">Back</button></div>
     </div>
     
-    <!-- Mobile Controls -->
-    <div id="mobileControls" class="hidden">
-        <div id="joystick"></div>
-        <button id="boostBtn">Boost</button>
-    </div>
-    
-    <!-- Module entrypoint: loads other JS modules via ES modules -->
-    <script type="module" src="js/main.js"></script>
+        <div id="mobileControls">
+            <div id="joystick"><div class="knob"></div></div>
+            <button id="boostBtn">Boost</button>
+        </div>
+    </div> 
 </body>
 </html>
