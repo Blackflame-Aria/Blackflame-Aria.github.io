@@ -1,6 +1,7 @@
 import * as Haptics from './haptics.js';
 
-const ENEMY_FACING_OFFSET = -0.4; 
+const ENEMY_FACING_OFFSET = -0.4;
+const TAP_TARGET_RADIUS = 3.0;
 
 export class Enemy {
     constructor(game) {
@@ -30,15 +31,15 @@ export class Enemy {
                 this.mesh.physicsImpostor = new BABYLON.PhysicsImpostor(this.mesh, BABYLON.PhysicsImpostor.SphereImpostor, {
                     mass: .5,
                     restitution: 0.01,
-                    friction: 5
+                    friction: 0.02
                 }, this.game.scene);
                 try {
                     const body = this.mesh.physicsImpostor.physicsBody;
-                    if (body) {
-                        body.allowSleep = false;
-                        if (typeof body.linearDamping !== 'undefined') body.linearDamping = 0.01;
-                        if (typeof body.angularDamping !== 'undefined') body.angularDamping = 0.08;
-                    }
+                        if (body) {
+                            body.allowSleep = false;
+                            if (typeof body.linearDamping !== 'undefined') body.linearDamping = 0.02;
+                            if (typeof body.angularDamping !== 'undefined') body.angularDamping = 0.02;
+                        }
                 } catch(e) {}
             } catch(e) { console.warn('Failed to create enemy physics impostor', e); }
         }
@@ -80,6 +81,40 @@ export class Enemy {
 
         try { if (this.game.hud) this.game.hud.updateEnemy(this.health); } catch(e) {}
         this._lastTrailTime = 0;
+
+        try {
+            if (this.game && this.game.scene && typeof this.game.scene.onPointerObservable !== 'undefined') {
+                this._pointerObserver = this.game.scene.onPointerObservable.add((pi) => {
+                    try {
+                        if (!pi.event) return;
+                        if (pi.type !== BABYLON.PointerEventTypes.POINTERDOWN) return;
+                        const sx = (pi.event.clientX !== undefined) ? pi.event.clientX : pi.event.x;
+                        const sy = (pi.event.clientY !== undefined) ? pi.event.clientY : pi.event.y;
+                        const pick = this.game.scene.pick(sx, sy);
+                        let hitNearby = false;
+                        if (pick) {
+                            if (pick.hit && pick.pickedPoint) {
+                                const d = BABYLON.Vector3.Distance(pick.pickedPoint, this.mesh.position);
+                                if (d <= TAP_TARGET_RADIUS) hitNearby = true;
+                            }
+                            if (!hitNearby && pick.ray && pick.ray.origin && pick.ray.direction) {
+                                try {
+                                    const ray = pick.ray;
+                                    const v = this.mesh.position.subtract(ray.origin);
+                                    const proj = Math.max(0, BABYLON.Vector3.Dot(v, ray.direction));
+                                    const closest = ray.origin.add(ray.direction.scale(proj));
+                                    const dRay = BABYLON.Vector3.Distance(closest, this.mesh.position);
+                                    if (dRay <= TAP_TARGET_RADIUS) hitNearby = true;
+                                } catch(e) {}
+                            }
+                        }
+                        if (hitNearby) {
+                            try { this.game.lockedEnemy = this; } catch(e) {}
+                        }
+                    } catch(e) {}
+                });
+            }
+        } catch(e) {}
     }
 
     update() {
@@ -168,8 +203,8 @@ export class Enemy {
                     try {
                         const body = this.mesh.physicsImpostor.physicsBody;
                             if (body) {
-                            if (typeof body.linearDamping !== 'undefined') body.linearDamping = Math.max(body.linearDamping || 0, 0.35);
-                            if (typeof body.angularDamping !== 'undefined') body.angularDamping = Math.max(body.angularDamping || 0, 0.5);
+                                if (typeof body.linearDamping !== 'undefined') body.linearDamping = 0.02;
+                                if (typeof body.angularDamping !== 'undefined') body.angularDamping = 0.5;
                         }
                     } catch(e) {}
                 } catch(e) {}
@@ -177,8 +212,8 @@ export class Enemy {
                 try {
                     const body = this.mesh.physicsImpostor && this.mesh.physicsImpostor.physicsBody;
                     if (body) {
-                        if (typeof body.linearDamping !== 'undefined') body.linearDamping = Math.min(body.linearDamping || 0, 0.05);
-                        if (typeof body.angularDamping !== 'undefined') body.angularDamping = Math.min(body.angularDamping || 0, 0.12);
+                            if (typeof body.linearDamping !== 'undefined') body.linearDamping = 0.02;
+                            if (typeof body.angularDamping !== 'undefined') body.angularDamping = 0.02;
                     }
                 } catch(e) {}
             }
@@ -191,13 +226,15 @@ export class Enemy {
         const now = performance.now();
         if (now - this._lastCollisionTime < 130) return; 
         this._lastCollisionTime = now;
-
         const playerSpeed = this.game.player.speed || 0;
         const enemySpeed = this.speed || 0;
-        const isBoost = this.game.controls.isBoosting;
+        const isBoost = this.game.controls && this.game.controls.isBoosting;
         const baseDamage = (playerSpeed + enemySpeed) * 0.5;
 
-        let damageToEnemy = baseDamage * (1 + (playerSpeed / 10)); 
+        const enemySpeedNorm = Math.max(0, Math.min(1, enemySpeed / 12));
+        const vulnMultiplier = 1 - (0.6 * enemySpeedNorm); 
+
+        let damageToEnemy = baseDamage * (1 + (playerSpeed / 10)) * vulnMultiplier;
         if (isBoost) damageToEnemy *= 1.6;
         this.takeDamage(damageToEnemy);
         try {
@@ -207,15 +244,12 @@ export class Enemy {
             }
         } catch(e) {}
 
-        let damageToPlayer = baseDamage * (1 + (enemySpeed / 10));
-        damageToPlayer *= 1.5;
-        const slowFactor = Math.max(0, 1 - (playerSpeed / 4)); 
-        const slowMultiplier = 1 + (slowFactor * 1.4);
-        damageToPlayer *= slowMultiplier;
+        let damageToPlayer = baseDamage * (1 + (enemySpeed / 8));
+        damageToPlayer *= 1.2; 
         if (!this.game.player._invulnerable) this.game.player.takeDamage(damageToPlayer);
 
         try {
-            const strength = Math.max(0.08, Math.min(1, ((playerSpeed + enemySpeed) / 12)));
+            const strength = Math.max(0.06, Math.min(1, ((playerSpeed + enemySpeed) / 14)));
             if (this.game && typeof this.game.triggerCameraShake === 'function') this.game.triggerCameraShake(strength);
         } catch(e) {}
 
@@ -256,6 +290,12 @@ export class Enemy {
     }
 
     destroy() {
+        try {
+            if (this._pointerObserver && this.game && this.game.scene && this.game.scene.onPointerObservable) {
+                try { this.game.scene.onPointerObservable.remove(this._pointerObserver); } catch(e) {}
+                this._pointerObserver = null;
+            }
+        } catch(e) {}
         if (this.mesh) {
             this.mesh.dispose();
             this.mesh = null;

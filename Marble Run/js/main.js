@@ -57,6 +57,9 @@ class Game {
         this.camera = new BABYLON.UniversalCamera('camera', new BABYLON.Vector3(0, 5, -10), this.scene);
         this.camera.setTarget(BABYLON.Vector3.Zero());
         this._applyCameraMode();
+        try { this._baseCameraFov = this.camera.fov || 0.8; } catch(e) { this._baseCameraFov = 0.8; }
+        try { this._cameraTarget = BABYLON.Vector3.Zero(); } catch(e) { this._cameraTarget = new BABYLON.Vector3(0,0,0); }
+        try { this._updateCameraDistance(); } catch(e) {}
         
         const light = new BABYLON.HemisphericLight('light', new BABYLON.Vector3(0, 1, 0), this.scene);
         
@@ -206,6 +209,7 @@ class Game {
     bindEvents() {
         window.addEventListener('resize', () => {
             this.engine.resize();
+            try { this._updateCameraDistance(); } catch(e) {}
         });
         window.addEventListener('keydown', (e) => {
             try {
@@ -260,6 +264,35 @@ class Game {
                     r.addEventListener('change', () => { try { Haptics.sliderSnap(); } catch(e){} });
                 } catch(e) {}
             });
+        } catch(e) {}
+    }
+
+    _updateCameraDistance() {
+        try {
+            if (!this.camera) return;
+            const w = (typeof window !== 'undefined' && window.innerWidth) ? window.innerWidth : 1366;
+            const clamped = Math.max(320, Math.min(1366, w));
+            const t = (1366 - clamped) / (1366 - 320);
+
+            const target = this._cameraTarget || BABYLON.Vector3.Zero();
+            let dir = this.camera.position.subtract(target);
+            let baseDist = dir.length();
+            if (baseDist < 0.001) {
+                dir = new BABYLON.Vector3(0,5,-10).subtract(target);
+                baseDist = dir.length();
+            }
+            const ndir = dir.normalize();
+
+            const extraDist = t * 12;
+            const desiredDist = baseDist + extraDist;
+            const newPos = target.add(ndir.scale(desiredDist));
+            this.camera.position = newPos;
+
+            try {
+                const baseFov = (typeof this._baseCameraFov === 'number') ? this._baseCameraFov : (this.camera.fov || 0.8);
+                const fovExtra = Math.min(0.6, t * 0.6); 
+                this.camera.fov = baseFov * (1 + fovExtra);
+            } catch(e) {}
         } catch(e) {}
     }
 

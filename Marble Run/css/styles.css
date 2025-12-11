@@ -326,6 +326,54 @@ input.range-terminal {
     }
 }
 
+@media (max-width: 600px) {
+    #joystick {
+        width: 90px;
+        height: 90px;
+        left: 12px;
+        bottom: 24px !important;
+    }
+    #joystick .knob {
+        width: 68px;
+        height: 68px;
+    }
+    #boostBtn {
+        width: 120px;
+        height: 120px;
+        right: 12px;
+        bottom: 20px;
+        font-size: 22px;
+    }
+    #boostBtn.pulse::after {
+        left: 60px; top: 60px;
+        width: 70px; height: 70px;
+    }
+}
+
+@media (max-width: 768px) {
+    #joystick {
+        width: 100px;
+        height: 100px;
+        left: 14px;
+        bottom: 28px !important;
+    }
+    #joystick .knob {
+        width: 76px;
+        height: 76px;
+    }
+    #boostBtn {
+        width: 140px;
+        height: 140px;
+        right: 14px;
+        bottom: 24px;
+        font-size: 24px;
+    }
+    #boostBtn.pulse::after {
+        left: 70px; top: 70px;
+        width: 84px; height: 84px;
+    }
+}
+
 #overlays {
     position: absolute;
     inset: 0;
@@ -460,7 +508,7 @@ input.range-terminal {
 .slides { overflow: hidden; width: 100%; box-sizing: border-box; }
 .slides-inner { display: flex; gap: 10px; align-items: center; transition: transform 360ms cubic-bezier(.2,.9,.2,1); }
 .slide { width: 120px; height: 140px; border-radius: 8px; box-sizing: border-box; padding: 8px; background: rgba(0,0,0,0.36); border: 1px solid rgba(255,255,255,0.04); display: flex; flex-direction: column; align-items: center; justify-content: center; transition: transform 220ms ease, box-shadow 220ms ease, opacity 220ms ease; cursor: pointer; }
-.slide .slide-title { margin-top: 8px; font-size: 13px; color: var(--neon-pink); text-align:center; }
+.slide .slide-title { margin-top: 0px; font-size: 13px; color: var(--neon-pink); text-align:center; }
 .slide .slide-sub { margin-top: 0px; font-size: 12px; color: var(--neon-yellow); text-align:center; }
 .slide.owned .slide-sub { color: #0ff; }
 .slide.unowned .slide-sub { color: var(--neon-yellow); }
@@ -726,8 +774,8 @@ input:focus, select:focus, textarea:focus {
 .slides { position: relative; overflow: hidden; display:block; width: 212px; padding: 0; box-sizing: border-box; }
 .slides-inner { display:flex; gap:10px; align-items:center; transition: transform 360ms cubic-bezier(.2,.9,.2,1); will-change: transform; }
 .slide { width: 64px; min-width:64px; height: 100px; display:flex; flex-direction:column; align-items:center; justify-content:flex-start; gap:6px; padding:6px; border-radius:3px; background: rgba(0,0,0,0.12); border: 1px solid rgba(0,255,0,0.06); color: var(--terminal-green); text-align:center; transition: transform 200ms cubic-bezier(.2,.9,.2,1), opacity 200ms ease; box-sizing: border-box; }
-.slide .slide-preview { font-size: 18px; font-weight: 900; color: var(--terminal-green); opacity: 0.96; margin-top:6px; }
-.slide .slide-title { font-size: 12px; opacity: 0.9; margin-top:6px; }
+.slide .slide-preview { font-size: 14px; font-weight: 900; color: var(--terminal-green); opacity: 0.96; margin-top:6px; }
+.slide .slide-title { font-size: 12px; opacity: 0.9; margin-top:4px; }
 .slide .slide-sub { font-size: 11px; opacity: 0.8; color: rgba(0,255,0,0.9); }
 .slide.center { box-shadow: 0 8px 28px rgba(0,255,0,0.06), inset 0 -6px 18px rgba(0,255,0,0.02); transform: scale(1.08); opacity: 1; }
 .carousel-btn:hover { box-shadow: 0 10px 26px rgba(0,255,0,0.04); }
@@ -744,7 +792,7 @@ input:focus, select:focus, textarea:focus {
 
 @media (max-width:768px) {
     .slides { width: 300px; gap:8px; }
-    .slide { width: 56px; height: 86px; }
+    .slide { width: 60px; height: 90px; }
 }
 #settingsMenu label { display:flex; align-items:center; gap:8px; }
 
@@ -761,7 +809,8 @@ input:focus, select:focus, textarea:focus {
     #playerHud .health .bar-wrap, #enemyHud .health .bar-wrap { width: 60px; height: 160px; padding: 6px; }
     #playerHud .health .bar-segments .seg, #enemyHud .health .bar-segments .seg { height: 3px; }
 
-    #joystick { width: 90px; height: 90px; bottom: 30px; left: 12px; }
-    #joystick .knob { width: 42px; height: 42px; }
-    #boostBtn { width: 90px; height: 90px; right: 12px; bottom: 26px; font-size: 16px; }
+
+    #joystick { width: 150px; height: 150px; bottom: 30px; left: 12px; }
+    #joystick .knob { width: 50px; height: 50px; }
+    #boostBtn { width: 100px; height: 100px; right: 12px; bottom: 26px; font-size: 16px; }
 }

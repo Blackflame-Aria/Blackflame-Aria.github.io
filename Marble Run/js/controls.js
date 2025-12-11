@@ -168,32 +168,47 @@ export class Controls {
                     }
                 } catch(e) {}
 
-                const svgns = 'http://www.w3.org/2000/svg';
-                const svg = document.createElementNS(svgns, 'svg');
-                svg.setAttribute('class', 'boostRing');
-                svg.setAttribute('viewBox', '0 0 100 100');
-                svg.style.position = 'absolute';
-                svg.style.left = '0'; svg.style.top = '0';
-                svg.style.width = '100%'; svg.style.height = '100%';
-                svg.style.pointerEvents = 'none';
-                const circ = document.createElementNS(svgns, 'circle');
-                circ.setAttribute('cx','50'); circ.setAttribute('cy','50');
-                let btnSize = 100;
-                try { if (jRect && jRect.width) btnSize = jRect.width; } catch(e) {}
-                let strokePx = Math.max(6, Math.round(btnSize * 0.08));
-                strokePx = Math.max(2, Math.round(strokePx * 0.75));
-                const strokeSVG = (strokePx / btnSize) * 100;
-                const baseR = 50 - (strokeSVG / 2) - 2;
-                const r = Math.min(50 - (strokeSVG/2) - 1, baseR * 1.05);
-                circ.setAttribute('r', String(r));
-                circ.setAttribute('fill','none'); circ.setAttribute('stroke','#00ffff'); circ.setAttribute('stroke-width', String(strokeSVG));
-                circ.setAttribute('stroke-linecap','round');
-                const circumference = (2 * Math.PI * r).toFixed(3);
-                circ.setAttribute('stroke-dasharray', circumference);
-                circ.setAttribute('stroke-dashoffset', '0');
-                svg.appendChild(circ);
-                boostBtn.appendChild(svg);
-                this._boostRingCircle = circ;
+                try {
+                    const svgns = 'http://www.w3.org/2000/svg';
+                    const svg = document.createElementNS(svgns, 'svg');
+                    svg.setAttribute('class', 'boostRing');
+                    svg.setAttribute('viewBox', '0 0 100 100');
+                    svg.style.position = 'absolute';
+                    svg.style.left = '0'; svg.style.top = '0';
+                    svg.style.width = '100%'; svg.style.height = '100%';
+                    svg.style.pointerEvents = 'none';
+                    const circ = document.createElementNS(svgns, 'circle');
+                    circ.setAttribute('cx','50'); circ.setAttribute('cy','50');
+                    circ.setAttribute('fill','none'); circ.setAttribute('stroke','#00ffff');
+                    circ.setAttribute('stroke-linecap','round');
+                    svg.appendChild(circ);
+                    boostBtn.appendChild(svg);
+                    this._boostRingSvg = svg;
+                    this._boostRingCircle = circ;
+                    this.updateBoostRing = () => {
+                        try {
+                            const jRectNow = joystick ? joystick.getBoundingClientRect() : null;
+                            const btnRect = boostBtn.getBoundingClientRect();
+                            if (!btnRect || !btnRect.width) return;
+                            if (jRectNow && jRectNow.width) {
+                                boostBtn.style.width = `${Math.round(jRectNow.width)}px`;
+                                boostBtn.style.height = `${Math.round(jRectNow.width)}px`;
+                            }
+                            const btnSizeNow = Math.max(64, Math.round(btnRect.width));
+                            const strokePxNow = Math.max(2, Math.round(btnSizeNow * 0.06));
+                            const strokeSVG = (strokePxNow / btnSizeNow) * 100;
+                            const baseR = 50 - (strokeSVG / 2) - 2;
+                            const rNow = Math.min(50 - (strokeSVG/2) - 1, baseR * 1.02);
+                            this._boostRingCircle.setAttribute('r', String(rNow));
+                            this._boostRingCircle.setAttribute('stroke-width', String(strokeSVG));
+                            const circumferenceNow = (2 * Math.PI * rNow).toFixed(3);
+                            this._boostRingCircle.setAttribute('stroke-dasharray', circumferenceNow);
+                            try { this._boostRingCircle.setAttribute('stroke-dashoffset', '0'); } catch(e){}
+                        } catch(e) { }
+                    };
+                    try { this.updateBoostRing(); } catch(e) {}
+                    window.addEventListener('resize', () => { try { this.updateBoostRing(); } catch(e){} });
+                } catch(e) {}
             }
         } catch(e) {}
 
@@ -218,7 +233,7 @@ export class Controls {
 
         const raw = new BABYLON.Vector3(forceX, 0, forceZ);
         const screenFactor = (typeof window !== 'undefined' && window.innerWidth) ? Math.max(0.6, Math.min(1, window.innerWidth / 1366)) : 1;
-        const baseAccel = 3.5 * screenFactor;
+        const baseAccel = 3.0 * screenFactor;
 
         let force = new BABYLON.Vector3(0,0,0);
         try {
@@ -284,6 +299,7 @@ export class Controls {
                 boostBtn.style.right = '20px';
                 if (mobile) { mobile.classList.remove('joy-right'); mobile.classList.add('joy-left'); }
             }
+            try { if (typeof this.updateBoostRing === 'function') this.updateBoostRing(); } catch(e) {}
         } catch(e) { console.warn('setJoyconPosition failed', e); }
     }
 

@@ -202,8 +202,12 @@ export class Menu {
         const skinInner = makeInner(skinSlides);
         const accInner = makeInner(accSlides);
 
-        const skins = [1,2,3,4,5];
+        const skins = [
+            { id: '', title: 'Default', preview: 'None', cost: 0 },
+            1,2,3,4,5
+        ];
         const accessories = [
+            { id: '', title: 'None', desc: 'No accessory' },
             { id: 'shields', title: 'Shields', desc: 'Reduces damage taken' },
             { id: 'studs', title: 'Studs', desc: 'Defense + increases damage dealt' },
             { id: 'spikes', title: 'Spikes', desc: 'Stronger studs (defense & offense)' },
@@ -216,6 +220,8 @@ export class Menu {
         const createSlide = (opts) => {
             const el = document.createElement('div');
             el.className = 'slide';
+            el.setAttribute('role','listitem');
+            el.tabIndex = 0;
             if (opts.texture) {
                 el.style.backgroundImage = `url('${opts.texture}')`;
                 el.style.backgroundSize = 'cover';
@@ -231,9 +237,19 @@ export class Menu {
             return { el, titleEl, subEl };
         };
 
-        skins.forEach(n => {
+        skins.forEach(item => {
+            if (typeof item === 'object' && item.id === '') {
+                const obj = createSlide({ preview: item.preview || 'None', title: item.title || 'Default', sub: item.cost ? (item.cost + ' Points') : 'Default' });
+                obj.el.dataset.skin = '';
+                obj.el.classList.add('default');
+                if (obj.titleEl) obj.el.appendChild(obj.titleEl);
+                if (obj.subEl) obj.el.appendChild(obj.subEl);
+                (skinInner || skinSlides).appendChild(obj.el);
+                return;
+            }
+            const n = item;
             const texturePath = `assets/textures/${n}.png` + (n === 2 ? `?v=${Date.now()}` : '');
-            const obj = createSlide({ preview: String(n), title: `Skin ${n}`, sub: '100 Points', texture: texturePath });
+            const obj = createSlide({ preview: String(n), title: `Skin ${n}`, sub: '100 P', texture: texturePath });
             obj.el.dataset.skin = String(n);
             if (obj.titleEl) obj.el.appendChild(obj.titleEl);
             if (obj.subEl) obj.el.appendChild(obj.subEl);
@@ -241,7 +257,16 @@ export class Menu {
         });
 
         accessories.forEach(acc => {
-            const obj = createSlide({ preview: acc.title.charAt(0), title: acc.title, sub: '100 Points', meta: acc, texture: `assets/textures/acc-${acc.id}.png` });
+            if (acc && acc.id === '') {
+                const obj = createSlide({ preview: 'None', title: 'Default', sub: 'Default', meta: acc });
+                obj.el.dataset.meta = JSON.stringify(acc);
+                obj.el.classList.add('default');
+                if (obj.titleEl) obj.el.appendChild(obj.titleEl);
+                if (obj.subEl) obj.el.appendChild(obj.subEl);
+                (accInner || accSlides).appendChild(obj.el);
+                return;
+            }
+            const obj = createSlide({ preview: acc.title.charAt(0), title: acc.title, sub: '100 P', meta: acc, texture: `assets/textures/acc-${acc.id}.png` });
             if (obj.titleEl) obj.el.appendChild(obj.titleEl);
             if (obj.subEl) obj.el.appendChild(obj.subEl);
             (accInner || accSlides).appendChild(obj.el);
@@ -253,7 +278,7 @@ export class Menu {
             const selectedSkin = String(saved.skin || '');
             const children = Array.from((skinInner || skinSlides).children);
             children.forEach((ch, i) => {
-                const id = ch.dataset.skin || String(i+1);
+                const id = (typeof ch.dataset.skin === 'string') ? ch.dataset.skin : String(i+1);
                 try {
                     ch.classList.remove('owned','selected','unowned');
                     const sub = ch.querySelector('.slide-sub');
@@ -262,7 +287,7 @@ export class Menu {
                         if (sub) sub.textContent = (selectedSkin === String(id)) ? 'selected' : 'owned';
                     } else {
                         ch.classList.add('unowned');
-                        if (sub) sub.textContent = '100 Points';
+                        if (sub) sub.textContent = '100 P';
                     }
                     if (selectedSkin === String(id)) {
                         ch.classList.add('selected');
@@ -272,132 +297,37 @@ export class Menu {
         };
         try { refreshSkinLabels(); } catch(e) {}
 
-        const skinState = { idx: 2 };
+        const skinState = { idx: 0 };
         const accState = { idx: 0 };
 
         let lastActiveCarousel = 'skin';
         const setLastActive = (s) => { lastActiveCarousel = s; };
 
         const updateCarousel = (slidesViewport, state) => {
-            const slidesInnerEl = slidesViewport.querySelector('.slides-inner');
-            const contentEl = slidesInnerEl || slidesViewport;
-            const nodes = Array.from(contentEl.children);
+            const slidesInnerEl = slidesViewport.querySelector('.slides-inner') || slidesViewport;
+            const nodes = Array.from(slidesInnerEl.children || []);
             window.requestAnimationFrame(() => {
                 if (nodes.length === 0) return;
                 const slideRect = nodes[0].getBoundingClientRect();
-                const gap = parseFloat(getComputedStyle(contentEl).gap || '10');
+                const gap = parseFloat(getComputedStyle(slidesInnerEl).gap || '12');
                 const slideFull = slideRect.width + gap;
-
-                const contentWidth = Math.round(nodes.length * slideFull - gap);
-                if (slidesInnerEl) slidesInnerEl.style.width = `${contentWidth}px`;
-
                 const containerWidth = slidesViewport.clientWidth;
-                const nodesLen = nodes.length;
-                let idxForRender = Math.floor(((state.idx % nodesLen) + nodesLen) % nodesLen);
-                if (state._baseCount) {
-                    const base = state._baseCount;
-                    const logical = Math.floor(((state.idx % base) + base) % base);
-                    const curTranslate = (typeof state._translate === 'number') ? state._translate : 0;
-                    const centerEstimate = ((containerWidth / 2) - curTranslate) / slideFull - 0.5;
-                    let best = idxForRender; let bestDist = Infinity;
-                    for (let i = 0; i < nodesLen; i++) {
-                        if ((i % base) !== logical) continue;
-                        const d = Math.abs(i - centerEstimate);
-                        if (d < bestDist) { bestDist = d; best = i; }
-                    }
-                    idxForRender = best;
-                }
-                const desiredCenter = (idxForRender + 0.5) * slideFull;
-                let translate = (containerWidth / 2) - desiredCenter;
-
-                const minTranslate = Math.min(0, containerWidth - contentWidth);
-                const maxTranslate = 0;
-                translate = Math.max(minTranslate, Math.min(maxTranslate, translate));
-
-                if (slidesInnerEl) slidesInnerEl.style.transition = 'transform 360ms cubic-bezier(.2,.9,.2,1)';
-                else contentEl.style.transition = 'transform 360ms cubic-bezier(.2,.9,.2,1)';
-
-                if (slidesInnerEl) slidesInnerEl.style.transform = `translateX(${translate}px)`;
-                else contentEl.style.transform = `translateX(${translate}px)`;
-
-                try { state._translate = translate; } catch(e) {}
-
-                nodes.forEach((n, i) => {
-                    const isCenter = i === idxForRender;
+                const idx = Math.max(0, Math.min(nodes.length - 1, Math.round(state.idx)));
+                const desiredCenter = (idx + 0.5) * slideFull;
+                const translate = Math.max(Math.min( (containerWidth/2) - desiredCenter, 0), Math.min(0, containerWidth - Math.round(nodes.length * slideFull - gap)));
+                slidesInnerEl.style.transition = 'transform 320ms cubic-bezier(.2,.9,.2,1)';
+                slidesInnerEl.style.transform = `translateX(${translate}px)`;
+                state._translate = translate;
+                nodes.forEach((n,i) => {
+                    const isCenter = i === idx;
                     n.classList.toggle('center', isCenter);
-                    n.style.opacity = isCenter ? '1' : '0.28';
-                    n.style.transform = isCenter ? 'scale(1.08)' : 'scale(0.92)';
+                    n.style.opacity = isCenter ? '1' : '0.36';
+                    n.style.transform = isCenter ? 'scale(1.06)' : 'scale(0.96)';
                 });
-
-                if (state._baseCount) {
-                    const base = state._baseCount;
-                    if (state.idx >= base * 2) {
-                        state.idx -= base;
-                        setTimeout(() => {
-                            if (!slidesInnerEl) return;
-                            slidesInnerEl.style.transition = 'none';
-                            const curNodes = Array.from(slidesInnerEl.children);
-                            if (curNodes.length === 0) return;
-                            const r = curNodes[0].getBoundingClientRect();
-                            const g = parseFloat(getComputedStyle(slidesInnerEl).gap || '10');
-                            const sf = r.width + g;
-                            const cw = slidesViewport.clientWidth;
-                            const idxWrapped = Math.floor(((state.idx % curNodes.length) + curNodes.length) % curNodes.length);
-                            const desiredCpx = (idxWrapped + 0.5) * sf;
-                            let t = (cw / 2) - desiredCpx;
-                            const minT = Math.min(0, cw - Math.round(curNodes.length * sf - g));
-                            const maxT = 0;
-                            t = Math.max(minT, Math.min(maxT, t));
-                            slidesInnerEl.style.transform = `translateX(${t}px)`;
-                            void slidesInnerEl.offsetWidth;
-                            slidesInnerEl.style.transition = 'transform 360ms cubic-bezier(.2,.9,.2,1)';
-                        }, 420);
-                    } else if (state.idx < base) {
-                        state.idx += base;
-                        setTimeout(() => {
-                            if (!slidesInnerEl) return;
-                            slidesInnerEl.style.transition = 'none';
-                            const curNodes = Array.from(slidesInnerEl.children);
-                            if (curNodes.length === 0) return;
-                            const r = curNodes[0].getBoundingClientRect();
-                            const g = parseFloat(getComputedStyle(slidesInnerEl).gap || '10');
-                            const sf = r.width + g;
-                            const cw = slidesViewport.clientWidth;
-                            const idxWrapped = Math.floor(((state.idx % curNodes.length) + curNodes.length) % curNodes.length);
-                            const desiredCpx = (idxWrapped + 0.5) * sf;
-                            let t = (cw / 2) - desiredCpx;
-                            const minT = Math.min(0, cw - Math.round(curNodes.length * sf - g));
-                            const maxT = 0;
-                            t = Math.max(minT, Math.min(maxT, t));
-                            slidesInnerEl.style.transform = `translateX(${t}px)`;
-                            void slidesInnerEl.offsetWidth;
-                            slidesInnerEl.style.transition = 'transform 360ms cubic-bezier(.2,.9,.2,1)';
-                        }, 420);
-                    }
-                }
+                state.idx = idx;
             });
         };
 
-        const makeInfinite = (viewport, innerEl, state, itemCount) => {
-            if (!viewport || !innerEl) return;
-            if (innerEl.dataset.infinite === '1') return;
-            const originals = Array.from(innerEl.children);
-            originals.slice().reverse().forEach(n => {
-                const c = n.cloneNode(true);
-                innerEl.insertBefore(c, innerEl.firstChild);
-            });
-            originals.forEach(n => {
-                const c = n.cloneNode(true);
-                innerEl.appendChild(c);
-            });
-            innerEl.dataset.infinite = '1';
-            state._baseCount = itemCount;
-            state.idx = (state.idx % itemCount + itemCount) % itemCount;
-            state.idx = state.idx + itemCount;
-        };
-
-        if (skinSlides && skinInner) makeInfinite(skinSlides, skinInner, skinState, skins.length);
-        if (accSlides && accInner) makeInfinite(accSlides, accInner, accState, accessories.length);
 
         if (skinSlides) updateCarousel(skinSlides, skinState);
         if (accSlides) updateCarousel(accSlides, accState);
@@ -405,7 +335,7 @@ export class Menu {
         const enableCarouselDrag = (slidesViewport, innerEl, state, itemCount) => {
             if (!slidesViewport) return;
             const contentEl = innerEl || slidesViewport;
-            let active = false; let startX = 0; let startTranslate = 0;
+            let active = false, startX = 0, startTranslate = 0;
             const onDown = (ev) => {
                 active = true;
                 startX = ev.clientX || (ev.touches && ev.touches[0] && ev.touches[0].clientX) || 0;
@@ -417,88 +347,84 @@ export class Menu {
                 if (!active) return;
                 const mx = ev.clientX || (ev.touches && ev.touches[0] && ev.touches[0].clientX) || 0;
                 const delta = mx - startX;
-                const nodes = Array.from(contentEl.children || []);
-                if (nodes.length === 0) return;
-                const slideRect = nodes[0].getBoundingClientRect();
-                const gap = parseFloat(getComputedStyle(contentEl).gap || '10');
-                const slideFull = slideRect.width + gap;
-                const contentWidth = Math.round(nodes.length * slideFull - gap);
-                const containerWidth = slidesViewport.clientWidth;
-                const minTranslate = Math.min(0, containerWidth - contentWidth);
-                const maxTranslate = 0;
-                let newT = startTranslate + delta;
-                if (newT < minTranslate) newT = minTranslate - (minTranslate - newT) * 0.25;
-                if (newT > maxTranslate) newT = maxTranslate + (newT - maxTranslate) * 0.25;
+                const newT = startTranslate + delta;
                 contentEl.style.transform = `translateX(${newT}px)`;
-                state._dragPreview = newT;
                 ev.preventDefault && ev.preventDefault();
             };
             const onUp = (ev) => {
-                if (!active) return;
-                active = false;
+                if (!active) return; active = false;
                 const endX = ev.clientX || (ev.changedTouches && ev.changedTouches[0] && ev.changedTouches[0].clientX) || 0;
                 const moved = endX - startX;
                 const nodes = Array.from(contentEl.children || []);
                 if (nodes.length === 0) { updateCarousel(slidesViewport, state); return; }
                 const slideRect = nodes[0].getBoundingClientRect();
-                const gap = parseFloat(getComputedStyle(contentEl).gap || '10');
+                const gap = parseFloat(getComputedStyle(contentEl).gap || '12');
                 const slideFull = slideRect.width + gap;
                 const threshold = slideFull * 0.28;
                 if (Math.abs(moved) > threshold) {
                     const dir = (moved < 0) ? 1 : -1;
-                    if (state._baseCount) state.idx = state.idx + dir;
-                    else state.idx = Math.max(0, Math.min(itemCount - 1, state.idx + dir));
+                    state.idx = Math.max(0, Math.min(itemCount - 1, state.idx + dir));
                 }
                 updateCarousel(slidesViewport, state);
                 ev.preventDefault && ev.preventDefault();
             };
 
             slidesViewport.addEventListener('pointerdown', onDown);
-            window.addEventListener('pointermove', onMove);
-            window.addEventListener('pointerup', onUp);
+            document.addEventListener('pointermove', onMove);
+            document.addEventListener('pointerup', onUp);
             slidesViewport.addEventListener('touchstart', onDown, { passive: false });
             slidesViewport.addEventListener('touchmove', onMove, { passive: false });
             slidesViewport.addEventListener('touchend', onUp);
         };
 
-        if (skinSlides) enableCarouselDrag(skinSlides, skinInner, skinState, skins.length);
-        if (accSlides) enableCarouselDrag(accSlides, accInner, accState, accessories.length);
+        if (skinSlides) enableCarouselDrag(skinSlides, skinInner, skinState, (skinInner||skinSlides).children.length);
+        if (accSlides) enableCarouselDrag(accSlides, accInner, accState, (accInner||accSlides).children.length);
 
         const skinLeft = document.getElementById('skinLeftBtn');
         const skinRight = document.getElementById('skinRightBtn');
         const accLeft = document.getElementById('accLeftBtn');
         const accRight = document.getElementById('accRightBtn');
 
-        if (skinLeft) skinLeft.addEventListener('click', () => { try{ Haptics.buttonPress(); }catch(e){}; setLastActive('skin'); skinState.idx = skinState.idx - 1; updateCarousel(skinSlides, skinState); });
-        if (skinRight) skinRight.addEventListener('click', () => { try{ Haptics.buttonPress(); }catch(e){}; setLastActive('skin'); skinState.idx = skinState.idx + 1; updateCarousel(skinSlides, skinState); });
-        if (accLeft) accLeft.addEventListener('click', () => { try{ Haptics.buttonPress(); }catch(e){}; setLastActive('acc'); accState.idx = accState.idx - 1; updateCarousel(accSlides, accState); });
-        if (accRight) accRight.addEventListener('click', () => { try{ Haptics.buttonPress(); }catch(e){}; setLastActive('acc'); accState.idx = accState.idx + 1; updateCarousel(accSlides, accState); });
+        if (skinLeft) skinLeft.addEventListener('click', () => { try{ Haptics.buttonPress(); }catch(e){}; setLastActive('skin'); skinState.idx = Math.max(0, skinState.idx - 1); updateCarousel(skinSlides, skinState); });
+        if (skinRight) skinRight.addEventListener('click', () => { try{ Haptics.buttonPress(); }catch(e){}; setLastActive('skin'); skinState.idx = Math.min((skinInner||skinSlides).children.length-1, skinState.idx + 1); updateCarousel(skinSlides, skinState); });
+        if (accLeft) accLeft.addEventListener('click', () => { try{ Haptics.buttonPress(); }catch(e){}; setLastActive('acc'); accState.idx = Math.max(0, accState.idx - 1); updateCarousel(accSlides, accState); });
+        if (accRight) accRight.addEventListener('click', () => { try{ Haptics.buttonPress(); }catch(e){}; setLastActive('acc'); accState.idx = Math.min((accInner||accSlides).children.length-1, accState.idx + 1); updateCarousel(accSlides, accState); });
 
         let savedCust = {};
         try { savedCust = JSON.parse(localStorage.getItem('mr_customization') || '{}'); } catch(e) { savedCust = {}; }
+        let needWriteBack = false;
+        if (typeof savedCust.skin === 'undefined') { savedCust.skin = ''; needWriteBack = true; }
+        if (!Array.isArray(savedCust.ownedSkins)) { savedCust.ownedSkins = []; needWriteBack = true; }
+        if (!savedCust.ownedSkins.includes('')) { savedCust.ownedSkins.push(''); needWriteBack = true; }
+        if (!Array.isArray(savedCust.ownedAccessories)) { savedCust.ownedAccessories = []; needWriteBack = true; }
+        if (!savedCust.ownedAccessories.includes('')) { savedCust.ownedAccessories.push(''); needWriteBack = true; }
+        if (!Array.isArray(savedCust.accessories)) { savedCust.accessories = []; needWriteBack = true; }
+        if (needWriteBack) {
+            try { localStorage.setItem('mr_customization', JSON.stringify(savedCust)); } catch(e) {}
+        }
         let accExtra = parseInt(savedCust.accPriceExtra || '0', 10) || 0;
-        if (savedCust.skin) {
-            const idx = parseInt(savedCust.skin,10) - 1;
-            if (!isNaN(idx) && skinSlides) {
-                const base = skinState._baseCount || skins.length;
-                skinState.idx = base + idx;
-                updateCarousel(skinSlides, skinState);
+
+        if (savedCust.skin !== undefined) {
+            const children = Array.from((skinInner || skinSlides).children);
+            let selIndex = 0;
+            for (let i=0;i<children.length;i++) {
+                if ((children[i].dataset.skin || '') === String(savedCust.skin || '')) { selIndex = i; break; }
             }
+            skinState.idx = selIndex;
+            if (skinSlides) updateCarousel(skinSlides, skinState);
         }
 
         try {
             if (this.game && this.game.player) {
-                if (savedCust.skin) {
-                    try { this.game.player.setSkin(savedCust.skin); } catch(e) {}
-                }
-                if (Array.isArray(savedCust.accessories) && savedCust.accessories.length) {
-                    try { this.game.player.setAccessories(savedCust.accessories); } catch(e) {}
-                }
+                try { this.game.player.setSkin(savedCust.skin || ''); } catch(e) {}
+                try { this.game.player.setAccessories(Array.isArray(savedCust.accessories) ? savedCust.accessories : []); } catch(e) {}
             }
         } catch(e) {}
 
         const ownedAccessories = new Set((savedCust.ownedAccessories) || ['shields']);
+        if (!ownedAccessories.has('')) ownedAccessories.add('');
         const selectedAccessories = new Set((savedCust.accessories) || []);
+        if (selectedAccessories.size === 0) selectedAccessories.add('');
 
         const refreshAccLabels = () => {
             const children = Array.from((accInner || accSlides).querySelectorAll('.slide'));
@@ -507,16 +433,25 @@ export class Menu {
                 const id = (meta && meta.id) || '';
                 try {
                     const sub = ch.querySelector('.slide-sub');
-                    ch.classList.remove('owned','selected','unowned');
+                    ch.classList.remove('owned','selected','unowned','default');
                     const cost = ACC_COST_BASE + (accExtra || 0);
-                    if (ownedAccessories.has(id)) {
+                    if (id === '') {
+                        ch.classList.add('default');
+                        if (ownedAccessories.has('')) ch.classList.add('owned');
+                        if (selectedAccessories.has('')) {
+                            ch.classList.add('selected');
+                            if (sub) sub.textContent = 'selected';
+                        } else {
+                            if (sub) sub.textContent = ownedAccessories.has('') ? 'owned' : 'Default';
+                        }
+                    } else if (ownedAccessories.has(id)) {
                         ch.classList.add('owned');
                         if (sub) sub.textContent = selectedAccessories.has(id) ? 'selected' : 'owned';
+                        if (selectedAccessories.has(id)) ch.classList.add('selected');
                     } else {
                         ch.classList.add('unowned');
-                        if (sub) sub.textContent = `${cost} Points`;
+                        if (sub) sub.textContent = `${cost} P`;
                     }
-                    if (selectedAccessories.has(id)) ch.classList.add('selected');
                 } catch(e) {}
             });
         };
@@ -526,8 +461,8 @@ export class Menu {
         const onSkinClick = (arg) => {
             let chosen = null;
             if (typeof arg === 'number') chosen = arg + 1;
-            else if (arg && arg.dataset && arg.dataset.skin) chosen = arg.dataset.skin;
-            if (!chosen) return;
+            else if (arg && arg.dataset && ('skin' in arg.dataset)) chosen = arg.dataset.skin;
+            if (chosen === null) return;
             try {
                 const pts = (this.game && this.game.player) ? (this.game.player.getPoints ? this.game.player.getPoints() : parseInt(localStorage.getItem('mr_points')||'0',10)||0) : (parseInt(localStorage.getItem('mr_points')||'0',10)||0);
                 const saved = JSON.parse(localStorage.getItem('mr_customization') || '{}');
@@ -567,6 +502,19 @@ export class Menu {
             const meta = JSON.parse((clickedEl.dataset.meta) || '{}');
             const id = (meta && meta.id) || '';
             try {
+                if (id === '') {
+                    const saved = JSON.parse(localStorage.getItem('mr_customization') || '{}');
+                    saved.ownedAccessories = saved.ownedAccessories || [];
+                    if (!saved.ownedAccessories.includes('')) saved.ownedAccessories.push('');
+                    saved.accessories = [];
+                    try { localStorage.setItem('mr_customization', JSON.stringify(saved)); } catch(e) {}
+                    selectedAccessories.clear(); selectedAccessories.add('');
+                    if (this.game && this.game.player) try { this.game.player.setAccessories([]); } catch(e) {}
+                    refreshAccLabels();
+                    try { refreshSkinLabels && refreshSkinLabels(); } catch(e) {}
+                    if (accSlides) updateCarousel(accSlides, accState);
+                    return;
+                }
                 const pts = (this.game && this.game.player) ? (this.game.player.getPoints ? this.game.player.getPoints() : parseInt(localStorage.getItem('mr_points')||'0',10)||0) : (parseInt(localStorage.getItem('mr_points')||'0',10)||0);
                 const saved = JSON.parse(localStorage.getItem('mr_customization') || '{}');
                 saved.ownedAccessories = saved.ownedAccessories || [];
@@ -602,45 +550,18 @@ export class Menu {
 
         const wireSlideClicks = (slidesEl, innerEl, state, kind) => {
             const children = Array.from((innerEl || slidesEl).querySelectorAll('.slide'));
-            children.forEach((ch) => {
+            children.forEach((ch, idx) => {
                 ch.style.cursor = 'pointer';
                 ch.addEventListener('click', (ev) => {
                     try { Haptics.buttonPress(); } catch(e) {}
                     setLastActive(kind);
-                    const base = state._baseCount || (kind === 'skin' ? skins.length : accessories.length);
-                    if (kind === 'skin') {
-                        const id = ch.dataset.skin || '';
-                        const logical = parseInt(id,10) - 1;
-                        if (!isNaN(logical)) {
-                            const candidates = [logical, logical + base, logical + (2 * base)];
-                            let best = candidates[0];
-                            let bestDist = Math.abs((state.idx || 0) - best);
-                            for (let c of candidates) {
-                                const d = Math.abs((state.idx || 0) - c);
-                                if (d < bestDist) { bestDist = d; best = c; }
-                            }
-                            state.idx = best;
-                        }
-                        updateCarousel(slidesEl, state);
-                        onSkinClick(ch);
-                    } else if (kind === 'acc') {
-                        const meta = JSON.parse(ch.dataset.meta || '{}');
-                        const id = meta && meta.id ? meta.id : '';
-                        const allSlides = Array.from((innerEl || slidesEl).querySelectorAll('.slide'));
-                        const originalRange = allSlides.slice(base, base * 2);
-                        let logical = 0;
-                        for (let i=0;i<originalRange.length;i++) { const m = JSON.parse(originalRange[i].dataset.meta || '{}'); if ((m && m.id) === id) { logical = i; break; } }
-                        const candidates = [logical, logical + base, logical + (2 * base)];
-                        let best = candidates[0];
-                        let bestDist = Math.abs((state.idx || 0) - best);
-                        for (let c of candidates) {
-                            const d = Math.abs((state.idx || 0) - c);
-                            if (d < bestDist) { bestDist = d; best = c; }
-                        }
-                        state.idx = best;
-                        updateCarousel(slidesEl, state);
-                        onAccClick(ch);
-                    }
+                    state.idx = idx;
+                    updateCarousel(slidesEl, state);
+                    if (kind === 'skin') onSkinClick(ch);
+                    else if (kind === 'acc') onAccClick(ch);
+                });
+                ch.addEventListener('keydown', (ev) => {
+                    if (ev.key === 'Enter' || ev.key === ' ') { ev.preventDefault(); ch.click(); }
                 });
             });
         };
@@ -651,6 +572,30 @@ export class Menu {
             if (this.customizationMenu.classList.contains('hidden')) return;
             const tag = (document.activeElement && document.activeElement.tagName) || '';
             if (['INPUT','TEXTAREA','SELECT'].includes(tag)) return;
+            if (e.key === 'j' || e.key === 'J') {
+                try { Haptics.buttonPress(); } catch(e){}
+                try {
+                    const saved = JSON.parse(localStorage.getItem('mr_customization') || '{}');
+                    saved.skin = '';
+                    saved.ownedSkins = [''];
+                    saved.ownedAccessories = [''];
+                    saved.accessories = [];
+                    saved.accPriceExtra = 0;
+                    localStorage.setItem('mr_customization', JSON.stringify(saved));
+                } catch(e) { console.warn('Reset customization failed', e); }
+                try { if (this.game && this.game.player) { this.game.player.setSkin(''); this.game.player.setAccessories([]); } } catch(e) {}
+                try { refreshSkinLabels(); } catch(e) {}
+                try {
+                    try { ownedAccessories.clear(); ownedAccessories.add(''); } catch(e) {}
+                    try { selectedAccessories.clear(); selectedAccessories.add(''); } catch(e) {}
+                    accExtra = 0;
+                } catch(e) {}
+                try { refreshAccLabels(); } catch(e) {}
+                if (skinSlides) updateCarousel(skinSlides, skinState);
+                if (accSlides) updateCarousel(accSlides, accState);
+                e.preventDefault();
+                return;
+            }
             if (e.key === 'a' || e.key === 'A') {
                 if (lastActiveCarousel === 'acc') {
                     accState.idx = accState.idx - 1;
