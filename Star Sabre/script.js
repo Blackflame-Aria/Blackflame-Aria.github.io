@@ -23,9 +23,48 @@ const GAME = {
     draftCount: 0,
     warship: null,
 };
+const ULT_GLOW_DUR = 0.3;
 let ultGlowId = null;
 let ultGlowTime = 0;
 let ultPressedId = null;
+const HAPTIC = {
+    WEAK: [10],
+    MEDIUM: [50],
+    STRONG: [120],
+    BOSS_LONG: [1000],
+    BOSS_WARNING: [500, 500, 500],
+    POWERUP_WARNING: [300, 150, 300, 150, 300]
+};
+let _lastVibrateTs = 0;
+const _VIBRATE_MIN_MS = 40;
+const _entityVibeTs = new Map();
+function vibratePattern(pattern) {
+    try {
+        if (!navigator || !navigator.vibrate) return;
+        const now = Date.now();
+        const total = (Array.isArray(pattern) ? pattern.reduce((a,b)=>a+b,0) : (pattern||0));
+        const minInterval = Math.min(80, Math.max(_VIBRATE_MIN_MS, Math.floor(total/4)));
+        if (now - _lastVibrateTs < minInterval) return;
+        navigator.vibrate(pattern);
+        _lastVibrateTs = now;
+    } catch(_){}
+}
+function vibrateKind(kind, entityKey = null) {
+    try {
+        const now = Date.now();
+        if (entityKey) {
+            const last = _entityVibeTs.get(entityKey) || 0;
+            if (now - last < 80) return; 
+            _entityVibeTs.set(entityKey, now);
+        }
+        if (kind === 'weak') vibratePattern(HAPTIC.WEAK);
+        else if (kind === 'medium') vibratePattern(HAPTIC.MEDIUM);
+        else if (kind === 'strong') vibratePattern(HAPTIC.STRONG);
+        else if (kind === 'boss_long') vibratePattern(HAPTIC.BOSS_LONG);
+        else if (kind === 'boss_warning') vibratePattern(HAPTIC.BOSS_WARNING);
+        else if (kind === 'powerup_warning') vibratePattern(HAPTIC.POWERUP_WARNING);
+    } catch(_){}
+}
 const ACCESS = (function(){
     try {
         const raw = localStorage.getItem('neonAccessibility');
@@ -119,6 +158,7 @@ document.addEventListener('DOMContentLoaded', () => {
         splash.classList.remove('hidden');
         start.classList.add('hidden');
         playBtn.onclick = async () => {
+            try { vibrateKind('strong'); } catch(_){}
             if (splashDialog) splashDialog.classList.add('closing');
 
             try {
@@ -1087,6 +1127,7 @@ class Pet {
                         if (dist <= (beamWidth + targetSize)) {
                             e.hp -= dmg;
                             try { spawnDamagePopup(e, dmg, 'regular'); } catch(_){}
+                            try { vibrateKind('strong', e._eid || e._cid); } catch(_){}
                             if (e.hp <= 0 && !e.deadProcessed && !e.dead) {
                                 if (e.takeDamage) {
                                     e.takeDamage(0);
@@ -1111,6 +1152,7 @@ class Pet {
             this.blackHoleAngle -= 0.0025 * (GAME.dtMs || (GAME.dt * 16.6667)); 
             if (this.blackHoleTime <= 0) {
                 this.blackHoleActive = false;
+                try { if (this._doomVibeId) { clearInterval(this._doomVibeId); this._doomVibeId = null; } } catch(_){}
             } else {
                 const radius = this.blackHoleRadius;
                 const msElapsed = (GAME.dtMs || (GAME.dt * 16.6667));
@@ -2335,6 +2377,7 @@ class WarshipBoss {
             this.explosionTimer = 0;
             playSfx('die');
             createRainbowExplosion(this.x, this.y + this.height / 2, 50);
+            try { vibrateKind('boss_long'); } catch(_){}
             GAME.shake = 20;
             GAME.essence = (GAME.essence || 0) + 1000;
             GAME.bossesSpawned = GAME.bossQuota;
@@ -2479,6 +2522,7 @@ class Bullet {
                         if (p.isMain) {
                             if (GAME.deathTimer <= 0) {
                                 GAME.deathTimer = 3;
+                                try { vibrateKind('strong', 'PLAYER'); } catch(_){}
                                 stopGunAudio();
                                 try { MUSIC.stop({ fadeOutMs: 3000 }); } catch(_){ }
                                 if (p && !p.deadProcessed) {
@@ -2861,6 +2905,11 @@ function spawnDamagePopup(enemy, amount, category = 'regular') {
     let color = '#00ffff';
     if (category === 'mid') color = '#ffff00';
     else if (category === 'large') color = '#ff00ff';
+    try {
+        if (category === 'large') vibrateKind('strong', eid);
+        else if (category === 'mid') vibrateKind('medium', eid);
+        else vibrateKind('weak', eid);
+    } catch(_) {}
     textPopups.push({
         enemyId: eid,
         x0: startX,
@@ -2907,6 +2956,12 @@ function spawnPlayerDamagePopup(pet, amount, critical = false) {
         color: critical ? '#ff0000' : '#ff6666',
         category: critical ? 'large' : 'mid'
     });
+    try {
+        const eid = 'PLAYER';
+        const val = Math.max(1, Math.round((amount || 0) * 99));
+        if (critical || val > 40) vibrateKind('strong', eid);
+        else vibrateKind('medium', eid);
+    } catch(_) {}
 }
 
 function drawPoly(x, y, r, sides, rotate) {
@@ -3098,7 +3153,7 @@ function loop() {
     const realSec = rawDtMs / 1000;
     GAME.frame++;
     GAME.time++;
-    ultGlowTime = Math.max(0, ultGlowTime - GAME.dt / 60);
+    ultGlowTime = Math.max(0, ultGlowTime - (realSec || 0));
     
     ctx.fillStyle = '#08080c';
     if(GAME.shake > 0) {
@@ -3134,6 +3189,8 @@ function loop() {
             const warnEl = document.getElementById('boss-warning');
             if (warnEl) warnEl.classList.remove('hidden');
             playSfx('warning');
+            try { vibrateKind('strong'); } catch(_){}
+            try { vibrateKind('boss_warning'); } catch(_){ }
             setTimeout(() => {
                 if (warnEl) warnEl.classList.add('hidden');
                 if (GAME.floor === 5 && !GAME.warship && GAME.enemiesKilled >= GAME.enemiesRequired) {
@@ -3304,6 +3361,7 @@ function loop() {
     if(!party[0] || party[0].hp <= 0) {
         if (GAME.deathTimer <= 0) {
             GAME.deathTimer = 3; 
+            try { vibrateKind('strong', 'PLAYER'); } catch(_){}
             stopGunAudio();
             MUSIC.stop({ fadeOutMs: 3000 });
             const p0 = party[0];
@@ -3588,6 +3646,7 @@ function triggerBoostDodge(){
     p0._postBoostAccelMs = 0;  
     try { playSfx('dodge'); } catch(_){}
     GAME.shake = Math.max(GAME.shake, 3);
+    try { vibrateKind('medium'); } catch(_){}
     try {
         const theme = getSkinTheme ? getSkinTheme() : { primary: '#ff00ff', accent: '#00ffff' };
         blooms.push({
@@ -3679,6 +3738,7 @@ function handleTap(x, y) {
     if(traitClicked) {
         ultPressedId = traitClicked;
         setTimeout(() => ultPressedId = null, 200);
+        try { vibrateKind('weak'); } catch(_){}
         if (traitClicked === 'default') {
             const p = party[0];
             if (p && p.ultCharge >= 100) activateUlt(p);
@@ -3724,6 +3784,94 @@ canvas.addEventListener('touchstart', (e) => {
         input.jVecX = 0; input.jVecY = 0; input.jMagnitude = 0; input.jMoved = false;
         input.joystickActive = true;
     } else {
+        const traitClickedNow = detectUltButton(x, y);
+        if (traitClickedNow) {
+            const nowTap = Date.now();
+            if (nowTap - lastTapTime < 300) {
+                if (tapTimeout) clearTimeout(tapTimeout);
+                triggerBoostDodge();
+                lastTapTime = 0;
+                tapTimeout = null;
+                e.preventDefault();
+                return;
+            } else {
+                if (tapTimeout) clearTimeout(tapTimeout);
+                lastTapTime = nowTap;
+                tapTimeout = setTimeout(() => { lastTapTime = 0; tapTimeout = null; }, 300);
+                handleTap(x, y);
+                e.preventDefault();
+                return;
+            }
+        }
+        const selectionR_quick = 90;
+        for (let en of enemies) {
+            if (!en) continue;
+            const d = Math.hypot(en.x - x, en.y - y);
+            if (d <= en.size + selectionR_quick) {
+                const nowTap = Date.now();
+                if (nowTap - lastTapTime < 300) {
+                    if (tapTimeout) clearTimeout(tapTimeout);
+                    triggerBoostDodge();
+                    lastTapTime = 0;
+                    tapTimeout = null;
+                    e.preventDefault();
+                    return;
+                } else {
+                    if (tapTimeout) clearTimeout(tapTimeout);
+                    lastTapTime = nowTap;
+                    tapTimeout = setTimeout(() => { lastTapTime = 0; tapTimeout = null; }, 300);
+                    handleTap(x, y);
+                    e.preventDefault();
+                    return;
+                }
+            }
+        }
+        if (GAME.warship && GAME.warship.cannons) {
+            for (let cannon of GAME.warship.cannons) {
+                if (cannon.dead) continue;
+                const d = Math.hypot(cannon.x - x, cannon.y - y);
+                if (d <= cannon.radius + selectionR_quick) {
+                    const nowTap = Date.now();
+                    if (nowTap - lastTapTime < 300) {
+                        if (tapTimeout) clearTimeout(tapTimeout);
+                        triggerBoostDodge();
+                        lastTapTime = 0;
+                        tapTimeout = null;
+                        e.preventDefault();
+                        return;
+                    } else {
+                        if (tapTimeout) clearTimeout(tapTimeout);
+                        lastTapTime = nowTap;
+                        tapTimeout = setTimeout(() => { lastTapTime = 0; tapTimeout = null; }, 300);
+                        handleTap(x, y);
+                        e.preventDefault();
+                        return;
+                    }
+                }
+            }
+        }
+        for (let p of party) {
+            if (!p || p.hp <= 0 || p.ultCharge < 100) continue;
+            const d = Math.hypot(p.x - x, p.y - y);
+            if (d <= selectionR_quick) {
+                const nowTap = Date.now();
+                if (nowTap - lastTapTime < 300) {
+                    if (tapTimeout) clearTimeout(tapTimeout);
+                    triggerBoostDodge();
+                    lastTapTime = 0;
+                    tapTimeout = null;
+                    e.preventDefault();
+                    return;
+                } else {
+                    if (tapTimeout) clearTimeout(tapTimeout);
+                    lastTapTime = nowTap;
+                    tapTimeout = setTimeout(() => { lastTapTime = 0; tapTimeout = null; }, 300);
+                    handleTap(x, y);
+                    e.preventDefault();
+                    return;
+                }
+            }
+        }
         const now = Date.now();
         if (now - lastTapTime < 300) {
             if (tapTimeout) clearTimeout(tapTimeout);
@@ -3882,7 +4030,8 @@ function applyPlayerMovement() {
                     if (p._boostHitTs) p._boostHitTs.set(e._eid, now);
                     try { playSfx('die'); } catch(_){}
                     e.hp -= contactDamage;
-                    try { spawnDamagePopup(e, contactDamage, 'mid'); } catch(_){}
+                    try { spawnDamagePopup(e, contactDamage, 'mid'); } catch(_){ }
+                    try { vibrateKind('strong', e._eid || e._cid); } catch(_){}
                     createParticles(e.x, e.y, '#f00', 6);
                     if (e.hp <= 0 && !e.deadProcessed) {
                         e.deadProcessed = true;
@@ -3963,12 +4112,17 @@ function activateUlt(pet) {
     pet.ultCharge = 0;
     const isDefaultTrait = !(pet.trait && pet.trait.id && (pet.trait.id === 'sniper' || pet.trait.id === 'gatling' || pet.trait.id === 'shotgun'));
     ultGlowId = isDefaultTrait ? 'default' : pet.trait.id;
-    ultGlowTime = 0.5;
+    ultGlowTime = ULT_GLOW_DUR;
     GAME.shake = 15;
+    try { vibrateKind('strong'); } catch(_){}
     if (isDefaultTrait && (meta.chargeLvl || 0) >= 15) {
         pet.blackHoleActive = true;
         pet.blackHoleTime = 10.0;
         pet.blackHoleAngle = 0;
+        try {
+            if (pet._doomVibeId) clearInterval(pet._doomVibeId);
+            pet._doomVibeId = setInterval(() => { try { vibrateKind('weak', 'DOOM'); } catch(_){}; }, 300);
+        } catch(_) {}
         playSfx('blackhole');
         GAME.shake = 22;
         pet.ultMeter = 0;
@@ -4618,6 +4772,16 @@ function onEnemyKilled(enemy, cause) {
         GAME.enemiesKilled++;
         GAME.totalKillsRun = (GAME.totalKillsRun || 0) + 1;
     }
+    try {
+        if (enemy) {
+            const key = enemy._eid || enemy._cid || null;
+            if (enemy.rank === 'BOSS' || enemy.warship) {
+                vibrateKind('strong', key);
+            } else {
+                vibrateKind('medium', key);
+            }
+        }
+    } catch(_) {}
 }
 
 async function resume() {
@@ -4904,14 +5068,15 @@ function grantRandomPowerup(p) {
         el.textContent = messages[pick] || 'POWER-UP ACQUIRED';
         el.classList.remove('hidden');
         setTimeout(() => el.classList.add('hidden'), 1800);
+        try { vibrateKind('powerup_warning'); } catch(_){}
     }
     if (pick === 'SHIELD') {
         try { p.shieldActive = true; p.shieldTimer = p.powerup.time || 15; } catch(_) {}
-        try { vibrate(120); } catch(_) {}
+        try { vibrateKind('strong'); } catch(_) {}
     }
     if (pick === 'TIMEWARP') {
         try { window.timeWarpActive = true; window.timeWarpTimer = p.powerup.time || 10; } catch(_) {}
-        try { vibrate(140); } catch(_) {}
+        try { vibrateKind('strong'); } catch(_) {}
     }
     playSfx('powerup');
 }
@@ -4943,6 +5108,7 @@ function openResetConfirm() {
     const modal = document.getElementById('reset-confirm');
     if (!modal) return;
     playSfx('click');
+    try { vibrateKind('medium'); } catch(_){}
     modal.classList.remove('hidden');
 }
 window.openResetConfirm = openResetConfirm;
@@ -4962,8 +5128,8 @@ function initResetConfirmEvents() {
             hide();
         }
     };
-    confirmBtn.addEventListener('click', () => { playSfx('click'); resetUpgrades(); animatedClose(); });
-    cancelBtn.addEventListener('click', () => { playSfx('click'); animatedClose(); });
+    confirmBtn.addEventListener('click', () => { playSfx('click'); try { vibrateKind('medium'); } catch(_){}; resetUpgrades(); animatedClose(); });
+    cancelBtn.addEventListener('click', () => { playSfx('click'); try { vibrateKind('medium'); } catch(_){}; animatedClose(); });
     modal.addEventListener('click', (e) => {
         const dlg = document.querySelector('#reset-confirm .reset-dialog');
         if (!dlg) return;
@@ -4972,6 +5138,22 @@ function initResetConfirmEvents() {
 }
 
 document.addEventListener('DOMContentLoaded', initResetConfirmEvents);
+
+document.addEventListener('pointerdown', (e) => {
+    try {
+        const tg = e.target;
+        if (!tg) return;
+        if (tg.tagName === 'CANVAS' || tg.closest && tg.closest('#game-wrapper')) return;
+        const uiEl = tg.closest && (tg.closest('.btn, .control-btn, .secondary-btn, .mega-btn, .icon-btn, .corner-btn, .skin-card, .shop-item, button, [role="button"]'));
+        if (uiEl) {
+            try {
+                if (uiEl.closest && uiEl.closest('.mega-btn')) { vibrateKind('strong'); }
+                else if (uiEl.closest && uiEl.closest('#draft-screen')) { vibrateKind('medium'); }
+                else { vibrateKind('weak'); }
+            } catch(_){}
+        }
+    } catch(_){}
+}, {passive:true});
 
 (function setupIntroAutoplayFallback(){
     function startIntro(){
@@ -5009,13 +5191,14 @@ function openAccessibility(){
             rightBtn.classList.toggle('selected', jr);
         };
         reflect();
-        leftBtn.onclick = () => { ACCESS.joyRight = false; reflect(); saveAccessibility(); };
-        rightBtn.onclick = () => { ACCESS.joyRight = true; reflect(); saveAccessibility(); };
+        leftBtn.onclick = () => { ACCESS.joyRight = false; reflect(); saveAccessibility(); try { vibrateKind('medium'); } catch(_){} };
+        rightBtn.onclick = () => { ACCESS.joyRight = true; reflect(); saveAccessibility(); try { vibrateKind('medium'); } catch(_){} };
     }
     if (move) {
         const mvLabel = document.getElementById('move-sens-val');
         move.value = String(ACCESS.moveLevel || 3);
         if (mvLabel) mvLabel.textContent = move.value;
+        let _prevMoveInt = parseInt(move.value||String(ACCESS.moveLevel||3)) || 3;
         const min = parseFloat(move.min||'1');
         const max = parseFloat(move.max||'5');
         const val = parseFloat(move.value||String(ACCESS.moveLevel||3));
@@ -5024,6 +5207,8 @@ function openAccessibility(){
         move.oninput = () => {
             ACCESS.moveLevel = Math.min(5, Math.max(1, parseInt(move.value)||3));
             if (mvLabel) mvLabel.textContent = String(ACCESS.moveLevel);
+            const newInt = parseInt(move.value||String(ACCESS.moveLevel||3)) || 3;
+            if (newInt !== _prevMoveInt) { try { vibrateKind('weak'); } catch(_){}; _prevMoveInt = newInt; }
             const v = parseFloat(move.value||String(ACCESS.moveLevel));
             const p = Math.max(0, Math.min(1, (v - min) / Math.max(1, (max - min)))) * 100;
             move.style.setProperty('--fill', p + '%');
@@ -5034,6 +5219,7 @@ function openAccessibility(){
         const shLabel = document.getElementById('shake-level-val');
         shake.value = String(ACCESS.shakeLevel || 3);
         if (shLabel) shLabel.textContent = shake.value;
+        let _prevShakeInt = parseInt(shake.value||String(ACCESS.shakeLevel||3)) || 3;
         {
             const min = parseFloat(shake.min||'1');
             const max = parseFloat(shake.max||'5');
@@ -5044,6 +5230,8 @@ function openAccessibility(){
         shake.oninput = () => {
             ACCESS.shakeLevel = Math.min(5, Math.max(1, parseInt(shake.value)||3));
             if (shLabel) shLabel.textContent = String(ACCESS.shakeLevel);
+            const newInt = parseInt(shake.value||String(ACCESS.shakeLevel||3)) || 3;
+            if (newInt !== _prevShakeInt) { try { vibrateKind('weak'); } catch(_){}; _prevShakeInt = newInt; }
             const min = parseFloat(shake.min||'1');
             const max = parseFloat(shake.max||'5');
             const v = parseFloat(shake.value||String(ACCESS.shakeLevel));
@@ -5056,6 +5244,7 @@ function openAccessibility(){
         const valEl = document.getElementById('sfx-level-val');
         sfxLevel.value = String(ACCESS.sfxLevel || 5);
         if (valEl) valEl.textContent = sfxLevel.value;
+        let _prevSfxInt = parseInt(sfxLevel.value||String(ACCESS.sfxLevel||5)) || 5;
         try {
             const min = parseFloat(sfxLevel.min||'1');
             const max = parseFloat(sfxLevel.max||'5');
@@ -5066,6 +5255,8 @@ function openAccessibility(){
         sfxLevel.oninput = () => {
             const v = Math.min(5, Math.max(1, parseInt(sfxLevel.value)||5));
             ACCESS.sfxLevel = v; if (valEl) valEl.textContent = String(v);
+            const newInt = parseInt(sfxLevel.value||String(ACCESS.sfxLevel||5)) || 5;
+            if (newInt !== _prevSfxInt) { try { vibrateKind('weak'); } catch(_){}; _prevSfxInt = newInt; }
             try {
                 const min = parseFloat(sfxLevel.min||'1');
                 const max = parseFloat(sfxLevel.max||'5');
@@ -5080,6 +5271,7 @@ function openAccessibility(){
         const valEl = document.getElementById('music-level-val');
         musicLevel.value = String(ACCESS.musicLevel || 5);
         if (valEl) valEl.textContent = musicLevel.value;
+        let _prevMusicInt = parseInt(musicLevel.value||String(ACCESS.musicLevel||5)) || 5;
         try {
             const min = parseFloat(musicLevel.min||'1');
             const max = parseFloat(musicLevel.max||'5');
@@ -5090,6 +5282,8 @@ function openAccessibility(){
         musicLevel.oninput = () => {
             const v = Math.min(5, Math.max(1, parseInt(musicLevel.value)||5));
             ACCESS.musicLevel = v; if (valEl) valEl.textContent = String(v);
+            const newInt = parseInt(musicLevel.value||String(ACCESS.musicLevel||5)) || 5;
+            if (newInt !== _prevMusicInt) { try { vibrateKind('weak'); } catch(_){}; _prevMusicInt = newInt; }
             try {
                 const min = parseFloat(musicLevel.min||'1');
                 const max = parseFloat(musicLevel.max||'5');
@@ -5109,6 +5303,7 @@ function openAccessibility(){
         }
     };
     document.addEventListener('keydown', onKey);
+    try { vibrateKind('medium'); } catch(_){}
     modal.classList.remove('hidden');
 }
 window.openAccessibility = openAccessibility;
@@ -5121,6 +5316,7 @@ function closeAccessibility(){
         dlg.classList.add('closing');
         setTimeout(() => { dlg.classList.remove('closing'); modal.classList.add('hidden'); }, 240);
     } else {
+        try { vibrateKind('medium'); } catch(_){}
         modal.classList.add('hidden');
     }
 }
@@ -5191,6 +5387,7 @@ document.addEventListener('DOMContentLoaded', () => {
 function openSkins(){
     const modal = document.getElementById('skins-modal');
     if (!modal) return;
+    try { vibrateKind('medium'); } catch(_){}
     modal.classList.remove('hidden');
     initSkinsEvents();
     const onKey = (e) => {
@@ -5209,6 +5406,7 @@ function closeSkins(){
         dlg.classList.add('closing');
         setTimeout(() => { dlg.classList.remove('closing'); modal.classList.add('hidden'); }, 240);
     } else {
+        try { vibrateKind('medium'); } catch(_){}
         modal.classList.add('hidden');
     }
 }
@@ -5291,6 +5489,7 @@ function tryPurchaseOrSelectSkin(skinId){
             localStorage.setItem('neonTowerSave', JSON.stringify(meta));
             updateUI();
             playSfx('powerup');
+            try { vibrateKind('medium'); } catch(_){}
         } else {
             playSfx('hit');
             return;
@@ -5349,6 +5548,7 @@ function buyUpgrade(type) {
     if (meta.essence < cost) { playSfx('click'); return; }
     meta.essence -= cost;
     playSfx('upgrade');
+    try { vibrateKind('medium'); } catch(_){}
     if (type === 'dmg') meta.dmgLvl = (meta.dmgLvl || 0) + 1;
     if (type === 'rate') meta.rateLvl = (meta.rateLvl || 0) + 1;
     if (type === 'charge') meta.chargeLvl = (meta.chargeLvl || 0) + 1;
@@ -5642,15 +5842,21 @@ function drawUltButtons() {
         ctx.fillText(pos.ult.label, pos.x, pos.y);
         if (scale < 1) ctx.restore();
         if (ultGlowTime > 0 && ultGlowId === pos.ult.id) {
-            const glowRadius = (0.5 - ultGlowTime) / 0.5 * 80;
-            const alpha = ultGlowTime / 0.5;
+            const t = 1 - (ultGlowTime / ULT_GLOW_DUR); 
+            const MAX_GLOW_RADIUS = 140;
+            const glowRadius = Math.max(8, t * MAX_GLOW_RADIUS);
+            let alpha = (ultGlowTime / ULT_GLOW_DUR) * 1.2;
+            if (alpha > 1) alpha = 1;
             const gradient = ctx.createRadialGradient(pos.x, pos.y, 0, pos.x, pos.y, glowRadius);
             gradient.addColorStop(0, hexToRgba(pos.ult.color, alpha));
+            gradient.addColorStop(0.5, hexToRgba(pos.ult.color, alpha * 0.6));
             gradient.addColorStop(1, hexToRgba(pos.ult.color, 0));
+            ctx.globalCompositeOperation = 'lighter';
             ctx.fillStyle = gradient;
             ctx.beginPath();
             ctx.arc(pos.x, pos.y, glowRadius, 0, Math.PI*2);
             ctx.fill();
+            ctx.globalCompositeOperation = 'source-over';
         }
     }
     ctx.restore();

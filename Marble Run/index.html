@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>3D Marble Run</title>
+    <link rel="stylesheet" href="css/styles.css">
+    <!-- Orbitron font for retro/cyberpunk look -->
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&display=swap" rel="stylesheet">
+    <!-- Babylon.js CDN -->
+    <script src="https://cdn.babylonjs.com/babylon.js"></script>
+    <script src="https://cdn.babylonjs.com/loaders/babylonjs.loaders.min.js"></script>
+    <!-- Cannon.js for physics -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/cannon.js/0.6.2/cannon.min.js"></script>
+    <!-- Babylon Cannon Plugin -->
+    <script src="https://cdn.babylonjs.com/plugins/cannon.js"></script>
+</head>
+<body>
+    <canvas id="renderCanvas"></canvas>
+    
+    <!-- Menu Overlay -->
+    <div id="menu">
+        <h1>3D Marble Run</h1>
+        <button id="playBtn">Play</button>
+        <button id="settingsBtn">Settings</button>
+        <button id="customizationBtn">Customization</button>
+        <button id="backBtn">Back to Site</button>
+    </div>
+    
+    <!-- Settings Submenu -->
+    <div id="settingsMenu" class="submenu hidden">
+        <h2>Settings</h2>
+        <label>Music Volume: <input type="range" id="musicVolume" min="0" max="1" step="0.1" value="0.5"></label>
+        <label>SFX Volume: <input type="range" id="sfxVolume" min="0" max="1" step="0.1" value="0.5"></label>
+        <label>Camera Shake: <input type="range" id="cameraShake" min="0" max="1" step="0.1" value="0.5"></label>
+        <label>Joycon Position: 
+            <select id="joyconPos">
+                <option value="left">Joystick Left, Button Right</option>
+                <option value="right">Joystick Right, Button Left</option>
+            </select>
+        </label>
+        <label>Camera Follow: <input type="checkbox" id="cameraFollow" checked></label>
+        <button class="backToMenu">Back</button>
+    </div>
+    
+    <!-- Customization Submenu -->
+    <div id="customizationMenu" class="submenu hidden">
+        <h2>Customization</h2>
+        <label>Skin: <select id="skinSelect"></select></label>
+        <label>Accessories: <select id="accessorySelect" multiple></select></label>
+        <button class="backToMenu">Back</button>
+    </div>
+    
+    <!-- Mobile Controls -->
+    <div id="mobileControls" class="hidden">
+        <div id="joystick"></div>
+        <button id="boostBtn">Boost</button>
+    </div>
+    
+    <!-- Module entrypoint: loads other JS modules via ES modules -->
+    <script type="module" src="js/main.js"></script>
+</body>
+</html>
