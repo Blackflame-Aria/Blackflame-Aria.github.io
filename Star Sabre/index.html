@@ -209,6 +209,7 @@
                 <p>TOTAL KILLS: <span id="total-kills" class="neon-text">0</span></p>
                 <p>ESSENCE EARNED: <span id="essence-earned" class="neon-text">0</span></p>
                 <p>TOTAL ESSENCE: <span id="total-essence" class="neon-text">0</span></p>
+                <p id="armaments-unlocked-line" class="neon-text hidden">ARMAMENT UNLOCKED</p>
                 <div class="shop-actions game-over-actions">
                     <button class="secondary-btn" onclick="closeGameOver()">MAIN MENU</button>
                 </div>
@@ -279,6 +280,14 @@
                             </div>
                         </div>
                     </div>
+                <!-- Armaments section: independent from skins, supports 3 equipable armaments -->
+                <div class="acc-row" id="armaments-status-row">
+                    <h4>ARMAMENTS</h4>
+                    <label class="acc-label" id="armaments-status-label">unlock armament to equip</label>
+                </div>
+                <div class="acc-row" id="armaments-grid-row">
+                    <!-- Cards rendered dynamically by script.js (matches skins layout) -->
+                </div>
                     <div class="reset-actions">
                         <button class="secondary-btn" id="skins-close-btn" onclick="closeSkins()">CLOSE</button>
                     </div>
@@ -288,5 +297,6 @@
     </div>
 
     <script src="script.js"></script>
+    <script src="boss.js"></script>
 </body>
 </html>
