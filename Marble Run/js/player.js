@@ -228,7 +228,7 @@ export class Player {
                 }
             }
             if (dir) {
-                const boostForce = dir.scale(2);
+                const boostForce = dir.scale(1.5);
                 this.mesh.physicsImpostor.applyImpulse(boostForce, this.mesh.getAbsolutePosition());
             }
         } catch (e) { console.warn('Boost failed', e); }
