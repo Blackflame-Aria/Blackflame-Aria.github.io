@@ -335,38 +335,56 @@ export class Menu {
         const enableCarouselDrag = (slidesViewport, innerEl, state, itemCount) => {
             if (!slidesViewport) return;
             const contentEl = innerEl || slidesViewport;
-            let active = false, startX = 0, startTranslate = 0;
+            let active = false, startX = 0, startY = 0, startTranslate = 0;
+            let moved = false;
+            const TAP_THRESHOLD = 8; 
             const onDown = (ev) => {
                 active = true;
+                moved = false;
                 startX = ev.clientX || (ev.touches && ev.touches[0] && ev.touches[0].clientX) || 0;
+                startY = ev.clientY || (ev.touches && ev.touches[0] && ev.touches[0].clientY) || 0;
                 startTranslate = typeof state._translate === 'number' ? state._translate : 0;
                 contentEl.style.transition = 'none';
-                ev.preventDefault && ev.preventDefault();
+                try { ev.preventDefault && ev.preventDefault(); } catch(e) {}
             };
             const onMove = (ev) => {
                 if (!active) return;
                 const mx = ev.clientX || (ev.touches && ev.touches[0] && ev.touches[0].clientX) || 0;
-                const delta = mx - startX;
-                const newT = startTranslate + delta;
+                const my = ev.clientY || (ev.touches && ev.touches[0] && ev.touches[0].clientY) || 0;
+                const deltaX = mx - startX;
+                const deltaY = my - startY;
+                if (!moved && (Math.abs(deltaX) > 3 || Math.abs(deltaY) > 3)) moved = true;
+                const newT = startTranslate + deltaX;
                 contentEl.style.transform = `translateX(${newT}px)`;
-                ev.preventDefault && ev.preventDefault();
+                try { ev.preventDefault && ev.preventDefault(); } catch(e) {}
             };
             const onUp = (ev) => {
                 if (!active) return; active = false;
                 const endX = ev.clientX || (ev.changedTouches && ev.changedTouches[0] && ev.changedTouches[0].clientX) || 0;
-                const moved = endX - startX;
+                const endY = ev.clientY || (ev.changedTouches && ev.changedTouches[0] && ev.changedTouches[0].clientY) || 0;
+                const delta = endX - startX;
                 const nodes = Array.from(contentEl.children || []);
                 if (nodes.length === 0) { updateCarousel(slidesViewport, state); return; }
                 const slideRect = nodes[0].getBoundingClientRect();
                 const gap = parseFloat(getComputedStyle(contentEl).gap || '12');
                 const slideFull = slideRect.width + gap;
                 const threshold = slideFull * 0.28;
-                if (Math.abs(moved) > threshold) {
-                    const dir = (moved < 0) ? 1 : -1;
-                    state.idx = Math.max(0, Math.min(itemCount - 1, state.idx + dir));
+                if (!moved || Math.abs(delta) <= TAP_THRESHOLD) {
+                    const elAt = document.elementFromPoint(endX, endY);
+                    const slideEl = elAt && elAt.closest && elAt.closest('.slide');
+                    if (slideEl) {
+                        try {
+                            slideEl.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true, view: window }));
+                        } catch(e) {}
+                    }
+                } else {
+                    if (Math.abs(delta) > threshold) {
+                        const dir = (delta < 0) ? 1 : -1;
+                        state.idx = Math.max(0, Math.min(itemCount - 1, state.idx + dir));
+                    }
                 }
                 updateCarousel(slidesViewport, state);
-                ev.preventDefault && ev.preventDefault();
+                try { ev.preventDefault && ev.preventDefault(); } catch(e) {}
             };
 
             slidesViewport.addEventListener('pointerdown', onDown);
