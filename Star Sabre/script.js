@@ -254,6 +254,7 @@ try { localStorage.setItem('neonTowerSave', JSON.stringify(meta)); } catch(e) {}
 let party = [];
 let enemies = [];
 let bullets = [];
+let orbiters = [];
 let powerups = [];
 let particles = [];
 const PARTICLE_POOL_SIZE = 1500;
@@ -268,6 +269,98 @@ function initParticlePool() {
     for (let i = 0; i < PARTICLE_POOL_SIZE; i++) {
         particles[i] = { active: false, x: 0, y: 0, vx: 0, vy: 0, life: 0, fade: 0.05, size: 3, color: '#ffffff' };
         particleFreeList.push(i);
+    }
+}
+
+class OrbitingBullet {
+    constructor(pet, index, total, radius, dmg, color, duration) {
+        this.pet = pet;
+        this.index = index;
+        this.total = total;
+        this.radius = radius;
+        this.dmg = dmg;
+        this.color = color || '#00ffff';
+        this.duration = duration || 15;
+        this.time = this.duration;
+        this.active = true;
+        this.angle = (index / total) * Math.PI * 2;
+        this.angularSpeed = Math.PI * 1.5; 
+        this.x = (pet ? pet.x : 0) + Math.cos(this.angle) * this.radius;
+        this.y = (pet ? pet.y : 0) + Math.sin(this.angle) * this.radius;
+        this._hitT = new Map();
+        this.trail = [];
+        this.trailMax = 6;
+        this.width = 6;
+    }
+
+    update() {
+        if (!this.pet || this.pet.hp <= 0 || !this.active) { this.active = false; return; }
+        const sec = (GAME.dt || 1) / 60;
+        this.time -= sec;
+        if (this.time <= 0) { this.active = false; return; }
+        this.angle -= this.angularSpeed * sec;
+        this.x = this.pet.x + Math.cos(this.angle) * this.radius;
+        this.y = this.pet.y + Math.sin(this.angle) * this.radius;
+
+        const now = performance.now();
+        this.trail.push({ x: this.x, y: this.y });
+        if (this.trail.length > this.trailMax) this.trail.shift();
+        const allTargets = [...enemies];
+        if (GAME.warship && GAME.warship.cannons) allTargets.push(...GAME.warship.cannons.filter(c=>!c.dead));
+        for (let e of allTargets) {
+            if (!e || e.hp <= 0) continue;
+            const dx = e.x - this.x, dy = e.y - this.y;
+            const dist = Math.hypot(dx, dy);
+            const targetSize = e.size || (e.radius || 20);
+            const hitR = Math.max(10, targetSize * 1.0);
+            const hitPad = 10;
+            if (dist <= hitR + hitPad) {
+                const last = this._hitT.get(e._eid || e._cid) || 0;
+                if (now - last < 0) continue;
+                this._hitT.set(e._eid || e._cid, now);
+                e.hp -= this.dmg;
+                try { spawnDamagePopup(e, this.dmg, 'regular'); } catch(_){ }
+                playSfx('hit');
+                createParticles(this.x, this.y, this.color, 4);
+                GAME.shake = Math.max(GAME.shake, e.rank === 'BOSS' ? 4 : 2.5);
+                if (e.hp <= 0 && !e.deadProcessed) {
+                    if (e.takeDamage) {
+                        e.takeDamage(0);
+                    } else {
+                        e.deadProcessed = true;
+                        playSfx('die');
+                        createRainbowExplosion(e.x, e.y, e.rank === 'BOSS' ? 25 : 25);
+                        onEnemyKilled(e, 'SHIELD_ORBIT');
+                        if (GAME.target === e) GAME.target = null;
+                    }
+                }
+            }
+        }
+    }
+
+    draw() {
+        if (!this.active) return;
+        if (this.trail && this.trail.length > 0) {
+            ctx.save();
+            ctx.globalCompositeOperation = 'lighter';
+            ctx.strokeStyle = this.color;
+            ctx.lineWidth = this.width;
+            ctx.lineCap = 'round';
+            ctx.beginPath();
+            ctx.moveTo(this.trail[0].x, this.trail[0].y);
+            for (let i = 1; i < this.trail.length; i++) ctx.lineTo(this.trail[i].x, this.trail[i].y);
+            ctx.lineTo(this.x, this.y);
+            ctx.stroke();
+            ctx.restore();
+        }
+        ctx.save();
+        ctx.shadowBlur = 18;
+        ctx.shadowColor = this.color;
+        ctx.fillStyle = this.color;
+        ctx.beginPath();
+        ctx.arc(this.x, this.y, 6, 0, Math.PI*2);
+        ctx.fill();
+        ctx.restore();
     }
 }
 function resetParticlePool() {
@@ -980,6 +1073,14 @@ class Pet {
             if (this.shieldTimer <= 0) {
                 this.shieldActive = false;
                 this.shieldTimer = 0;
+                try {
+                    for (let i = orbiters.length - 1; i >= 0; i--) {
+                        const o = orbiters[i];
+                        if (!o) continue;
+                        if (o.pet === this) orbiters.splice(i, 1);
+                    }
+                    if (this._shieldOrbiters) this._shieldOrbiters.length = 0;
+                } catch(_) {}
             }
         }
         if (this.isMain && this.entering) {
@@ -1345,14 +1446,14 @@ class Pet {
             const glow = theme.primary || '#fff';
             const inner = 14;
             const outer = inner + 18;
-            const grad = ctx.createRadialGradient(this.x, this.y, inner, this.x, this.y, outer);
+            const grad = ctx.createRadialGradient(this.x, drawY, inner, this.x, drawY, outer);
             grad.addColorStop(0.00, hexToRgba(glow, 0.15));
             grad.addColorStop(0.35, hexToRgba(theme.accent || glow, 0.10));
             grad.addColorStop(0.70, hexToRgba(glow, 0.5));
             grad.addColorStop(1.00, hexToRgba(glow, 0.0));
             ctx.fillStyle = grad;
             ctx.beginPath();
-            ctx.arc(this.x, this.y, outer, 0, Math.PI*2);
+            ctx.arc(this.x, drawY, outer, 0, Math.PI*2);
             ctx.fill();
             ctx.restore();
         }
@@ -1441,10 +1542,10 @@ class Pet {
             ctx.lineWidth = width;
             ctx.lineCap = 'round';
             ctx.strokeStyle = track;
-            ctx.beginPath(); ctx.arc(this.x, this.y, rad, 0, Math.PI*2); ctx.stroke();
+            ctx.beginPath(); ctx.arc(this.x, drawY, rad, 0, Math.PI*2); ctx.stroke();
             const capped = Math.max(0, Math.min(1, pct));
             ctx.strokeStyle = progColor;
-            ctx.beginPath(); ctx.arc(this.x, this.y, rad, base, base + capped * Math.PI*2); ctx.stroke();
+            ctx.beginPath(); ctx.arc(this.x, drawY, rad, base, base + capped * Math.PI*2); ctx.stroke();
         }
         drawSolidRing.call(this, healthR, '#300', '#f00', hpPct, 3);
         const skinCol = (party[0] === this) ? getSkinTheme().primary : (C.colors[this.type.toLowerCase()] || '#f0f');
@@ -2465,7 +2566,7 @@ class Bullet {
         }
         this.pierceChain = this.piercing;
         this.hitCount = 0;
-        this.maxPierce = 3;
+        this.maxPierce = 5;
         this.hitTargets = [];
         const locked = (lockOnTarget !== null && target === lockOnTarget);
         let dx, dy;
@@ -3393,6 +3494,22 @@ function loop() {
             bullets[w++] = b;
         }
         bullets.length = w;
+    }
+
+    for (let i = 0; i < orbiters.length; i++) {
+        const o = orbiters[i];
+        if (!o || !o.active) { o && (o.active = false); orbiters[i] = null; continue; }
+        o.update();
+        o.draw();
+    }
+    {
+        let w2 = 0;
+        for (let i = 0; i < orbiters.length; i++) {
+            const o = orbiters[i];
+            if (!o || !o.active) continue;
+            orbiters[w2++] = o;
+        }
+        orbiters.length = w2;
     }
 
     for(let i=0; i<particles.length; i++) {
@@ -4430,7 +4547,7 @@ async function startGame() {
             }
         }
     })();
-    enemies = []; bullets = []; powerups = []; resetParticlePool();
+    enemies = []; bullets = []; orbiters = []; powerups = []; resetParticlePool();
     GAME.floor = 1; 
     GAME.essence = 0;
     GAME.totalKillsRun = 0;
@@ -4695,6 +4812,7 @@ function showDraft() {
     const con = document.getElementById('draft-cards');
     con.innerHTML = '';
     bullets = [];
+    orbiters = [];
     resetParticlePool();
     const draftCost = Math.max(0, (GAME.draftCount || 0) * 5);
     const runEssEl = document.getElementById('run-essence-display');
@@ -4800,6 +4918,7 @@ async function resume() {
     GAME._pendingBossWarning = false;
     bossSpawnedThisFloor = false;
     bullets = [];
+    orbiters = [];
     resetParticlePool();
     powerups = [];
     
@@ -5071,7 +5190,23 @@ function grantRandomPowerup(p) {
         try { vibrateKind('powerup_warning'); } catch(_){}
     }
     if (pick === 'SHIELD') {
-        try { p.shieldActive = true; p.shieldTimer = p.powerup.time || 15; } catch(_) {}
+        try {
+            p.shieldActive = true;
+            p.shieldTimer = p.powerup.time || 15;
+            try {
+                const orbCount = 5;
+                const orbitRadius = 70; 
+                const dmg = Math.max(1, Math.round((p.dmg || 4) * 0.5));
+                const theme = (typeof getSkinTheme === 'function') ? getSkinTheme() : null;
+                const color = (theme && theme.primary) ? theme.primary : (p.color || '#00ffff');
+                p._shieldOrbiters = [];
+                for (let oi = 0; oi < orbCount; oi++) {
+                    const ob = new OrbitingBullet(p, oi, orbCount, orbitRadius, dmg, color, p.powerup.time || 15);
+                    orbiters.push(ob);
+                    p._shieldOrbiters.push(ob);
+                }
+            } catch(_){ }
+        } catch(_) {}
         try { vibrateKind('strong'); } catch(_) {}
     }
     if (pick === 'TIMEWARP') {
