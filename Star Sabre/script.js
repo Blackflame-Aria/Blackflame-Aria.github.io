@@ -453,6 +453,7 @@ const sfx = {
     shoot: new Audio('sfx/shoot.wav'), 
     gat: new Audio('sfx/gat.wav'),     
     hit: new Audio('sfx/hit.wav'),     
+    flame: new Audio('sfx/flame.wav'),
     ult: new Audio('sfx/ult.wav'),     
     die: new Audio('sfx/die.wav'),     
     click: new Audio('sfx/click.wav'),  
@@ -484,6 +485,9 @@ try {
 } catch(_) {
     sfx['warlaser'] = new Audio('sfx/laser2.wav');
 }
+try { if (sfx['warlaser-charge']) sfx['warlaser-charge'].volume = 0.5; } catch(_) {}
+try { if (sfx['warlaser-ready']) sfx['warlaser-ready'].volume = 0.5; } catch(_) {}
+try { if (sfx['warlaser']) sfx['warlaser'].volume = 0.5; } catch(_) {}
 const activeAudio = [];
 const SETTINGS = { sfxMuted: false, musicMuted: false };
 function loadAudioSettings() {
@@ -563,6 +567,33 @@ const AudioEngine = (() => {
     async function loadList(list) {
         await Promise.all(list.map(x => loadBuffer(x.name, x.url)));
     }
+    state.looping = new Map();
+    function playLoopSfx(name, volume = 1) {
+        if (!state.ready || !state.ctx) return false;
+        const buf = state.buffers.get(name);
+        if (!buf) return false;
+        if (state.looping.has(name)) return true;
+        try {
+            const src = state.ctx.createBufferSource();
+            src.buffer = buf;
+            src.loop = true;
+            const g = state.ctx.createGain();
+            g.gain.value = Math.max(0, Math.min(1, volume));
+            src.connect(g); g.connect(state.sfxGain);
+            src.start(state.ctx.currentTime || 0);
+            state.looping.set(name, { src, g });
+            return true;
+        } catch(_) { return false; }
+    }
+    function stopLoopSfx(name) {
+        try {
+            const obj = state.looping.get(name);
+            if (!obj) return;
+            try { obj.src.stop(); obj.src.disconnect(); } catch(_){}
+            try { obj.g.disconnect(); } catch(_){}
+            state.looping.delete(name);
+        } catch(_){}
+    }
     function playSfx(name, volume = 1, speed = 1) {
         if (!state.ready || !state.ctx) return false;
         if (state.ctx.state === 'suspended') return false;
@@ -573,9 +604,20 @@ const AudioEngine = (() => {
             src.buffer = buf;
             try { src.playbackRate.value = speed || 1; } catch(_){}
             const g = state.ctx.createGain();
-            g.gain.value = 1.0;
+            const now = state.ctx.currentTime || 0;
+            const vol = Math.max(0, Math.min(1, volume));
+            if (name === 'warlaser-ready') {
+                try {
+                    g.gain.setValueAtTime(0, now);
+                    g.gain.linearRampToValueAtTime(vol, now + 0.1);
+                } catch(_) {
+                    try { g.gain.value = vol; } catch(_){}
+                }
+            } else {
+                try { g.gain.setValueAtTime(vol, now); } catch(_) { try { g.gain.value = vol; } catch(_){} }
+            }
             src.connect(g); g.connect(state.sfxGain);
-            src.start(state.ctx.currentTime);
+            src.start(now);
             src.onended = () => { try { src.disconnect(); g.disconnect(); } catch(_){} };
             return true;
         } catch(_) { return false; }
@@ -638,13 +680,14 @@ const AudioEngine = (() => {
             }
         } catch(_) {}
     }
-    return { init, loadBuffer, loadList, playSfx, playMusic, stopMusic, setSfxMuted, setMusicMuted, state };
+    return { init, loadBuffer, loadList, playSfx, playMusic, stopMusic, setSfxMuted, setMusicMuted, playLoopSfx, stopLoopSfx, state };
 })();
 
 function preloadAudioAssets() {
     const sfxList = [
         { name: 'shoot', url: 'sfx/shoot.wav' },
         { name: 'beam', url: 'sfx/beam.wav' },
+        { name: 'flame', url: 'sfx/flame.wav' },
         { name: 'shotgun', url: 'sfx/shotgun.wav' },
         { name: 'hit', url: 'sfx/hit.wav' },
         { name: 'ult', url: 'sfx/ult.wav' },
@@ -659,6 +702,9 @@ function preloadAudioAssets() {
         { name: 'laser3', url: 'sfx/laser3.wav' },
         { name: 'laser4', url: 'sfx/laser4.wav' },
         { name: 'warcannon', url: 'sfx/warcannon.wav' },
+        { name: 'warlaser', url: 'sfx/warlaser.wav' },
+        { name: 'warlaser-ready', url: 'sfx/warlaser-ready.wav' },
+        { name: 'warlaser-charge', url: 'sfx/warlaser-charge.wav' },
         
     ];
     const musicList = [
@@ -734,25 +780,36 @@ const MUSIC = {
     _fadeTimer: null,
     play(name, opts = {}) {
         const volume = typeof opts.volume === 'number' ? opts.volume : 1;
-        const fadeInMs = typeof opts.fadeInMs === 'number' ? opts.fadeInMs : 0;
-        const loop = (opts.loop !== undefined) ? !!opts.loop : true;
         try {
-            if (AudioEngine.state.ready && AudioEngine.playMusic(name, volume, loop, fadeInMs)) {
-                this.current = null; this.name = name; this.targetVolume = volume; return;
+            if (AudioEngine && AudioEngine.state && AudioEngine.state.ready && AudioEngine.state.buffers && AudioEngine.state.buffers.has(name)) {
+                try { AudioEngine.playLoopSfx(name, volume); } catch(_){}
+                return;
             }
         } catch(_){}
-        const track = bgm[name];
-        if (!track) return;
-        try { if (AudioEngine.state.currentMusic) { AudioEngine.stopMusic(0); } } catch(_){ }
-        const prev = this.current;
-        if (prev) { try { prev.pause(); prev.currentTime = 0; } catch(_){ } }
-        this.current = track;
-        this.name = name;
+        let a = this.map.get(name);
+        if (!a) {
+            const base = sfx[name];
+            if (!base) return;
+            a = base.cloneNode();
+            a.loop = true;
+            a.volume = Math.max(0, Math.min(1, volume));
+            this.map.set(name, a);
+        }
+        try {
+            if (typeof a.paused === 'boolean' && !a.paused) return;
+            a.play().catch(()=>{});
+        } catch(_){ }
         try {
             track.loop = loop;
-            this.targetVolume = Math.max(0, Math.min(1, volume));
-            track.currentTime = 0;
-            try { track.muted = true; } catch(_){ }
+        try {
+            if (AudioEngine && AudioEngine.state && AudioEngine.state.ready && AudioEngine.state.buffers && AudioEngine.state.buffers.has(name)) {
+                try { AudioEngine.stopLoopSfx(name); } catch(_){}
+                return;
+            }
+        } catch(_){}
+        const a = this.map.get(name);
+        if (!a) return;
+        try { a.pause(); if (resetTime) a.currentTime = 0; } catch(_){ }
             track.volume = 0;
             console.log('[Music] Using HTMLAudio fallback for', name);
             const p = track.play();
@@ -886,7 +943,10 @@ const LOOPING = {
             a.volume = 1.0;
             this.map.set(name, a);
         }
-        try { a.play().catch(()=>{}); } catch(_){ }
+        try {
+            if (typeof a.paused === 'boolean' && !a.paused) return;
+            a.play().catch(()=>{});
+        } catch(_){ }
     },
     stop(name, resetTime = true) {
         const a = this.map.get(name);
@@ -905,6 +965,9 @@ function playSfx(sound, volume = 1, opts = {}) {
     if (SETTINGS.sfxMuted) return;
     const uiAllowed = ['click','upgrade','warning'];
     if (GAME.state !== 'PLAY' && !uiAllowed.includes(sound)) return;
+    if (sound === 'warlaser-charge') volume = 0.6;
+    if (sound === 'warlaser-ready') volume = 0.6;
+    if (sound === 'warlaser') volume = 0.7;
     if (sfx[sound]) {
         try {
             const speed = (opts && (opts.playbackRate || opts.rate)) || 1;
@@ -960,7 +1023,20 @@ function playSfx(sound, volume = 1, opts = {}) {
             if (now - GAME.lastShotgunSfxTime < 140) return;
             GAME.lastShotgunSfxTime = now;
             const clone = sfx[sound].cloneNode();
-            clone.volume = volume;
+            if (sound === 'warlaser-ready') {
+                try { clone.volume = 0; } catch(_){}
+                activeAudio.push(clone);
+                clone.addEventListener('ended', () => {
+                    const i = activeAudio.indexOf(clone);
+                    if(i !== -1) activeAudio.splice(i, 1);
+                });
+                clone.play().catch(() => {});
+                try { setTimeout(() => { clone.volume = Math.min(1, volume * 0.6); }, 40); } catch(_){}
+                try { setTimeout(() => { clone.volume = Math.min(1, volume); }, 70); } catch(_){}
+                return;
+            } else {
+                clone.volume = volume;
+            }
             activeAudio.push(clone);
             clone.addEventListener('ended', () => {
                 const i = activeAudio.indexOf(clone);
@@ -972,6 +1048,18 @@ function playSfx(sound, volume = 1, opts = {}) {
 
         const clone = sfx[sound].cloneNode();
             try { clone.playbackRate = (opts && (opts.playbackRate || opts.rate)) || 1; } catch(_){}
+        if (sound === 'warlaser-ready') {
+            try { clone.volume = 0; } catch(_){}
+            activeAudio.push(clone);
+            clone.addEventListener('ended', () => {
+                const i = activeAudio.indexOf(clone);
+                if(i !== -1) activeAudio.splice(i, 1);
+            });
+            clone.play().catch(() => {});
+            try { setTimeout(() => { clone.volume = Math.min(1, volume * 0.5); }, 40); } catch(_){}
+            try { setTimeout(() => { clone.volume = Math.min(1, volume); }, 70); } catch(_){}
+            return;
+        }
         clone.volume = volume;
         activeAudio.push(clone);
         clone.addEventListener('ended', () => {
@@ -2044,6 +2132,7 @@ class Cannon {
                 }
                 if (this.rc_timer >= 3.0) {
                     try { LOOPING.stop('warlaser-charge'); } catch(_){ }
+                    try { playSfx('warlaser-ready'); } catch(_){ }
                     this.rc_phase = 'stopped_before';
                     this.rc_lockedAngle = this.angle;
                     this.rc_timer = 0;
@@ -2054,14 +2143,13 @@ class Cannon {
                 const k = Math.min(1, this.rc_timer / stopDur);
                 this.rc_glow = k;
                 for (let p of this.rc_particles) p.alpha = Math.max(0, 1 - k);
-                if (this.rc_timer >= stopDur) {
+                    if (this.rc_timer >= stopDur) {
                     this.rc_particles.length = 0;
                     this.rc_phase = 'beam';
                     this.rc_timer = 0;
                     this.rc_beamPlaying = true;
                     this.recoil = Math.max(this.recoil, 12);
                     this.rc_glow = 0;
-                    try { playSfx('warlaser-ready'); } catch(_){ }
                     try { LOOPING.play('warlaser'); } catch(_){ try { playSfx('warlaser'); } catch(_){} }
                 }
                 return;
@@ -2155,7 +2243,7 @@ class Cannon {
                 if (right && right.dead) destroyedSides++;
                 let baseInterval = 2.5;
                 if (destroyedSides === 1) baseInterval = 1.0;
-                else if (destroyedSides >= 2) baseInterval = 0.1;
+                else if (destroyedSides >= 2) baseInterval = 0.25;
                 this.spawnTimer += GAME.dt / 60;
                 if (this.spawnTimer >= baseInterval) {
                     this.spawnTimer = 0;
@@ -2263,7 +2351,8 @@ class Cannon {
         GAME.shake = 10;
 
         try { LOOPING.stop('warlaser'); } catch(_){}
-        try { LOOPING.stop('warlaser-charge'); } catch(_){}
+        try { LOOPING.stop('warlaser-ready'); } catch(_){ }
+        try { LOOPING.stop('warlaser-charge'); } catch(_){ }
         this.rc_beamPlaying = false;
         this.rc_particles.length = 0;
         this.rc_phase = 'stopped_after';
@@ -2582,6 +2671,19 @@ class Bullet {
         }
         
         this.color = opts.color || C.colors[type.toLowerCase()];
+        this.hellfire = !!opts.hellfire;
+        if (this.hellfire) {
+            this.life = (typeof opts.life === 'number') ? opts.life : 0.8; 
+            this.age = 0;
+            this.baseSpeed = this.speed; 
+            this.minAlpha = (typeof opts.minAlpha === 'number') ? opts.minAlpha : 0.2; 
+            this.trailMax = opts.trailMax || 10;
+            this.trailStartAlpha = (typeof opts.trailStartAlpha === 'number') ? opts.trailStartAlpha : 0.6; 
+            this.trailColor = opts.trailColor || '#ff0033';
+            this.trail = [];
+            this.rotJitter = (Math.random() - 0.5) * Math.PI * 2;
+            this.sizeJitter = (Math.random() - 0.5) * 0.3;
+        }
         this.active = true;
         this.sizeMult = opts.bulletSizeMult || 1;
         this.baseWidth = 3;
@@ -2589,19 +2691,20 @@ class Bullet {
         this.growthRate = 0.2 * this.sizeMult;
         this.target = target;
         this.lockOnTarget = lockOnTarget;
-        this.piercing = !!opts.piercing;
+        this.piercing = (typeof opts.piercing === 'boolean') ? opts.piercing : false;
+        this.pierceChain = !!opts.pierceChain;
+        this.straightPierce = (typeof opts.straightPierce === 'boolean') ? opts.straightPierce : (!!this.hellfire);
         this.shape = opts.shape || 'round';
         this.bigImpact = !!opts.bigImpact;
         this.sprite = opts.sprite || null;
         this.skinKey = opts.skinKey || null;
         if (this.shape === 'crescent') {
-            this.multiHitWindow = 0.005; 
+            this.multiHitWindow = 0.5; 
             this.multiHitTimer = 0;
             this.multiHitRemaining = 1; 
         }
-        this.pierceChain = this.piercing;
         this.hitCount = 0;
-        this.maxPierce = 5;
+        this.maxPierce = (typeof opts.maxPierce === 'number') ? opts.maxPierce : 5;
         this.hitTargets = [];
         const locked = (lockOnTarget !== null && target === lockOnTarget);
         let dx, dy;
@@ -2723,7 +2826,7 @@ class Bullet {
 
         const secDelta = GAME.dt / 60;
         if (this.life && this.life > 0) {
-            this.age += secDelta;
+            this.age = (this.age || 0) + secDelta;
             const t = Math.min(1, this.age / this.life);
             const speedFactor = Math.max(0, 1 - t);
             const mag = Math.hypot(this.vx, this.vy) || 1;
@@ -2734,7 +2837,12 @@ class Bullet {
             this.vx = dirx * newSpeed;
             this.vy = diry * newSpeed;
             this.speed = newSpeed;
-            this.alpha = 1 - t;
+            if (this.hellfire) {
+                const minA = (typeof this.minAlpha === 'number') ? this.minAlpha : 0;
+                this.alpha = 1 - (1 - minA) * t; 
+            } else {
+                this.alpha = 1 - t;
+            }
             if (this.age >= this.life) {
                 this.active = false;
             }
@@ -2753,7 +2861,7 @@ class Bullet {
         if (GAME.warship && GAME.warship.cannons) {
             for (let cannon of GAME.warship.cannons) {
                 if (cannon.dead) continue;
-                if ((this.pierceChain || this.shape === 'crescent') && this.hitTargets.includes(cannon)) continue;
+                if ((this.pierceChain || this.shape === 'crescent' || this.straightPierce) && this.hitTargets.includes(cannon)) continue;
                 
                 const dx = cannon.x - this.x;
                 const dy = cannon.y - this.y;
@@ -2765,16 +2873,14 @@ class Bullet {
                     createParticles(this.x, this.y, '#ff0000', 6);
                     playSfx('hit');
                     GAME.shake = Math.max(GAME.shake, 3);
-                    
-                    if (this.shape === 'crescent' || this.pierceChain) {
+                    if (this.shape === 'crescent') {
                         this.hitTargets.push(cannon);
-                        if (this.pierceChain) {
-                            this.hitCount++;
-                            if (this.hitCount >= this.maxPierce) {
-                                this.active = false;
-                                break;
-                            }
-                        }
+                    } else if (this.pierceChain) {
+                        this.hitTargets.push(cannon);
+                        this.hitCount++;
+                        if (this.hitCount >= this.maxPierce) { this.active = false; break; }
+                    } else if (this.straightPierce) {
+                        this.hitTargets.push(cannon);
                     } else {
                         if (this.bigImpact) spawnCanvasExplosion(this.x, this.y, Math.max(20, 24 * (this.sizeMult || 1)), true, this.skinKey);
                         this.active = false;
@@ -2786,7 +2892,7 @@ class Bullet {
         
         for(let e of enemies) {
             if(!e || e.hp <= 0) continue;
-            if ((this.pierceChain || this.shape === 'crescent') && this.hitTargets.includes(e)) continue;
+            if ((this.pierceChain || this.shape === 'crescent' || this.straightPierce) && this.hitTargets.includes(e)) continue;
             if (this.hitOncePerTarget && this.hitTargets.includes(e)) continue;
 
             let hit = false;
@@ -2859,9 +2965,17 @@ class Bullet {
                     onEnemyKilled(e, 'PROJECTILE');
                     if(GAME.target === e) GAME.target = null;
                 }
-                if (this.shape === 'crescent' || this.pierceChain) this.hitTargets.push(e);
-
-                if(this.pierceChain) {
+                if (this.shape === 'crescent') {
+                    this.hitTargets.push(e);
+                    if (this.multiHitRemaining > 0) {
+                        this.multiHitTimer = Math.max(this.multiHitTimer || 0, this.multiHitWindow);
+                        this.multiHitRemaining--;
+                    } else {
+                        if (this.bigImpact) spawnCanvasExplosion(this.x, this.y, Math.max(20, 24 * (this.sizeMult || 1)), true, this.skinKey);
+                        this.active = false;
+                        break;
+                    }
+                } else if (this.pierceChain) {
                     this.hitTargets.push(e);
                     this.hitCount++;
                     if (this.hitCount >= this.maxPierce) {
@@ -2881,17 +2995,10 @@ class Bullet {
                         this.active = false;
                         break;
                     }
-                } else if (this.shape === 'crescent') {
-                    if (this.multiHitRemaining > 0) {
-                        this.multiHitTimer = Math.max(this.multiHitTimer || 0, this.multiHitWindow);
-                        this.multiHitRemaining--;
-                    } else {
-                        if (this.bigImpact) spawnCanvasExplosion(this.x, this.y, Math.max(20, 24 * (this.sizeMult || 1)), true, this.skinKey);
-                        this.active = false;
-                        break;
-                    }
+                } else if (this.straightPierce) {
+                    this.hitTargets.push(e);
                 } else {
-                    if (this.bigImpact) spawnCanvasExplosion(this.x, this.y, Math.max(20, 24 * (this.sizeMult || 1)), true, this.skinKey);
+                    if (this.bigImpact) spawnCanvasExplosion(this.x, this.y, Math.max(20, 24 * (this.sizeMult || 1.2)), true, this.skinKey);
                     if (this.hitOncePerTarget) this.hitTargets.push(e);
                     if (!this.persistent) {
                         this.active = false;
@@ -3078,6 +3185,7 @@ class Armament {
         this.armBeamDur = 2.0;
         this.armBeamSfxTimer = 0;
         this.armBeamBurstLeft = 0;
+        this._playedWarlaserReady = false;
         this.chargeParticles = [];
         this.chargeSpawnAcc = 0;
         this.chargeGlow = 0;
@@ -3119,6 +3227,10 @@ class Armament {
             const BEAM_DUR = this.armBeamDur || 1.5;
 
             if (this.armBeamPhase === 'track') {
+                if (!this._playedWarlaserReady) {
+                    try { playSfx('warlaser-ready'); } catch(_){ }
+                    this._playedWarlaserReady = true;
+                }
                 if (targ) {
                     const dx = targ.x - this.x, dy = targ.y - this.y;
                     const desired = Math.atan2(dy, dx);
@@ -3173,8 +3285,8 @@ class Armament {
                     this.armBeamTimer = BEAM_DUR;
                     this.armBeamBurstLeft = 6;
                     this.armBeamSfxTimer = 0;
-                    try { playSfx('warlaser-ready', 0.9); } catch(_){ }
                     try { LOOPING.play && LOOPING.play('warlaser'); } catch(_){ }
+                    this._playedWarlaserReady = false;
                     this.armBeamActive = true;
                     this.chargeParticles.length = 0;
                 }
@@ -3227,7 +3339,6 @@ class Armament {
 
                 this.armBeamSfxTimer -= GAME.dt / 60;
                 if (this.armBeamBurstLeft > 0 && this.armBeamSfxTimer <= 0) {
-                    try { playSfx('warlaser', 0.6); } catch(_){ }
                     this.armBeamBurstLeft--;
                     this.armBeamSfxTimer = 0.8;
                 }
@@ -3280,16 +3391,16 @@ class Armament {
                             const playerDmg = (p0 && p0.dmg) ? p0.dmg : 4;
                             const partDmg = Math.max(1, Math.round(playerDmg * 0.01)); 
                             const baseDir = Math.atan2(targ.y - this.y, targ.x - this.x);
-                            const spread = (30 * Math.PI / 180);
+                            const spread = (35 * Math.PI / 180);
                             this.gatlingAcc += sec * this.gatlingRate;
-                            this.attackInterval = 0.03;
+                            this.attackInterval = 0.06;
                             let toSpawn = Math.floor(this.gatlingAcc);
                             if (toSpawn > 0) {
                                 this.gatlingAcc -= toSpawn;
                                 toSpawn = Math.min(toSpawn, 12);
                                 for (let i = 0; i < toSpawn; i++) {
                                     const ang = baseDir + (Math.random() - 0.5) * spread;
-                                    const fakeTarget = { x: this.x + Math.cos(ang) * 1000, y: this.y + Math.sin(ang) * 1000 };
+                                    const fakeTarget = { x: this.x + Math.cos(ang) * 500, y: this.y + Math.sin(ang) * 500 };
                                     const b = new Bullet(this.x, this.y, fakeTarget, partDmg, 'lydia', 0, fakeTarget, {
                                         color: '#ff8a33',
                                         bulletSizeMult: this.gatlingSizeMult,
@@ -3297,23 +3408,32 @@ class Armament {
                                         spriteScale: 1.9,
                                         deceleration: this.gatlingDecel,
                                         hitOncePerTarget: true,
-                                        persistent: true
+                                        persistent: true,
+                                        hellfire: true,
+                                        life: 1.0,
+                                        minAlpha: 0.5,
+                                        trailColor: '#ff0033',
+                                        trailStartAlpha: 0.6,
+                                        trailMax: 10
                                     });
                                     const mag = Math.hypot(b.vx, b.vy) || 1;
                                     b.vx = (b.vx / mag) * this.gatlingInitSpeed;
                                     b.vy = (b.vy / mag) * this.gatlingInitSpeed;
                                     b.speed = this.gatlingInitSpeed;
+                                    b.baseSpeed = b.speed;
                                     bullets.push(b);
                                 }
+                                try { playSfx('flame'); } catch(_){ }
                             }
                         } catch(_) {
-                            const b = new Bullet(this.x, this.y, targ, dmg, 'lydia', 0, targ, { color, bulletSizeMult: sizeMult, skinKey: null });
+                            const b = new Bullet(this.x, this.y, targ, dmg, 'lydia', 0, targ, { color, bulletSizeMult: sizeMult, skinKey: null, hellfire: true, life: 1.0, minAlpha: 0.5, trailColor: '#ff0033', trailStartAlpha: 0.6, trailMax: 10 });
+                            b.baseSpeed = b.speed;
                             bullets.push(b);
                         }
                     } else {
                         const b = new Bullet(this.x, this.y, targ, dmg, 'lydia', 0, targ, { color, bulletSizeMult: sizeMult, skinKey: null });
                         bullets.push(b);
-                        try { playSfx('shoot'); } catch(_){ }
+                        try { playSfx('flame'); } catch(_){ }
                     }
                 }
             } else {
@@ -3949,6 +4069,7 @@ function loop() {
     GAME.dtMs = rawDtMs * timeScale; 
     const realSec = rawDtMs / 1000;
     GAME.frame++;
+    SOUND_FRAME_COUNTER = {};
     GAME.time++;
     ultGlowTime = Math.max(0, ultGlowTime - (realSec || 0));
     
