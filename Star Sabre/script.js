@@ -292,16 +292,6 @@ class OrbitingBullet {
         this.y = (pet ? pet.y : 0) + Math.sin(this.angle) * this.radius;
         this._hitT = new Map();
         this.trail = [];
-        this.spriteScale = opts.spriteScale || 1;
-        this.deceleration = opts.deceleration || 0;
-        this.hitOncePerTarget = !!opts.hitOncePerTarget;
-        this.persistent = !!opts.persistent;
-        this.life = (typeof opts.life === 'number') ? opts.life : 0;
-        this.age = 0;
-        this.baseSpeed = opts.baseSpeed || this.speed;
-        this.rotJitter = (typeof opts.rotJitter === 'number') ? opts.rotJitter : ((Math.random() - 0.5) * 0.3);
-        this.sizeJitter = (typeof opts.sizeJitter === 'number') ? opts.sizeJitter : ((Math.random() - 0.5) * 0.25);
-        this.alpha = 1;
         this.trailMax = 6;
         this.width = 6;
     }
