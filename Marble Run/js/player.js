@@ -16,6 +16,7 @@ export class Player {
         this.staminaRegen = 5; 
         this._lastStaminaTime = performance.now ? performance.now() : Date.now();
         this._staminaBlockedUntil = null;
+        this._damageReductionUntil = null;
     }
     
     spawn() {
@@ -238,21 +239,29 @@ export class Player {
     
     takeDamage(amount) {
         if (this._invulnerable) return;
-        const damageMultiplier = Math.max(0.5, 2 - this.speed / 10);
-        this.health -= amount * damageMultiplier;
-        
-        if (this.health <= 0) {
-            try { if (this.game && typeof this.game.onPlayerDeath === 'function') this.game.onPlayerDeath(); else this.game.gameOver(); } catch(e) { try { this.game.gameOver(); } catch(e) {} }
-        }
-        
-        this.game.sounds.playSFX('damage');
-        if (this.game.hud) {
-            this.game.hud.flashDamage();
-            try { this.game.hud.updatePlayer(this.health); } catch(e) {}
-        }
         try {
-            const base = Math.max(0.08, Math.min(1, (amount / 20)));
-            if (this.game && typeof this.game.triggerCameraShake === 'function') this.game.triggerCameraShake(base);
+            const now = performance.now ? performance.now() : Date.now();
+            let effectiveAmount = amount;
+            if (this._damageReductionUntil && now < this._damageReductionUntil) {
+                effectiveAmount = effectiveAmount * 0.2;
+            }
+
+            const damageMultiplier = Math.max(0.5, 2 - this.speed / 10);
+            this.health -= effectiveAmount * damageMultiplier;
+
+            if (this.health <= 0) {
+                try { if (this.game && typeof this.game.onPlayerDeath === 'function') this.game.onPlayerDeath(); else this.game.gameOver(); } catch(e) { try { this.game.gameOver(); } catch(e) {} }
+            }
+
+            this.game.sounds.playSFX('damage');
+            if (this.game.hud) {
+                this.game.hud.flashDamage();
+                try { this.game.hud.updatePlayer(this.health, this.stamina); } catch(e) {}
+            }
+            try {
+                const base = Math.max(0.08, Math.min(1, (effectiveAmount / 20)));
+                if (this.game && typeof this.game.triggerCameraShake === 'function') this.game.triggerCameraShake(base);
+            } catch(e) {}
         } catch(e) {}
     }
     
@@ -300,8 +309,10 @@ export class Player {
                 }
             }
             if (dir) {
-                try { this._invulnerable = true; } catch(e) {}
-                setTimeout(() => { try { this._invulnerable = false; } catch(e) {} }, 350);
+                try {
+                    const now = performance.now ? performance.now() : Date.now();
+                    this._damageReductionUntil = now + 350; 
+                } catch(e) {}
 
                 const boostForce = dir.scale(1.5);
                 this.mesh.physicsImpostor.applyImpulse(boostForce, this.mesh.getAbsolutePosition());
