@@ -23,6 +23,30 @@ const GAME = {
     draftCount: 0,
     warship: null,
 };
+const DEFAULT_POWERUP_WEIGHTS = {
+    TRIPLE: 5,
+    FIRE2X: 10,
+    PIERCE: 50,
+    BIG: 30,
+    SEXTUPLE: 2,
+    SHIELD: 20,
+    TIMEWARP: 15
+};
+let POWERUP_WEIGHTS = (function loadPowerupWeights(){
+    try {
+        const raw = localStorage.getItem('starSabrePowerupWeights');
+        if (raw) return JSON.parse(raw);
+    } catch(_){}
+    return Object.assign({}, DEFAULT_POWERUP_WEIGHTS);
+})();
+function setPowerupWeights(obj) {
+    try {
+        POWERUP_WEIGHTS = Object.assign({}, DEFAULT_POWERUP_WEIGHTS, obj || {});
+        localStorage.setItem('starSabrePowerupWeights', JSON.stringify(POWERUP_WEIGHTS));
+    } catch(_){}
+}
+window.setPowerupWeights = setPowerupWeights;
+window.getPowerupWeights = function(){ return Object.assign({}, POWERUP_WEIGHTS); };
 const ULT_GLOW_DUR = 0.3;
 let ultGlowId = null;
 let ultGlowTime = 0;
@@ -1488,7 +1512,7 @@ class Pet {
             if (this.powerup.type === 'BIG') { dmg *= 3; bulletSizeMult = 3; shape = 'crescent'; }
             if (this.powerup.type === 'PIERCE') { piercing = true; }
             const impact15 = (meta.dmgLvl || 0) >= 15 && (this.isMain || this.trait.id !== 'sniper');
-            const opts = { bulletSizeMult, piercing, shape };
+            const opts = { bulletSizeMult, piercing, shape, pierceChain: (this.powerup.type === 'PIERCE') };
             if (impact15) {
                 opts.bigImpact = true;
                 opts.sprite = 'BIGshot';
@@ -2016,7 +2040,7 @@ class PowerupEntity {
         this.x = Math.random() * (canvas.width - 60) + 30;
         this.y = C.spawnY;
         this.size = 14;
-        this.speed = 5.0 + (GAME.floor * 0.05);
+        this.speed = 4.5 + (GAME.floor * 0.05);
         this.wobble = Math.random() * Math.PI;
         const colors = ['#0ff', '#0ff', '#0ff', '#0ff', '#0ff'];
         this.color = colors[Math.floor(Math.random()*colors.length)];
@@ -4549,6 +4573,64 @@ window.addEventListener('keydown', (e) => {
         console.log('[Audio] beamActive:', !!(p0 && p0.beamActive), 'rate15:', (meta.rateLvl||0)>=15,
             'BIG:', (p0 && p0.powerup && p0.powerup.type === 'BIG' && p0.powerup.time > 0));
     }
+    const debugMap = {
+        'KeyZ': 'BIG',       
+        'KeyX': 'PIERCE',    
+        'KeyC': 'SHIELD',    
+        'KeyV': 'TIMEWARP',  
+        'KeyB': 'TRIPLE',    
+        'KeyN': 'SEXTUPLE',  
+        'KeyM': 'FIRE2X'     
+    };
+    if (debugMap[c]) {
+        const pick = debugMap[c];
+        const p = party && party[0] ? party[0] : null;
+        if (!p) return;
+        p.powerup.type = pick;
+        p.powerup.time = (pick === 'BIG' && (meta.rateLvl || 0) >= 15) ? 12 : 10;
+        const messages = {
+            TRIPLE: 'TRIPLE SHOT',
+            FIRE2X: 'RAPID SHOT',
+            PIERCE: 'PIERCING SHOT',
+            BIG: 'BIG SHOT',
+            SEXTUPLE: 'MULTI SHOT',
+            SHIELD: 'SHIELD',
+            TIMEWARP: 'TIME WARP'
+        };
+        const el = document.getElementById('powerup-warning');
+        if (el) {
+            el.textContent = messages[pick] || 'POWER-UP ACQUIRED';
+            el.classList.remove('hidden');
+            setTimeout(() => el.classList.add('hidden'), 1800);
+        }
+        try { playSfx('powerup'); } catch(_){}
+        if (pick === 'BIG' && (meta.rateLvl || 0) >= 15) {
+            p.powerup.time = 12;
+            try { LOOPING.play('laser3'); setTimeout(() => { LOOPING.stop('laser3'); }, 12000); } catch(_){}
+        }
+        if (pick === 'SHIELD') {
+            try {
+                p.shieldActive = true;
+                p.shieldTimer = p.powerup.time || 15;
+                try {
+                    const orbCount = 5;
+                    const orbitRadius = 70;
+                    const dmg = Math.max(1, Math.round((p.dmg || 4) * 0.5));
+                    const theme = (typeof getSkinTheme === 'function') ? getSkinTheme() : null;
+                    const color = (theme && theme.primary) ? theme.primary : (p.color || '#00ffff');
+                    p._shieldOrbiters = [];
+                    for (let oi = 0; oi < orbCount; oi++) {
+                        const ob = new OrbitingBullet(p, oi, orbCount, orbitRadius, dmg, color, p.powerup.time || 15);
+                        orbiters.push(ob);
+                        p._shieldOrbiters.push(ob);
+                    }
+                } catch(_){ }
+            } catch(_){}
+        }
+        if (pick === 'TIMEWARP') {
+            try { window.timeWarpActive = true; window.timeWarpTimer = p.powerup.time || 10; } catch(_){}
+        }
+    }
     if (c === 'KeyJ') {
         meta.essence = 0;
         try { localStorage.setItem('neonTowerSave', JSON.stringify(meta)); } catch(_){}
@@ -5414,6 +5496,7 @@ async function startGame() {
     GAME._warshipSpawned = false;
     GAME._pendingBossWarning = false;
     bossSpawnedThisFloor = false;
+    GAME.runUnlockedArmaments = [];
     GAME.state = 'PLAY';
     document.getElementById('game-over')?.classList.add('hidden');
     document.getElementById('start-screen').classList.add('hidden');
@@ -5891,6 +5974,7 @@ document.addEventListener('DOMContentLoaded', updateAudioButtons);
 function skipDraft() {
     playSfx('click');
     party.forEach(p => { if (p && p.hp > 0) p.hp = p.maxHp; });
+    try { armaments.forEach(a => { if (a && !a.dead) a.hp = a.maxHp; }); } catch(_){}
     GAME.draftCount = (GAME.draftCount || 0) + 1;
     resume();
 }
@@ -6042,7 +6126,26 @@ function grantRandomPowerup(p) {
     if (!p) return;
     const hasSpecial = (meta.dmgLvl || 0) >= 15 || (meta.rateLvl || 0) >= 15;
     const options = hasSpecial ? ['BIG'] : ['TRIPLE','FIRE2X','PIERCE','BIG','SEXTUPLE','SHIELD','TIMEWARP'];
-    const pick = options[Math.floor(Math.random()*options.length)];
+    let pick = null;
+    try {
+        const weights = options.map(opt => {
+            const w = POWERUP_WEIGHTS && typeof POWERUP_WEIGHTS[opt] === 'number' ? POWERUP_WEIGHTS[opt] : (DEFAULT_POWERUP_WEIGHTS[opt] || 1);
+            return Math.max(0, w);
+        });
+        const total = weights.reduce((a,b) => a + b, 0);
+        if (total <= 0) {
+            pick = options[Math.floor(Math.random()*options.length)];
+        } else {
+            let r = Math.random() * total;
+            for (let i = 0; i < options.length; i++) {
+                r -= weights[i];
+                if (r <= 0) { pick = options[i]; break; }
+            }
+            if (!pick) pick = options[options.length - 1];
+        }
+    } catch (_) {
+        pick = options[Math.floor(Math.random()*options.length)];
+    }
     p.powerup.type = pick;
     if (pick === 'BIG' && (meta.rateLvl || 0) >= 15) {
     p.powerup.time = 12;
@@ -6369,6 +6472,19 @@ function applyVolumeLevels(){
                 }
             } catch(_){}
         });
+        try {
+            for (const key of ['shoot','gat','beam']) {
+                const pool = (sfxPool && sfxPool[key]) ? sfxPool[key] : [];
+                for (const a of pool) {
+                    try { if (a && typeof a.volume === 'number') a.volume = SETTINGS.sfxMuted ? 0 : Math.max(0, Math.min(1, sfxGain)); } catch(_){}
+                }
+            }
+            try {
+                for (const k in sfx) {
+                    try { const sa = sfx[k]; if (sa && typeof sa.volume === 'number') sa.volume = SETTINGS.sfxMuted ? 0 : Math.max(0, Math.min(1, sfxGain)); } catch(_){}
+                }
+            } catch(_){}
+        } catch(_){}
         if (MUSIC.current) {
             MUSIC.targetVolume = Math.max(0, Math.min(1, musicGain));
             try {
@@ -6925,8 +7041,15 @@ function vibrate(pattern) {
 }
 
 //keybinds for debugging:
-//g-see reinforcement slots
-//h-10k essence
-//j-reset essence
-//k>launch-start at sector 4
-//l>launch-start at sector 9
+//G - see reinforcement slots
+//H - 10k essence
+//J - reset essence
+//K>launch - start at sector 4
+//l>launch - start at sector 9
+//Z - big shot
+//X - piercing shot
+//C - shield
+//V - time warp
+//B - triple shot
+//N - multi shot
+//M - rapid shot
