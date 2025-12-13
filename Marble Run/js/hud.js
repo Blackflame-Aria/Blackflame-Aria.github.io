@@ -8,6 +8,7 @@ export class HUD {
         this.playerContainer = null;
         this.playerBarSegments = null;
         this._playerSegmentsCount = 25;
+        this._staminaSegmentsCount = 10;
         this._ensureEnemyHUD();
         this._ensurePlayerHUD();
     }
@@ -48,17 +49,29 @@ export class HUD {
 
         this.playerContainer.innerHTML = `
             <div class="hud-panel">
-                <div class="health player"><div class="label">PLAYER</div><div class="bar-wrap"><div class="bar-segments"></div></div><div class="value">100%</div></div>
+                <div class="player-stats">
+                    <div class="health player"><div class="label">PLAYER</div><div class="bar-wrap"><div class="bar-segments hp-segments"></div></div><div class="value hp-value">100%</div></div>
+                    <div class="stamina player"><div class="label">STAMINA</div><div class="bar-wrap"><div class="bar-segments stam-segments"></div></div><div class="value stam-value">100%</div></div>
+                </div>
             </div>
         `;
-        this.playerBarSegments = this.playerContainer.querySelector('.bar-segments');
-        this.playerHealthText = this.playerContainer.querySelector('.health .value');
+        this.playerBarSegments = this.playerContainer.querySelector('.hp-segments');
+        this.playerHealthText = this.playerContainer.querySelector('.hp-value');
+        this.playerStamSegments = this.playerContainer.querySelector('.stam-segments');
+        this.playerStamText = this.playerContainer.querySelector('.stam-value');
 
         if (this.playerBarSegments && this.playerBarSegments.children.length === 0) {
             for (let i = 0; i < this._playerSegmentsCount; i++) {
                 const seg = document.createElement('div');
                 seg.className = 'seg on';
                 this.playerBarSegments.appendChild(seg);
+            }
+        }
+        if (this.playerStamSegments && this.playerStamSegments.children.length === 0) {
+            for (let i = 0; i < this._staminaSegmentsCount; i++) {
+                const seg = document.createElement('div');
+                seg.className = 'seg on';
+                this.playerStamSegments.appendChild(seg);
             }
         }
     }
@@ -89,7 +102,7 @@ export class HUD {
         if (this.enemyHealthText) this.enemyHealthText.textContent = Math.max(0, Math.floor(health)) + '%';
     }
 
-    updatePlayer(health) {
+    updatePlayer(health, stamina) {
         if (!this.playerBarSegments) this._ensurePlayerHUD();
         const pct = Math.max(0, Math.min(100, health));
         const onCount = Math.round(pct / 4);
@@ -97,6 +110,15 @@ export class HUD {
         segments.forEach((s, i) => s.style.transitionDelay = `${i * 10}ms`);
         this._animateSegments(segments, onCount);
         try { if (this.playerHealthText) this.playerHealthText.textContent = Math.max(0, Math.floor(health)) + '%'; } catch(e) {}
+
+        if (typeof stamina !== 'undefined' && this.playerStamSegments) {
+            const spct = Math.max(0, Math.min(100, stamina));
+            const sonCount = Math.round((spct / 100) * this._staminaSegmentsCount);
+            const ssegments = Array.from(this.playerStamSegments.children || []);
+            ssegments.forEach((s, i) => s.style.transitionDelay = `${i * 10}ms`);
+            this._animateSegments(ssegments, sonCount);
+            try { if (this.playerStamText) this.playerStamText.textContent = Math.max(0, Math.floor(stamina)) + '%'; } catch(e) {}
+        }
     }
 
     update() {
@@ -109,8 +131,14 @@ export class HUD {
     }
 
     showBoost() {
-        if (!this.enemyContainer) return;
-        this.enemyContainer.classList.add('boost');
-        setTimeout(() => this.enemyContainer.classList.remove('boost'), 300);
+        if (!this.playerContainer) return;
+        this.playerContainer.classList.add('boost');
+        setTimeout(() => this.playerContainer.classList.remove('boost'), 300);
+    }
+
+    flashStamina() {
+        if (!this.playerContainer) return;
+        this.playerContainer.classList.add('low-stamina');
+        setTimeout(() => this.playerContainer.classList.remove('low-stamina'), 360);
     }
 }

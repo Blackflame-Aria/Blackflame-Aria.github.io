@@ -615,6 +615,20 @@ input.range-terminal {
 
 #playerHud .hud-panel { display:flex; gap: 12px; align-items: center; }
 
+#playerHud .player-stats { display:flex; flex-direction: column; gap: 8px; align-items: center; }
+
+#playerHud .stamina .label { color: #00e6ff; font-size: 13px; font-weight:700; }
+
+#playerHud .stamina .bar-wrap { width: 80px; height: 88px; background: rgba(255,255,255,0.02); border-radius: 4px; border: 1px solid rgba(0,255,255,0.06); overflow: hidden; display:flex; align-items:flex-start; justify-content:center; padding:10px; box-sizing: border-box; }
+
+#playerHud .stamina .bar-segments { display:flex; gap:5px; flex-direction: column-reverse; width:100%; align-items:stretch; }
+
+#playerHud .stamina .bar-segments .seg { width:100%; height:6px; background: rgba(255,255,255,0.02); border-radius:3px; box-shadow: inset 0 -2px 6px rgba(0,0,0,0.6); opacity:0.18; transform-origin:center; transition: background-color 220ms, box-shadow 180ms, transform 140ms, opacity 200ms; box-sizing: border-box; }
+
+#playerHud .stamina .bar-segments .seg.on { background: linear-gradient(90deg, #00f0ff, #00a3b2); box-shadow: 0 0 14px rgba(0,240,255,0.12), inset 0 -2px 6px rgba(0,240,255,0.04); opacity:1; transform: translateY(0) scaleY(1); }
+
+#playerHud .stamina .value { color: #00e6ff; font-weight:700; min-width:44px; text-align:right; }
+
 #playerHud .health .label { color: #0f0; font-size: 14px; font-weight:700; }
 
 #playerHud .health .bar-wrap { width: 80px; height: 220px; background: rgba(255,255,255,0.02); border-radius: 4px; border: 1px solid rgba(0,255,0,0.06); overflow: hidden; display:flex; align-items:flex-start; justify-content:center; padding:10px; box-sizing: border-box; }

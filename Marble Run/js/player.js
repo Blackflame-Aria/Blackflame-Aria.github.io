@@ -9,7 +9,13 @@ export class Player {
         this.skin = 'default';
         this.accessories = [];
         this._accMeshes = {};
+        this._accOffsets = {};
         this._orbCooldown = 0;
+        this.maxStamina = 100;
+        this.stamina = this.maxStamina;
+        this.staminaRegen = 5; 
+        this._lastStaminaTime = performance.now ? performance.now() : Date.now();
+        this._staminaBlockedUntil = null;
     }
     
     spawn() {
@@ -19,6 +25,8 @@ export class Player {
         }
 
         this.health = 100; 
+        this.stamina = this.maxStamina;
+        this._lastStaminaTime = performance.now ? performance.now() : Date.now();
 
         try {
             const saved = JSON.parse(localStorage.getItem('mr_customization') || '{}');
@@ -66,7 +74,7 @@ export class Player {
 
         this._lastTrailTime = 0;
 
-        try { if (this.game && this.game.hud) this.game.hud.updatePlayer(this.health); } catch(e) {}
+        try { if (this.game && this.game.hud) this.game.hud.updatePlayer(this.health, this.stamina); } catch(e) {}
 
         try {
             if (this.game.enemies && this.game.enemies.length) {
@@ -85,6 +93,21 @@ export class Player {
     
     update() {
         if (!this.mesh) return;
+        try {
+            const now = performance.now ? performance.now() : Date.now();
+            if (this._staminaBlockedUntil && now < this._staminaBlockedUntil) {
+                if (!this._lastStaminaTime || this._lastStaminaTime < this._staminaBlockedUntil) {
+                    this._lastStaminaTime = this._staminaBlockedUntil;
+                }
+            } else {
+                let start = this._lastStaminaTime || now;
+                if (this._staminaBlockedUntil && start < this._staminaBlockedUntil) start = this._staminaBlockedUntil;
+                const dt = Math.max(0, (now - start) / 1000);
+                this.stamina = Math.min(this.maxStamina, (this.stamina || 0) + (this.staminaRegen * dt));
+                this._lastStaminaTime = now;
+                this._staminaBlockedUntil = null;
+            }
+        } catch(e) {}
         
         if (this.game.physicsEnabled && this.mesh.physicsImpostor) {
             try {
@@ -97,11 +120,51 @@ export class Player {
 
         try { this.game.controls.applyToPlayer(this); } catch(e) {}
 
+        try {
+            Object.keys(this._accMeshes || {}).forEach(key => {
+                try {
+                    const am = this._accMeshes[key];
+                    if (!am) return;
+                    if (key === 'orbiter') return;
+                    const locked = this.game && this.game.lockedEnemy;
+
+                    if (am._children && Array.isArray(am._children)) {
+                        const offsets = (this._accOffsets && this._accOffsets[key]) || [];
+                        am._children.forEach((child, idx) => {
+                            try {
+                                const off = offsets[idx] || new BABYLON.Vector3(0,0,0);
+                                const target = this.mesh.position.add(off);
+                                if (locked) {
+                                    child.position = BABYLON.Vector3.Lerp(child.position || target, target, 0.6);
+                                } else {
+                                    child.position.copyFrom(target);
+                                }
+                            } catch(e) {}
+                        });
+                        const grpTarget = this.mesh.position.clone();
+                        if (locked) {
+                            am.position = BABYLON.Vector3.Lerp(am.position || grpTarget, grpTarget, 0.6);
+                        } else {
+                            am.position.copyFrom(grpTarget);
+                        }
+                    } else {
+                        const offset = this._accOffsets && this._accOffsets[key] ? this._accOffsets[key] : new BABYLON.Vector3(0,0,0);
+                        const target = this.mesh.position.add(offset);
+                        if (locked) {
+                            am.position = BABYLON.Vector3.Lerp(am.position || target, target, 0.12);
+                        } else {
+                            am.position.copyFrom(target);
+                        }
+                    }
+                } catch(e) {}
+            });
+        } catch(e) {}
+
         if (this.mesh.position.y < -20) {
             try { if (this.game && typeof this.game.onPlayerDeath === 'function') this.game.onPlayerDeath(); else this.game.gameOver(); } catch(e) { try { this.game.gameOver(); } catch(e) {} }
         }
 
-        if (this.game.hud) this.game.hud.update(this.speed, this.health);
+        if (this.game.hud) this.game.hud.updatePlayer(this.health, this.stamina);
 
         try {
             if (this._accMeshes.orbiter) {
@@ -210,6 +273,15 @@ export class Player {
         if (!this.mesh) return;
         
         if (!this.game.physicsEnabled || !this.mesh.physicsImpostor) return;
+        const STAMINA_COST = Math.max(1, Math.round((this.maxStamina || 100) * 0.2)); 
+        if ((this.stamina || 0) < STAMINA_COST) {
+            try { if (this.game && this.game.sounds && typeof this.game.sounds.playSFX === 'function') this.game.sounds.playSFX('no_stamina'); } catch(e) {}
+            try { if (this.game && this.game.hud && typeof this.game.hud.flashStamina === 'function') this.game.hud.flashStamina(); } catch(e) {}
+            return;
+        }
+        this.stamina = Math.max(0, (this.stamina || 0) - STAMINA_COST);
+        try { const now = performance.now ? performance.now() : Date.now(); this._staminaBlockedUntil = now + 1000; } catch(e) {}
+        try { if (this.game && this.game.hud && typeof this.game.hud.updatePlayer === 'function') this.game.hud.updatePlayer(this.health, this.stamina); } catch(e) {}
         try {
             let dir = null;
             try {
@@ -228,6 +300,9 @@ export class Player {
                 }
             }
             if (dir) {
+                try { this._invulnerable = true; } catch(e) {}
+                setTimeout(() => { try { this._invulnerable = false; } catch(e) {} }, 350);
+
                 const boostForce = dir.scale(1.5);
                 this.mesh.physicsImpostor.applyImpulse(boostForce, this.mesh.getAbsolutePosition());
             }
@@ -256,9 +331,17 @@ export class Player {
     updateAppearance() {
         if (!this.mesh) return;
         try {
-            Object.values(this._accMeshes).forEach(m => { try { m.dispose(); } catch(e){} });
+            Object.values(this._accMeshes).forEach(m => {
+                try {
+                    if (m && m._children && Array.isArray(m._children)) {
+                        m._children.forEach(c => { try { if (c && typeof c.dispose === 'function') c.dispose(); } catch(e){} });
+                    }
+                    try { if (m && typeof m.dispose === 'function') m.dispose(); } catch(e){}
+                } catch(e) {}
+            });
         } catch(e){}
         this._accMeshes = {};
+        this._accOffsets = {};
 
         const material = new BABYLON.StandardMaterial('playerMatUnique', this.game.scene);
         const texturePath = `assets/textures/${this.skin}.png`;
@@ -286,18 +369,21 @@ export class Player {
                     sMat.emissiveColor = new BABYLON.Color3(0,1,0);
                     sMat.backFaceCulling = true;
                     sph.material = sMat;
-                    sph.parent = this.mesh;
-                    sph.position = new BABYLON.Vector3(0, 0, 0);
+                    const offset = new BABYLON.Vector3(0, 0, 0);
+                    sph.position = this.mesh.position.add(offset);
                     this._accMeshes.shield = sph;
+                    this._accOffsets.shield = offset;
                 }
                 else if (acc === 'studs') {
                     const group = new BABYLON.TransformNode('studs', this.game.scene);
+                    const studsNodes = [];
                     for (let i=0;i<8;i++) {
                         const ang = (i/8)*Math.PI*2;
                         const cone = BABYLON.MeshBuilder.CreateCylinder('stud', { diameterTop:0, diameterBottom:0.08, height:0.18, tessellation:10 }, this.game.scene);
                         cone.material = new BABYLON.StandardMaterial('studMat', this.game.scene);
                         cone.material.emissiveColor = new BABYLON.Color3(0.8,1,0.2);
-                        cone.position = new BABYLON.Vector3(Math.cos(ang)*0.9, -0.05, Math.sin(ang)*0.9);
+                        const localPos = new BABYLON.Vector3(Math.cos(ang)*0.9, -0.05, Math.sin(ang)*0.9);
+                        cone.position = this.mesh.position.add(localPos);
                         try {
                             const radial = new BABYLON.Vector3(Math.cos(ang), 0, Math.sin(ang)).normalize();
                             const up = new BABYLON.Vector3(0,1,0);
@@ -312,19 +398,24 @@ export class Player {
                             cone.rotation.x = -Math.PI/2;
                             cone.rotation.y = ang;
                         }
-                        cone.parent = group;
+                        cone.parent = null;
+                        studsNodes.push(cone);
                     }
-                    group.parent = this.mesh;
+                    group.position = this.mesh.position.clone();
                     this._accMeshes.studs = group;
+                    this._accOffsets.studs = studsNodes.map(n => n.position.subtract(this.mesh.position));
+                    this._accMeshes.studs._children = studsNodes;
                 }
                 else if (acc === 'spikes') {
                     const group = new BABYLON.TransformNode('spikes', this.game.scene);
+                    const spikesNodes = [];
                     for (let i=0;i<6;i++) {
                         const ang = (i/6)*Math.PI*2;
                         const cone = BABYLON.MeshBuilder.CreateCylinder('spike', { diameterTop:0, diameterBottom:0.12, height:0.34, tessellation:10 }, this.game.scene);
                         cone.material = new BABYLON.StandardMaterial('spikeMat', this.game.scene);
                         cone.material.emissiveColor = new BABYLON.Color3(0.9,1,0.1);
-                        cone.position = new BABYLON.Vector3(Math.cos(ang)*0.95, -0.02, Math.sin(ang)*0.95);
+                        const localPos = new BABYLON.Vector3(Math.cos(ang)*0.95, -0.02, Math.sin(ang)*0.95);
+                        cone.position = this.mesh.position.add(localPos);
                         try {
                             const radial = new BABYLON.Vector3(Math.cos(ang), 0, Math.sin(ang)).normalize();
                             const up = new BABYLON.Vector3(0,1,0);
@@ -339,10 +430,13 @@ export class Player {
                             cone.rotation.x = -Math.PI/2;
                             cone.rotation.y = ang;
                         }
-                        cone.parent = group;
+                        cone.parent = null;
+                        spikesNodes.push(cone);
                     }
-                    group.parent = this.mesh;
+                    group.position = this.mesh.position.clone();
                     this._accMeshes.spikes = group;
+                    this._accOffsets.spikes = spikesNodes.map(n => n.position.subtract(this.mesh.position));
+                    this._accMeshes.spikes._children = spikesNodes;
                 }
                 else if (acc === 'grease') {
                     if (this.mesh.material) {

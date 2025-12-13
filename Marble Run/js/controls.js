@@ -7,7 +7,7 @@ export class Controls {
         this.joystick = { x: 0, y: 0 };
         this.isBoosting = false;
         this._boostReady = true;
-        this._boostCooldownMs = 1000;
+        this._boostCooldownMs = 500;
         this._boostLastUsed = 0;
         this._boostAnimRaf = null;
 

@@ -368,6 +368,12 @@ class Game {
             const txt = (type === 'L') ? 'L' : 'yay';
             let total = 0; try { total = parseInt(localStorage.getItem('mr_points') || '0', 10) || 0; } catch(e) { total = 0; }
             const start = (typeof this._startPoints === 'number') ? this._startPoints : 0;
+            try {
+                if (type === 'yay' && this.isPlaying && this.player && typeof this.player.addPoints === 'function') {
+                    this.player.addPoints(25);
+                }
+            } catch(e) {}
+            try { total = parseInt(localStorage.getItem('mr_points') || '0', 10) || 0; } catch(e) { total = 0; }
             const earned = Math.max(0, total - start);
             modal.innerHTML = `\n                <div class="title glitch" data-text="${txt}">${txt}</div>\n                <div style="margin-top:10px; font-size:14px;">\n                    <div>POINTS EARNED: <span class="death-points-earned">${earned}</span></div>\n                    <div>TOTAL POINTS: <span class="death-points-total">${total}</span></div>\n                </div>\n                <div style="margin-top:12px;">\n                    <button id="deathMainMenu" class="neon">MAIN MENU</button>\n                </div>\n            `;
             document.getElementById('viewport').appendChild(modal);
