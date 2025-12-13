@@ -291,6 +291,10 @@ export class Menu {
                     }
                     if (selectedSkin === String(id)) {
                         ch.classList.add('selected');
+                        ch.setAttribute('aria-selected', 'true');
+                    } else {
+                        ch.setAttribute('aria-selected', 'false');
+                        ch.classList.remove('selected');
                     }
                 } catch(e) {}
             });
@@ -336,6 +340,7 @@ export class Menu {
             if (!slidesViewport) return;
             const contentEl = innerEl || slidesViewport;
             let active = false, startX = 0, startY = 0, startTranslate = 0;
+            let startPointerId = null;
             let moved = false;
             const TAP_THRESHOLD = 8; 
             const onDown = (ev) => {
@@ -345,10 +350,17 @@ export class Menu {
                 startY = ev.clientY || (ev.touches && ev.touches[0] && ev.touches[0].clientY) || 0;
                 startTranslate = typeof state._translate === 'number' ? state._translate : 0;
                 contentEl.style.transition = 'none';
+                try {
+                    if (typeof ev.pointerId !== 'undefined') {
+                        startPointerId = ev.pointerId;
+                        try { slidesViewport.setPointerCapture && slidesViewport.setPointerCapture(startPointerId); } catch(e) {}
+                    }
+                } catch(e) {}
                 try { ev.preventDefault && ev.preventDefault(); } catch(e) {}
             };
             const onMove = (ev) => {
                 if (!active) return;
+                if (startPointerId !== null && typeof ev.pointerId !== 'undefined' && ev.pointerId !== startPointerId) return;
                 const mx = ev.clientX || (ev.touches && ev.touches[0] && ev.touches[0].clientX) || 0;
                 const my = ev.clientY || (ev.touches && ev.touches[0] && ev.touches[0].clientY) || 0;
                 const deltaX = mx - startX;
@@ -374,7 +386,7 @@ export class Menu {
                     const slideEl = elAt && elAt.closest && elAt.closest('.slide');
                     if (slideEl) {
                         try {
-                            slideEl.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true, view: window }));
+                            slideEl.click();
                         } catch(e) {}
                     }
                 } else {
@@ -383,6 +395,7 @@ export class Menu {
                         state.idx = Math.max(0, Math.min(itemCount - 1, state.idx + dir));
                     }
                 }
+                try { if (startPointerId !== null) { try { slidesViewport.releasePointerCapture && slidesViewport.releasePointerCapture(startPointerId); } catch(e){} startPointerId = null; } } catch(e) {}
                 updateCarousel(slidesViewport, state);
                 try { ev.preventDefault && ev.preventDefault(); } catch(e) {}
             };
@@ -390,9 +403,6 @@ export class Menu {
             slidesViewport.addEventListener('pointerdown', onDown);
             document.addEventListener('pointermove', onMove);
             document.addEventListener('pointerup', onUp);
-            slidesViewport.addEventListener('touchstart', onDown, { passive: false });
-            slidesViewport.addEventListener('touchmove', onMove, { passive: false });
-            slidesViewport.addEventListener('touchend', onUp);
         };
 
         if (skinSlides) enableCarouselDrag(skinSlides, skinInner, skinState, (skinInner||skinSlides).children.length);
@@ -459,16 +469,19 @@ export class Menu {
                         if (selectedAccessories.has('')) {
                             ch.classList.add('selected');
                             if (sub) sub.textContent = 'selected';
+                            ch.setAttribute('aria-selected', 'true');
                         } else {
+                            ch.setAttribute('aria-selected', 'false');
                             if (sub) sub.textContent = ownedAccessories.has('') ? 'owned' : 'Default';
                         }
                     } else if (ownedAccessories.has(id)) {
                         ch.classList.add('owned');
                         if (sub) sub.textContent = selectedAccessories.has(id) ? 'selected' : 'owned';
-                        if (selectedAccessories.has(id)) ch.classList.add('selected');
+                        if (selectedAccessories.has(id)) { ch.classList.add('selected'); ch.setAttribute('aria-selected', 'true'); } else { ch.setAttribute('aria-selected', 'false'); ch.classList.remove('selected'); }
                     } else {
                         ch.classList.add('unowned');
                         if (sub) sub.textContent = `${cost} P`;
+                        ch.setAttribute('aria-selected', 'false');
                     }
                 } catch(e) {}
             });
@@ -478,9 +491,11 @@ export class Menu {
         const SKIN_COST = 100;
         const onSkinClick = (arg) => {
             let chosen = null;
-            if (typeof arg === 'number') chosen = arg + 1;
+            if (arg && arg.currentTarget && arg.currentTarget.dataset && ('skin' in arg.currentTarget.dataset)) {
+                chosen = arg.currentTarget.dataset.skin;
+            } else if (typeof arg === 'number') chosen = arg + 1;
             else if (arg && arg.dataset && ('skin' in arg.dataset)) chosen = arg.dataset.skin;
-            if (chosen === null) return;
+            if (chosen === null || typeof chosen === 'undefined') return;
             try {
                 const pts = (this.game && this.game.player) ? (this.game.player.getPoints ? this.game.player.getPoints() : parseInt(localStorage.getItem('mr_points')||'0',10)||0) : (parseInt(localStorage.getItem('mr_points')||'0',10)||0);
                 const saved = JSON.parse(localStorage.getItem('mr_customization') || '{}');
@@ -492,8 +507,13 @@ export class Menu {
                     } else {
                         saved.skin = String(chosen);
                     }
-                    localStorage.setItem('mr_customization', JSON.stringify(saved));
-                    if (this.game.player) this.game.player.setSkin(saved.skin);
+                    try { localStorage.setItem('mr_customization', JSON.stringify(saved)); } catch(e) {}
+                    try { if (this.game.player) this.game.player.setSkin(saved.skin); } catch(e) {}
+                    try {
+                        const children = Array.from((skinInner || skinSlides).children);
+                        const clickedIndex = children.findIndex(c => (c.dataset.skin||'') === String(chosen));
+                        if (typeof clickedIndex === 'number' && clickedIndex >= 0) skinState.idx = clickedIndex;
+                    } catch(e) {}
                     if (skinSlides) updateCarousel(skinSlides, skinState);
                     try { refreshSkinLabels(); } catch(e) {}
                     return;
@@ -503,13 +523,14 @@ export class Menu {
                     return;
                 }
                 const remaining = Math.max(0, pts - SKIN_COST);
-                localStorage.setItem('mr_points', String(remaining));
+                try { localStorage.setItem('mr_points', String(remaining)); } catch(e) {}
                 try { if (this.game && this.game.player) this.game.player.points = remaining; } catch(e) {}
                 saved.ownedSkins.push(String(chosen));
                 saved.skin = String(chosen);
-                localStorage.setItem('mr_customization', JSON.stringify(saved));
-                if (this.game.player) this.game.player.setSkin(String(chosen));
-                const el = document.getElementById('pointsDisplay'); if (el) el.textContent = `Points: ${remaining}`;
+                try { localStorage.setItem('mr_customization', JSON.stringify(saved)); } catch(e) {}
+                try { if (this.game.player) this.game.player.setSkin(String(chosen)); } catch(e) {}
+                try { const el = document.getElementById('pointsDisplay'); if (el) el.textContent = `Points: ${remaining}`; } catch(e) {}
+                try { skinState.idx = Array.from((skinInner || skinSlides).children).findIndex(c => (c.dataset.skin||'') === String(saved.skin)); } catch(e) {}
                 if (skinSlides) updateCarousel(skinSlides, skinState);
                 try { refreshSkinLabels(); } catch(e) {}
             } catch (e) { console.warn('Skin purchase failed', e); }
@@ -517,7 +538,8 @@ export class Menu {
 
         const ACC_COST = ACC_COST_BASE;
         const onAccClick = (clickedEl) => {
-            const meta = JSON.parse((clickedEl.dataset.meta) || '{}');
+            const el = (clickedEl && clickedEl.currentTarget) ? clickedEl.currentTarget : clickedEl;
+            const meta = JSON.parse((el && el.dataset && el.dataset.meta) ? el.dataset.meta : '{}');
             const id = (meta && meta.id) || '';
             try {
                 if (id === '') {
@@ -527,7 +549,7 @@ export class Menu {
                     saved.accessories = [];
                     try { localStorage.setItem('mr_customization', JSON.stringify(saved)); } catch(e) {}
                     selectedAccessories.clear(); selectedAccessories.add('');
-                    if (this.game && this.game.player) try { this.game.player.setAccessories([]); } catch(e) {}
+                    try { if (this.game && this.game.player) this.game.player.setAccessories([]); } catch(e) {}
                     refreshAccLabels();
                     try { refreshSkinLabels && refreshSkinLabels(); } catch(e) {}
                     if (accSlides) updateCarousel(accSlides, accState);
@@ -541,7 +563,7 @@ export class Menu {
                     const cost = (ACC_COST || 100) + (accExtra || 0);
                     if (pts < cost) { const el = document.getElementById('pointsDisplay'); if (el) { el.classList.add('flash'); setTimeout(()=>el.classList.remove('flash'),600); } return; }
                     const remaining = Math.max(0, pts - cost);
-                    localStorage.setItem('mr_points', String(remaining));
+                    try { localStorage.setItem('mr_points', String(remaining)); } catch(e) {}
                     try { if (this.game && this.game.player) this.game.player.points = remaining; } catch(e) {}
                     saved.ownedAccessories.push(id);
                     ownedAccessories.add(id);
@@ -557,9 +579,9 @@ export class Menu {
                         selectedAccessories.add(id);
                     }
                 }
-                localStorage.setItem('mr_customization', JSON.stringify(saved));
-                if (this.game.player) this.game.player.setAccessories(saved.accessories);
-                const el = document.getElementById('pointsDisplay'); if (el) el.textContent = `Points: ${parseInt(localStorage.getItem('mr_points')||'0',10)||0}`;
+                try { localStorage.setItem('mr_customization', JSON.stringify(saved)); } catch(e) {}
+                try { if (this.game.player) this.game.player.setAccessories(saved.accessories); } catch(e) {}
+                try { const el2 = document.getElementById('pointsDisplay'); if (el2) el2.textContent = `Points: ${parseInt(localStorage.getItem('mr_points')||'0',10)||0}`; } catch(e) {}
                 refreshAccLabels();
                 try { refreshSkinLabels && refreshSkinLabels(); } catch(e) {}
                 if (accSlides) updateCarousel(accSlides, accState);
@@ -614,7 +636,7 @@ export class Menu {
                 e.preventDefault();
                 return;
             }
-            if (e.key === 'a' || e.key === 'A') {
+            if (e.key === 'a' || e.key === 'A' || e.key === 'ArrowLeft') {
                 if (lastActiveCarousel === 'acc') {
                     accState.idx = accState.idx - 1;
                     updateCarousel(accSlides, accState);
@@ -624,6 +646,7 @@ export class Menu {
                 }
                 e.preventDefault();
             } else if (e.key === 'd' || e.key === 'D') {
+            } else if (e.key === 'd' || e.key === 'D' || e.key === 'ArrowRight') {
                 if (lastActiveCarousel === 'acc') {
                     accState.idx = accState.idx + 1;
                     updateCarousel(accSlides, accState);

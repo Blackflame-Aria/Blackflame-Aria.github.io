@@ -229,6 +229,17 @@ input.range-terminal {
 
 .slide { position: relative; }
 
+.slides {
+    touch-action: pan-y;
+    -ms-touch-action: pan-y;
+    -webkit-touch-callout: none;
+}
+.slides .slide {
+    min-width: 96px;
+    min-height: 96px;
+    padding: 8px;
+}
+
 .menu-subsection .menu-actions.center { display:flex; justify-content:center; }
 
 .hidden {
