@@ -388,6 +388,28 @@ class OrbitingBullet {
         ctx.arc(this.x, this.y, 6, 0, Math.PI*2);
         ctx.fill();
         ctx.restore();
+
+        for (let i = 0; i < bullets.length; i++) {
+            const b = bullets[i];
+            if (!b || !b.active) continue;
+            if (!b.enemy) continue;
+            if (b.cannonSide !== 'left') continue;
+            ctx.save();
+            ctx.globalCompositeOperation = 'lighter';
+            ctx.strokeStyle = '#ffff00';
+            ctx.lineWidth = Math.max(6, (b.width || 3));
+            ctx.shadowBlur = 28;
+            ctx.shadowColor = '#ffff00';
+            ctx.beginPath();
+            if (b.trail && b.trail.length > 0) ctx.moveTo(b.trail[0].x, b.trail[0].y);
+            ctx.lineTo(b.x, b.y);
+            ctx.stroke();
+            ctx.strokeStyle = 'rgba(255,255,200,0.95)';
+            ctx.lineWidth = Math.max(2, (b.width || 3) * 0.5);
+            ctx.beginPath(); if (b.trail && b.trail.length > 0) ctx.moveTo(b.trail[0].x, b.trail[0].y); ctx.lineTo(b.x, b.y); ctx.stroke();
+            ctx.restore();
+            b._drawnBehindFrame = GAME.frame;
+        }
     }
 }
 function resetParticlePool() {
@@ -4191,28 +4213,6 @@ function loop() {
     if (GAME.warship) {
         GAME.warship.update();
         if (GAME.warship) {
-            for (let i = 0; i < bullets.length; i++) {
-                const b = bullets[i];
-                if (!b || !b.active) continue;
-                if (!b.enemy) continue;
-                if (b.cannonSide !== 'left') continue;
-                ctx.save();
-                ctx.globalCompositeOperation = 'lighter';
-                ctx.strokeStyle = '#ffff00';
-                ctx.lineWidth = Math.max(6, (b.width || 3));
-                ctx.shadowBlur = 28;
-                ctx.shadowColor = '#ffff00';
-                ctx.beginPath();
-                if (b.trail && b.trail.length > 0) ctx.moveTo(b.trail[0].x, b.trail[0].y);
-                ctx.lineTo(b.x, b.y);
-                ctx.stroke();
-                ctx.strokeStyle = 'rgba(255,255,200,0.95)';
-                ctx.lineWidth = Math.max(2, (b.width || 3) * 0.5);
-                ctx.beginPath(); if (b.trail && b.trail.length > 0) ctx.moveTo(b.trail[0].x, b.trail[0].y); ctx.lineTo(b.x, b.y); ctx.stroke();
-                ctx.restore();
-                b._drawnBehindFrame = GAME.frame;
-            }
-
             GAME.warship.draw();
         }
     }

@@ -26,19 +26,19 @@ export class Enemy {
             this.mesh.position.set(3, 3, 0);
         }
 
-        if (this.game.physicsEnabled) {
+                if (this.game.physicsEnabled) {
             try {
                 this.mesh.physicsImpostor = new BABYLON.PhysicsImpostor(this.mesh, BABYLON.PhysicsImpostor.SphereImpostor, {
-                    mass: .5,
-                    restitution: 0.01,
-                    friction: 0.02
+                    mass: .1,
+                    restitution: 0,
+                    friction: 2
                 }, this.game.scene);
                 try {
                     const body = this.mesh.physicsImpostor.physicsBody;
                         if (body) {
                             body.allowSleep = false;
-                            if (typeof body.linearDamping !== 'undefined') body.linearDamping = 0.02;
-                            if (typeof body.angularDamping !== 'undefined') body.angularDamping = 0.02;
+                                    if (typeof body.linearDamping !== 'undefined') body.linearDamping = 0.10;
+                                    if (typeof body.angularDamping !== 'undefined') body.angularDamping = 0.3;
                         }
                 } catch(e) {}
             } catch(e) { console.warn('Failed to create enemy physics impostor', e); }
@@ -184,12 +184,12 @@ export class Enemy {
                             const forwardComp = forward.scale(BABYLON.Vector3.Dot(horizontal, forward));
                             const lateralComp = horizontal.subtract(forwardComp);
 
-                            const lateralReduced = lateralComp.scale(0.5);
+                            const lateralReduced = lateralComp.scale(0.78);
 
                             const newHorizontal = forwardComp.add(lateralReduced);
 
                             if (lateralComp.length() > 0.02) {
-                                const corrective = lateralComp.scale(-2.5);
+                                const corrective = lateralComp.scale(-6.0);
                                 try { this.mesh.physicsImpostor.applyForce(corrective, this.mesh.getAbsolutePosition()); } catch(e) {}
                             }
 
@@ -203,17 +203,17 @@ export class Enemy {
                     try {
                         const body = this.mesh.physicsImpostor.physicsBody;
                             if (body) {
-                                if (typeof body.linearDamping !== 'undefined') body.linearDamping = 0.02;
-                                if (typeof body.angularDamping !== 'undefined') body.angularDamping = 0.5;
+                                if (typeof body.linearDamping !== 'undefined') body.linearDamping = 0.45;
+                                if (typeof body.angularDamping !== 'undefined') body.angularDamping = 0.7;
                         }
                     } catch(e) {}
                 } catch(e) {}
-            } else {
+                } else {
                 try {
                     const body = this.mesh.physicsImpostor && this.mesh.physicsImpostor.physicsBody;
                     if (body) {
-                            if (typeof body.linearDamping !== 'undefined') body.linearDamping = 0.02;
-                            if (typeof body.angularDamping !== 'undefined') body.angularDamping = 0.02;
+                            if (typeof body.linearDamping !== 'undefined') body.linearDamping = 0.18;
+                            if (typeof body.angularDamping !== 'undefined') body.angularDamping = 0.25;
                     }
                 } catch(e) {}
             }
