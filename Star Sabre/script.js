@@ -755,10 +755,11 @@ function preloadAudioAssets() {
     ];
     const musicList = [
         { name: 'intro1', url: 'sfx/1.wav' },
-        { name: 'waltuh', url: 'sfx/Waltuh.mp3' },
-        { name: 'waltuhLoop', url: 'sfx/Waltuh-loop.mp3' },
-        { name: 'waltuhLoop2', url: 'sfx/Waltuh-loop2.mp3' },
-        { name: 'rustyLoop', url: 'sfx/Rusty-loop.mp3' },
+        { name: 'launch', url: 'sfx/Waltuh.mp3' },
+        { name: 'waltuh', url: 'sfx/Slow Threat.wav' },
+        { name: 'waltuhLoop', url: 'sfx/Dramatic Threat.wav' },
+        { name: 'waltuhLoop2', url: 'sfx/Powerful Threat.wav' },
+        { name: 'rustyLoop', url: 'sfx/music.wav' },
         { name: 'rusty', url: 'sfx/Rusty.mp3' }
     ];
     try {
@@ -769,14 +770,16 @@ window.preloadAudioAssets = preloadAudioAssets;
 
 const bgm = {
     intro1: new Audio('sfx/1.wav'),
-    waltuh: new Audio('sfx/Waltuh.mp3'),
-    waltuhLoop: new Audio('sfx/Waltuh-loop.mp3'),
-    waltuhLoop2: new Audio('sfx/Waltuh-loop2.mp3'),
-    rustyLoop: new Audio('sfx/Rusty-loop.mp3'),
+    waltuh: new Audio('sfx/Slow Threat.wav'),
+    launch: new Audio('sfx/Waltuh.mp3'),
+    waltuhLoop: new Audio('sfx/Dramatic Threat.wav'),
+    waltuhLoop2: new Audio('sfx/Powerful Threat.wav'),
+    rustyLoop: new Audio('sfx/music.wav'),
     rusty: new Audio('sfx/Rusty.mp3')
 };
 bgm.intro1.preload = 'auto';
 bgm.waltuh.preload = 'auto';
+bgm.launch.preload = 'auto';
 bgm.waltuhLoop.preload = 'auto';
 bgm.waltuhLoop2.preload = 'auto';
 bgm.rustyLoop.preload = 'auto';
@@ -809,13 +812,14 @@ function pickTrackForSector(sector) {
 function musicUrlForName(name) {
     switch(name) {
         case 'intro1': return 'sfx/1.wav';
-        case 'waltuh': return 'sfx/Waltuh.mp3';
-        case 'waltuhLoop': return 'sfx/Waltuh-loop.mp3';
-        case 'waltuhLoop2': return 'sfx/Waltuh-loop2.mp3';
-        case 'rustyLoop': return 'sfx/Rusty-loop.mp3';
+        case 'waltuh': return 'sfx/Slow Threat.wav';
+        case 'launch': return 'sfx/Waltuh.mp3';
+        case 'waltuhLoop': return 'sfx/Dramatic Threat.wav';
+        case 'waltuhLoop2': return 'sfx/Powerful Threat.wav';
+        case 'rustyLoop': return 'sfx/music.wav';
         case 'rusty': return 'sfx/Rusty.mp3';
         case 'extreme': return 'sfx/3.wav';
-        default: return `sfx/${name}.mp3`;
+        default: return `sfx/Dramatic Threat.wav`;
     }
 }
 
@@ -824,72 +828,69 @@ const MUSIC = {
     name: null,
     targetVolume: 1,
     _fadeTimer: null,
-    play(name, opts = {}) {
+    map: new Map(),
+    async play(name, opts = {}) {
         const volume = typeof opts.volume === 'number' ? opts.volume : 1;
+        const loop = opts.loop !== false;
+        const fadeInMs = typeof opts.fadeInMs === 'number' ? opts.fadeInMs : 0;
+        this.targetVolume = Math.max(0, Math.min(1, volume));
+
         try {
             if (AudioEngine && AudioEngine.state && AudioEngine.state.ready && AudioEngine.state.buffers && AudioEngine.state.buffers.has(name)) {
-                try { AudioEngine.playLoopSfx(name, volume); } catch(_){}
-                return;
+                try {
+                    await AudioEngine.playMusic(name, this.targetVolume, loop, fadeInMs);
+                    this.current = null; this.name = name;
+                    return true;
+                } catch (_){ }
             }
-        } catch(_){}
-        let a = this.map.get(name);
-        if (!a) {
-            const base = sfx[name];
-            if (!base) return;
-            a = base.cloneNode();
-            a.loop = true;
-            a.volume = Math.max(0, Math.min(1, volume));
-            this.map.set(name, a);
-        }
+        } catch(_) {}
+
         try {
-            if (typeof a.paused === 'boolean' && !a.paused) return;
-            a.play().catch(()=>{});
-        } catch(_){ }
-        try {
-            track.loop = loop;
-        try {
-            if (AudioEngine && AudioEngine.state && AudioEngine.state.ready && AudioEngine.state.buffers && AudioEngine.state.buffers.has(name)) {
-                try { AudioEngine.stopLoopSfx(name); } catch(_){}
-                return;
-            }
-        } catch(_){}
-        const a = this.map.get(name);
-        if (!a) return;
-        try { a.pause(); if (resetTime) a.currentTime = 0; } catch(_){ }
-            track.volume = 0;
-            console.log('[Music] Using HTMLAudio fallback for', name);
-            const p = track.play();
-            if (p && typeof p.then === 'function') {
-                p.then(() => {
-                    try {
-                        if (this.current === track) {
-                            if (!SETTINGS.musicMuted) {
-                                try { track.muted = false; } catch(_){ }
-                                if (fadeInMs > 0) {
-                                    try { track.volume = 0; } catch(_){ }
-                                    this.fadeTo(this.targetVolume, fadeInMs);
-                                } else {
-                                    try { track.volume = this.targetVolume; } catch(_){ }
-                                }
-                            } else {
-                                try { track.muted = true; track.volume = 0; } catch(_){ }
-                            }
+            const track = (typeof bgm !== 'undefined' && bgm && bgm[name]) ? bgm[name] : null;
+            if (track) {
+                track.loop = !!loop;
+                this.current = track; this.name = name; this.targetVolume = this.targetVolume;
+                try {
+                    console.log('[MUSIC.play] HTMLAudio track:', name, track.src, 'initialVolume:', track.volume, 'muted:', track.muted);
+                    if (!SETTINGS.musicMuted) {
+                        if (fadeInMs > 0) {
+                            try { track.volume = 0; } catch(_){ }
+                            const p = track.play(); if (p && typeof p.then === 'function') p.catch(()=>{});
+                            this.fadeTo(this.targetVolume, fadeInMs);
+                        } else {
+                            try { track.volume = this.targetVolume; track.muted = false; } catch(_){ }
+                            const p = track.play(); if (p && typeof p.then === 'function') p.catch(()=>{});
+                            console.log('[MUSIC.play] played HTMLAudio:', name, 'volume now:', track.volume, 'muted:', track.muted);
                         }
-                    } catch(_){ }
-                }).catch(() => {
-                    try { if (this.current === track) { this.current = null; this.name = null; } } catch(_){}
-                });
-            } else {
-                if (!SETTINGS.musicMuted) {
-                    try { track.muted = false; track.volume = this.targetVolume; } catch(_){ }
-                    if (fadeInMs > 0) this.fadeTo(this.targetVolume, fadeInMs);
-                }
+                    } else {
+                        try { track.muted = true; track.volume = 0; } catch(_){ }
+                    }
+                } catch(_){}
+                return true;
             }
-        } catch(_){ }
+        } catch(_) {}
+
+        try {
+            let a = this.map.get(name);
+            if (!a) {
+                const base = sfx[name];
+                if (!base) return false;
+                a = base.cloneNode();
+                a.loop = !!loop;
+                a.volume = Math.max(0, Math.min(1, this.targetVolume));
+                this.map.set(name, a);
+            }
+            try {
+                if (typeof a.paused === 'boolean' && !a.paused) return true;
+                const p = a.play(); if (p && typeof p.then === 'function') p.catch(()=>{});
+                this.current = a; this.name = name;
+            } catch(_){}
+            return true;
+        } catch(_) { return false; }
     },
     fadeTo(target, ms, onDone) {
         const a = this.current; if (!a) { if(onDone) onDone(); return; }
-        const startVol = a.volume;
+        const startVol = a.volume || 0;
         const endVol = Math.max(0, Math.min(1, target));
         const dur = Math.max(10, ms || 0);
         const start = performance.now();
@@ -897,7 +898,7 @@ const MUSIC = {
         this._fadeTimer = setInterval(() => {
             const t = Math.min(1, (performance.now() - start) / dur);
             const v = startVol + (endVol - startVol) * t;
-            try { a.volume = v; } catch(_){}
+            try { a.volume = v; } catch(_){ }
             if (t >= 1) {
                 clearInterval(this._fadeTimer); this._fadeTimer = null;
                 if (onDone) onDone();
@@ -905,7 +906,12 @@ const MUSIC = {
         }, 30);
     },
     stop(opts = {}) {
-        try { if (AudioEngine.state.currentMusic) { AudioEngine.stopMusic(opts.fadeOutMs || 0); this.current = null; this.name = null; return; } } catch(_){}
+        try {
+            if (AudioEngine && AudioEngine.state && AudioEngine.state.currentMusic) {
+                try { AudioEngine.stopMusic(opts.fadeOutMs || 0); } catch(_){ }
+                this.current = null; this.name = null; return;
+            }
+        } catch(_){}
         const a = this.current; if (!a) return;
         const fadeOutMs = typeof opts.fadeOutMs === 'number' ? opts.fadeOutMs : 0;
         if (fadeOutMs > 0) {
@@ -915,6 +921,29 @@ const MUSIC = {
             this.current = null; this.name = null;
         }
     }
+};
+
+const _origMusicStop = MUSIC.stop.bind(MUSIC);
+MUSIC.stop = function(opts = {}) {
+    try { _origMusicStop(opts); } catch(_){ }
+    try {
+        if (this.map) {
+            for (const v of this.map.values()) {
+                try { v.pause(); v.currentTime = 0; } catch(_){}
+            }
+            try { this.map.clear(); } catch(_){}
+        }
+    } catch(_){}
+    try {
+        if (typeof bgm !== 'undefined' && bgm) {
+            for (const k of Object.keys(bgm)) {
+                try { const t = bgm[k]; if (t && typeof t.pause === 'function') { t.pause(); t.currentTime = 0; } } catch(_){}
+            }
+        }
+    } catch(_){}
+    try {
+        try { LOOPING.stopAll(); } catch(_){}
+    } catch(_){}
 };
 
 function setSfxMuted(flag) {
@@ -5510,34 +5539,52 @@ async function startGame() {
     
     const trackName = pickTrackForSector(GAME.floor);
     try {
-        if (AudioEngine.state.ctx && AudioEngine.state.ctx.state === 'suspended') {
-            await AudioEngine.state.ctx.resume();
-        }
-        const isAlreadyPlaying = (AudioEngine.state.musicName === trackName) || (MUSIC.name === trackName);
-        if (isAlreadyPlaying) {
-            console.log('Music already playing:', trackName);
-        } else {
-            try { MUSIC.stop({ fadeOutMs: 0 }); } catch(_){ }
-            let ok = false;
+        try { if (AudioEngine.state.ctx && AudioEngine.state.ctx.state === 'suspended') await AudioEngine.state.ctx.resume(); } catch(_){}
+
+        try { MUSIC.stop({ fadeOutMs: 0 }); } catch(_){}
+        try { if (AudioEngine && AudioEngine.stopMusic) AudioEngine.stopMusic(0); } catch(_){}
+
+        console.log('[Music] Starting track for sector', GAME.floor, trackName);
+
+        let ok = false;
+        try {
+            if (AudioEngine && AudioEngine.state && AudioEngine.state.ready) {
+                ok = await AudioEngine.playMusic(trackName, 1.0, true, 800).catch(() => false);
+            }
+        } catch(_) { ok = false; }
+
+        try {
+            console.log('[Music][diag] AudioEngine.ready=', !!(AudioEngine && AudioEngine.state && AudioEngine.state.ready),
+                'buffersHas=', !!(AudioEngine && AudioEngine.state && AudioEngine.state.buffers && AudioEngine.state.buffers.has(trackName)),
+                'musicGain=', (AudioEngine && AudioEngine.state && AudioEngine.state.musicGain && AudioEngine.state.musicGain.gain && typeof AudioEngine.state.musicGain.gain.value === 'number') ? AudioEngine.state.musicGain.gain.value : null,
+                'levelToGain=', (typeof levelToGain === 'function' ? levelToGain(ACCESS.musicLevel || 5) : null)
+            );
+        } catch(_){}
+
+        if (!ok && AudioEngine && AudioEngine.state && AudioEngine.state.ready) {
             try {
-                ok = await AudioEngine.playMusic(trackName, 1.0, true, 800);
+                const url = musicUrlForName(trackName);
+                await AudioEngine.loadBuffer(trackName, url).catch(() => {});
+                ok = await AudioEngine.playMusic(trackName, 1.0, true, 800).catch(() => false);
             } catch(_) { ok = false; }
-            if (!ok && AudioEngine && AudioEngine.state && AudioEngine.state.ready) {
-                try {
-                    const url = musicUrlForName(trackName);
-                    await AudioEngine.loadBuffer(trackName, url).catch(() => {});
-                    ok = await AudioEngine.playMusic(trackName, 1.0, true, 800).catch(() => false);
-                } catch(_) { ok = false; }
-            }
-            if (!ok) {
-                console.log('[Music] Falling back to HTMLAudio for', trackName);
-                MUSIC.play(trackName, { fadeInMs: 800, loop: true });
-            }
         }
+
+        if (!ok) {
+            console.log('[Music] Falling back to HTMLAudio for', trackName);
+            try { await MUSIC.play(trackName, { fadeInMs: 800, loop: true }); } catch(_) { }
+            try {
+                if (MUSIC.current && typeof MUSIC.current.volume === 'number') {
+                    MUSIC.current.volume = SETTINGS.musicMuted ? 0 : (MUSIC.targetVolume || 1);
+                    try { MUSIC.current.muted = !!SETTINGS.musicMuted; } catch(_){}
+                }
+            } catch(_){ }
+            console.log('[Music] After fallback, MUSIC.name=', MUSIC.name, 'MUSIC.current=', MUSIC.current && (MUSIC.current.src || MUSIC.current.currentTime || MUSIC.current.volume));
+        }
+
         applyVolumeLevels();
     } catch(e) {
         console.warn('Music start failed:', e);
-        try { MUSIC.play(trackName, { fadeInMs: 800, loop: true }); } catch(_){ }
+        try { await MUSIC.play(trackName, { fadeInMs: 800, loop: true }); } catch(_){ }
         applyVolumeLevels();
     }
     
@@ -5626,10 +5673,10 @@ function beginLaunch() {
     (async () => {
         try {
             if (AudioEngine && AudioEngine.state && AudioEngine.state.ready) {
-                const ok = await AudioEngine.playMusic('waltuh', 1, true, 0);
-                if (!ok) { MUSIC.play('waltuh', { loop: true, fadeInMs: 0 }); }
+                const ok = await AudioEngine.playMusic('launch', 1, true, 0);
+                if (!ok) { MUSIC.play('launch', { loop: true, fadeInMs: 0 }); }
             } else {
-                MUSIC.play('waltuh', { loop: true, fadeInMs: 0 });
+                MUSIC.play('launch', { loop: true, fadeInMs: 0 });
             }
         } catch(_){ }
     })();
@@ -5639,7 +5686,7 @@ function beginLaunch() {
             const playingWebAudio = !!(AudioEngine && AudioEngine.state && AudioEngine.state.currentMusic);
             const playingHtmlAudio = !!(MUSIC && MUSIC.current);
             if (!playingWebAudio && !playingHtmlAudio) {
-                const track = bgm.waltuh;
+                const track = bgm.launch || bgm.waltuh;
                 if (track) {
                     try {
                         track.loop = true;
@@ -5649,7 +5696,7 @@ function beginLaunch() {
                         if (p && typeof p.then === 'function') {
                             p.catch(()=>{});
                         }
-                        MUSIC.current = track; MUSIC.name = 'waltuh'; MUSIC.targetVolume = track.volume;
+                        MUSIC.current = track; MUSIC.name = 'launch'; MUSIC.targetVolume = track.volume;
                     } catch(_) {}
                 }
             }
@@ -5749,7 +5796,11 @@ async function endLaunch(skipped) {
     } catch(e) {
         console.warn('AudioContext resume failed on launch end:', e);
     }
-    
+    try { sfx.launch.pause(); sfx.launch.currentTime = 0; } catch(_){ }
+    try { if (typeof bgm !== 'undefined' && bgm && bgm.launch) { bgm.launch.pause(); try { bgm.launch.currentTime = 0; } catch(_){} } } catch(_){ }
+    try { MUSIC.stop({ fadeOutMs: 0 }); } catch(_){ }
+    try { if (AudioEngine && AudioEngine.stopMusic) AudioEngine.stopMusic(0); } catch(_){ }
+
     startGame();
 }
 
@@ -5758,8 +5809,8 @@ function showDraft() {
     GAME.state = 'DRAFT';
     try { stopGunAudio(); } catch(_){ }
     try { LOOPING.stopAll(); } catch(_){ }
-    try { MUSIC.stop({ fadeOutMs: 1000 }); } catch(_){ }
-    try { if (AudioEngine && AudioEngine.stopMusic) AudioEngine.stopMusic(1000); } catch(_){ }
+    try { MUSIC.stop({ fadeOutMs: 150 }); } catch(_){ }
+    try { if (AudioEngine && AudioEngine.stopMusic) AudioEngine.stopMusic(150); } catch(_){ }
     const con = document.getElementById('draft-cards');
     con.innerHTML = '';
     bullets = [];
@@ -6792,6 +6843,19 @@ function drawJoystickOverlay() {
     }
     const len = Math.hypot(jdx, jdy) || 1;
     const ndx = jdx / len, ndy = jdy / len;
+    try {
+        const moved = Math.hypot(jdx, jdy) > 0.05; 
+        if (GAME && GAME.state === 'PLAY' && GAME.floor === 1 && moved && !GAME._sector1MusicStarted) {
+            GAME._sector1MusicStarted = true;
+            (async () => {
+                try {
+                    try { MUSIC.stop({ fadeOutMs: 0 }); } catch(_){ }
+                    try { if (AudioEngine && AudioEngine.stopMusic) AudioEngine.stopMusic(0); } catch(_){ }
+                    await MUSIC.play('waltuh', { volume: 1.0, loop: true, fadeInMs: 800 });
+                } catch(_){}
+            })();
+        }
+    } catch(_){}
     function strengthFor(dirX, dirY) {
         const dot = Math.max(0, ndx*dirX + ndy*dirY);
         return Math.max(0.15, Math.min(1, dot * jm));
