@@ -7,6 +7,7 @@ const GAME = {
     state: 'MENU',
     floor: 1,
     essence: 0,
+    damageMult: 1,
     frame: 0,
     time: 0,
     dt: 0,
@@ -1351,7 +1352,7 @@ class Pet {
                 }
                 if (t) {
                     const msElapsed = GAME.dt * 10;
-                    let dmg = msElapsed * 0.1;
+                    let dmg = (msElapsed * 0.1) * (GAME.damageMult || 1);
                     const bigBeamActive = (this.powerup.type === 'BIG' && this.powerup.time > 0 && (meta.rateLvl || 0) >= 15);
                     if (bigBeamActive) dmg *= 2;
                     const ang = Math.atan2(t.y - this.y, t.x - this.x);
@@ -3244,7 +3245,7 @@ class Armament {
         this._deadProcessed = false;
         const baseHp = 100;
         const sel = (typeof getSelectedSkin === 'function') ? getSelectedSkin() : null;
-        this.maxHp = (sel === 'DARKMATTER') ? Math.round(baseHp * 1.6) : baseHp;
+        this.maxHp = baseHp;
         this.hp = this.maxHp;
         this.radius = 14;
         this.attackCooldown = 0;
@@ -3373,7 +3374,7 @@ class Armament {
                 const bx = ax + dirX * maxLen, by = ay + dirY * maxLen;
 
                 const msElapsed = GAME.dt * 10;
-                let dmg = msElapsed * 0.1;
+                let dmg = (msElapsed * 0.1) * (GAME.damageMult || 1);
                 const beamWidth = 10 * 0.5;
 
                 const allTargets = [...enemies];
@@ -5483,15 +5484,13 @@ async function startGame() {
         const sel = getSelectedSkin();
         if (sel === 'DARKMATTER') {
             const perk = SKIN_PERKS.DARKMATTER;
-            if (p0 && perk.playerHpBonus) {
-                p0.maxHp += perk.playerHpBonus;
-                p0.hp = Math.min(p0.maxHp, p0.hp + perk.playerHpBonus);
-            }
-            for (let i = 1; i < party.length; i++) {
-                const s = party[i]; if (!s) continue;
-                s.maxHp += (perk.supportHpBonus || 0);
-                s.hp = Math.min(s.maxHp, s.hp + (perk.supportHpBonus || 0));
-            }
+            try {
+                GAME.damageMult = (perk && perk.damageMult) ? perk.damageMult : 1;
+                for (let i = 0; i < party.length; i++) {
+                    const s = party[i]; if (!s) continue;
+                    try { s.dmg = (s.dmg || 0) * GAME.damageMult; } catch(_){ }
+                }
+            } catch(_){ }
         }
     })();
     enemies = []; bullets = []; orbiters = []; powerups = []; resetParticlePool();
@@ -6602,7 +6601,7 @@ const SKINS = {
 const SKIN_PERKS = {
     STARCORE: { label: '+ARMOR', armorMult: 0.75 },
     MOONLIGHT: { label: '+REGEN', regenPctPerSec: 0.02 },
-    DARKMATTER: { label: '+HEALTH', playerHpBonus: 120, supportHpBonus: 60 }
+    DARKMATTER: { label: '+DAMAGE', damageMult: 1.25 }
 };
 const SKIN_THEMES = {
     DEFAULT:  { primary: '#ff00ff', accent: '#ffaaff' },
